@@ -87,6 +87,7 @@ button.row:disabled>*{opacity:.5}
 .chip.rare{border-color:var(--coin);color:var(--coin)}
 .modbar{border:1px solid var(--arcane);color:var(--arcane);border-radius:6px;padding:8px 12px;font-size:.85rem}
 .modbar b{font-family:var(--display);font-weight:400}
+.btn.sm{padding:7px 10px;font-size:.82rem}
 .btn.alt{background:var(--line);color:var(--fg)}
 .btn.danger{background:var(--bad);color:#2a0d08}
 .btn.gold{background:var(--coin);color:#2a2008}
@@ -193,7 +194,8 @@ const SK=[
  {k:"tongue",b:"merc",n:"Silver Tongue",max:3,d:"+5% customer budgets per rank"},
  {k:"patience",b:"merc",n:"Calm Presence",max:2,d:"Customers allow +1 haggle per rank"},
  {k:"showman",b:"merc",n:"Showman",max:2,req:2,d:"+1 customer a day per rank"},
- {k:"bulk",b:"merc",n:"Master Crafter",max:2,req:2,d:"20% chance per rank to craft two"}
+ {k:"bulk",b:"merc",n:"Master Crafter",max:2,req:2,d:"20% chance per rank to craft two"},
+ {k:"quick",b:"merc",n:"Quick Sale",max:5,d:"Sell stock instantly from the Town tab for 15% of base value, +10% per extra rank"}
 ];
 const dmgAt=l=>4+3*l, hpAt=l=>30+15*l, capAt=l=>6+2*l;
 
@@ -230,6 +232,8 @@ const fleeCh=()=>Math.min(.95,.6+.15*sk("escape"));
 const custN=()=>3+S.gear.shelf+sk("showman");
 const signB=()=>1+.08*S.gear.sign+.05*sk("tongue");
 const patMax=()=>3+sk("patience");
+const quickPct=()=>sk("quick")?.05+.1*sk("quick"):0;
+const quickPrice=k=>Math.max(1,Math.round(IT[k].b*quickPct()));
 const val=k=>Math.max(1,Math.round(IT[k].b*(S.trend[IT[k].c]||1)));
 const upCost=u=>Math.round(u.base*Math.pow(1.9,S.gear[u.k]));
 const week=()=>Math.ceil(S.day/7);
@@ -726,7 +730,8 @@ function vTown(){
     ${eq.length?`<div class="chips" style="margin-top:8px">${eq.map(([k,n])=>`<button class="chip usebtn" data-act="equip" data-k="${k}" ${S.belt.length>=BELT?"disabled":""}>+ ${IT[k].n}${n>1?` ×${n}`:""}</button>`).join("")}</div>`:`<p class="hint" style="margin-top:8px">Craft bombs, ropes, whetstones, and lockpicks in the Workshop. Potions in stock can go on your belt too.</p>`}
   </section>
   <section><h2>Stock <small>${S.inv.length} item${S.inv.length===1?"":"s"}</small></h2>
-    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">Market value</span><span class="right coin">${val(k)}G</span></div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
+    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">Market value ${val(k)}G</span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
+    ${sk("quick")&&inv.length?`<p class="hint" style="margin-top:8px">Quick Sale pays ${Math.round(quickPct()*100)}% of base value instantly and doesn't use the day.</p>`:""}
   </section>
   <p class="hint">Sold ${fmt(S.sold)} items for ${fmt(S.earned)}G · crafted ${fmt(S.crafted)}. Progress is saved in this browser.</p>
   <section><h2>Save code <small>back up or move your progress</small></h2>
@@ -918,6 +923,8 @@ app.addEventListener("click",e=>{
     ev:()=>evChoice(b.dataset.c), use:()=>useItem(b.dataset.s,+b.dataset.i),
     equip:()=>equip(b.dataset.k), unequip:()=>unequip(+b.dataset.i), secret:secretStairs,
     learn:()=>learn(b.dataset.k),
+    quick:()=>{const k=b.dataset.k;if(!sk("quick")||!S.inv.includes(k))return;const p=quickPrice(k);
+      S.inv.splice(S.inv.indexOf(k),1);S.gold+=p;S.earned+=p;S.sold++;sfx.coin();toast(`Sold ${an(IT[k].n)} for <b>${fmt(p)}G</b>.`);save();render()},
     explore, attack, guard, flee, descend, boss:challengeBoss, leave:leaveDungeon,
     offer, accept:()=>sell(S.shop.cur.counter), refuse, close:endDay,
     exportSave:()=>{
