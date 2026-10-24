@@ -120,6 +120,12 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 .over{text-align:center;gap:14px}
 .over .big-num{font-family:var(--display);font-size:2.4rem;color:var(--coin)}
 #toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translate(-50%,160%);background:var(--panel);border:1px solid var(--coin);border-radius:8px;padding:10px 16px;font-size:.88rem;max-width:calc(100% - 32px);transition:transform .3s ease;z-index:20;text-align:center}
+#xpPop{position:fixed;bottom:calc(72px + env(safe-area-inset-bottom,0px));left:50%;margin-left:-60px;width:120px;text-align:center;box-sizing:border-box;z-index:21;pointer-events:none;
+  background:var(--panel);border:1px solid var(--copper);color:var(--copper);font:700 .9rem var(--display);padding:6px 12px;border-radius:999px;
+  opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s}
+#xpPop.show{opacity:1;transform:none;animation:xpbump .35s ease}
+@keyframes xpbump{0%{transform:scale(.8)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){#xpPop,#xpPop.show{transition:none;animation:none}}
 #toast.show{transform:translate(-50%,0)}
 #toast b{color:var(--coin)}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
@@ -127,6 +133,7 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 
 <div id="app" class="wrap"></div>
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="xpPop" aria-live="polite"></div>
 
 <script>
 /* ================= Data ================= */
@@ -371,7 +378,15 @@ function musicUpdate(){
 /* ================= Helpers ================= */
 let toastT;
 function toast(h){const t=document.getElementById("toast");t.innerHTML=h;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2800)}
+let xpAcc=0,xpT;
+function showXp(n){
+  const el=document.getElementById("xpPop");if(!el)return;
+  xpAcc+=n;el.textContent=`+${fmt(xpAcc)} XP`;
+  el.classList.remove("show");void el.offsetWidth;el.classList.add("show");
+  clearTimeout(xpT);xpT=setTimeout(()=>{el.classList.remove("show");xpAcc=0},1800);
+}
 function addXp(n){
+  if(n>0)showXp(n);
   const b=lvl();S.xp+=n;const a=lvl();
   if(a>b){sfx.lvl();const d=DUN.find(x=>x.lvl===a);toast(`Level <b>${a}</b>! +1 skill point.`+(d?` ${d.n} is open.`:""))}
 }
@@ -564,14 +579,14 @@ function mobWin(pre){
   S.gold+=g;R.fight=null;R.event=`${pre}You defeat the ${F.n}! +${g}G.`;
   if(Math.random()<.7){let n=1;if(Math.random()<.5*sk("salvage"))n++;R.event+=` Got ${dropMats(n).join(", ")}.`}
   if(Math.random()<.4){const k=rollItem();if(bagAdd(k)){R.event+=` It dropped ${an(IT[k].n)}.`;sfx.loot()}}
-  rlog(R.event);addXp(x);save();render();
+  R.event+=` +${x} XP.`;rlog(R.event);addXp(x);save();render();
 }
 function eliteWin(pre){
   const R=S.run,F=R.fight,D=DUN[R.d],f=TF[D.t-1];
   const g=Math.round(rnd(8,16)*f*R.floor),x=Math.round(15*D.t*R.floor),k=rollItem(true);
   S.gold+=g;R.fight=null;
   R.event=`${pre}The ${F.n} falls! +${g}G, ${dropMats(3).join(", ")}`+(bagAdd(k)?`, and its treasure: ${an(IT[k].n)}!`:`. Its treasure, ${an(IT[k].n)}, won't fit in your pack.`);
-  sfx.win();rlog(R.event);addXp(x);save();render();
+  R.event+=` +${x} XP.`;sfx.win();rlog(R.event);addXp(x);save();render();
 }
 function miniWin(pre){
   const R=S.run,D=DUN[R.d],f=TF[D.t-1];
@@ -579,7 +594,7 @@ function miniWin(pre){
   S.gold+=g;R.fight=null;R.miniDone=true;
   const where=giveSupply(sup);
   R.event=`${pre}The ${MINI[R.d]} collapses! +${g}G, ${dropMats(2).join(", ")}`+(bagAdd(k)?`, ${an(IT[k].n)}`:"")+(where?`, and ${an(IT[sup].n)} (${where}).`:".");
-  sfx.win();rlog(R.event);addXp(25*D.t);save();render();
+  R.event+=` +${25*D.t} XP.`;sfx.win();rlog(R.event);addXp(25*D.t);save();render();
 }
 function bossWin(pre){
   const R=S.run,D=DUN[R.d],f=TF[D.t-1];
@@ -590,7 +605,7 @@ function bossWin(pre){
   R.fight=null;R.bossDone=true;
   R.event=`${pre}The ${D.boss} falls! +${g}G, ${MATS[D.heart]}${fit?`, and ${an(IT[k].n)}`:""}.`+(first?" First victory: +1 skill point!":"");
   if(Math.random()<.35+.05*sk("keen")){R.secret=true;R.event+=" Behind the lair, a hidden stairway grinds open...";}
-  rlog(R.event);sfx.win();addXp(x);
+  R.event+=` +${x} XP.`;rlog(R.event);sfx.win();addXp(x);
   if(first)toast(`<b>${D.boss}</b> defeated! +1 skill point.`);
   save();render();
 }
@@ -664,8 +679,9 @@ function craft(i){
   Object.entries(r.mats).forEach(([k,n])=>S.mats[k]-=n);
   const two=Math.random()<.2*sk("bulk");
   S.inv.push(r.out);if(two)S.inv.push(r.out);S.crafted++;
-  sfx.craft();toast(`Crafted ${two?"<b>two</b> ":""}<b>${IT[r.out].n}</b> (worth about ${val(r.out)}G each).`);
-  addXp(Math.ceil(val(r.out)/20));save();render();
+  const xp=Math.ceil(val(r.out)/20);
+  sfx.craft();toast(`Crafted ${two?"<b>two</b> ":""}<b>${IT[r.out].n}</b> (worth about ${val(r.out)}G each) · +${xp} XP`);
+  addXp(xp);save();render();
 }
 
 /* ================= Skills ================= */
@@ -705,7 +721,7 @@ function sell(price){
   S.inv.splice(S.inv.indexOf(c.k),1);S.gold+=price;P.today+=price;S.earned+=price;S.sold++;
   const perfect=price/c.max>=.92;P.combo=perfect?P.combo+1:0;
   const x=Math.ceil(v/8*(1+.25*P.combo));
-  slog(`Sold ${IT[c.k].n} for ${fmt(price)}G${perfect?` · great price! combo ×${P.combo}`:""}`);
+  slog(`Sold ${IT[c.k].n} for ${fmt(price)}G · +${x} XP${perfect?` · great price! combo ×${P.combo}`:""}`);
   sfx.coin();if(perfect&&P.combo>1)toast(`Haggle combo <b>×${P.combo}</b> · bonus XP`);
   addXp(x);nextCust();save();render();
 }
