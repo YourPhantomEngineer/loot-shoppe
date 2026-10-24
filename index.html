@@ -426,6 +426,8 @@ const staffRate=k=>ST(k).rate+.03*(staffLvl(k)-1)+staffRec(k).rateB+.05*sk("boss
 const staffSells=k=>ST(k).sells+Math.floor((staffLvl(k)-1)/2);
 const staffWage=k=>Math.round(ST(k).wage*(1+staffRec(k).wageB));
 const forSale=()=>S.inv.filter(k=>!S.keep[k]);
+const THIEF_TARGETS=["pip","marlo"];
+const catchChance=k=>.1+.15*(staffLvl(k)-1);
 function pickCust(){
   let w=Math.random()*CUST.reduce((a,c)=>a+c.w,0),ti=0;for(;ti<CUST.length;ti++){w-=CUST[ti].w;if(w<=0)break}
   return CUST[Math.min(ti,CUST.length-1)];
@@ -441,7 +443,7 @@ function staffShift(){
   if(S.gold<w)return {who:st.n,lines:[`You couldn't cover ${st.n}'s ${w}G wage, so the shop stayed closed.`],gold:0,wage:0};
   const rec=staffRec(k),L0=staffLvl(k),rate=staffRate(k),target=staffSells(k);
   const lines=[];let gold=0,sold=0;
-  let ev=Math.random()<.35?pick(["great","swindle","trade","tip","raise",...(L0<=2?["thief"]:[])]):null;
+  let ev=Math.random()<.35?pick(["great","swindle","trade","tip","raise",...(THIEF_TARGETS.includes(k)?["thief"]:[])]):null;
   const take=key=>S.inv.splice(S.inv.indexOf(key),1);
   for(let i=0;i<custN()+2&&sold<target;i++){
     const C=pickCust(),m=forSale().filter(x=>!C.cats||C.cats.includes(IT[x].c));
@@ -458,7 +460,11 @@ function staffShift(){
     else if(ev==="swindle"){price=Math.max(1,Math.round(price*.5));note=` A fast talker haggled ${st.n} down to half price.`;ev=null}
     take(key);gold+=price;sold++;lines.push(`Sold ${an(IT[key].n)} for ${fmt(price)}G.${note}`);
   }
-  if(ev==="thief"){const p=forSale();if(p.length){const key=pick(p);take(key);lines.push(`While ${st.n} was distracted, a thief made off with ${an(IT[key].n)}!`)}}
+  if(ev==="thief"){const p=forSale();if(p.length){
+    const key=pick(p);lines.push(`While ${st.n} was distracted, a thief made off with ${an(IT[key].n)}!`);
+    if(Math.random()<catchChance(k))lines.push(`${st.n} gave chase and caught them, recovering the ${IT[key].n}.`);
+    else{take(key);lines.push(`${st.n} gave chase, but the thief got away.`)}
+  }}
   if(ev==="tip"&&sold){const t=Math.round(rnd(.05,.12)*gold)+5;gold+=t;lines.push(`A regular customer left ${st.n} a ${t}G tip.`)}
   if(!sold&&!lines.length)lines.push(`No customers wanted anything on the shelves today.`);
   rec.sold+=sold;S.sold+=sold;
