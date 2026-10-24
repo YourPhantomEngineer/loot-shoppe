@@ -95,6 +95,13 @@ button.row:disabled>*{opacity:.5}
 .log{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
 .log li:first-child{color:var(--fg)}
 .quote{font-size:1.02rem;font-style:italic;margin:0}
+.custhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.mood{font-size:.78rem;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.mood.eager{color:var(--coin);border-color:var(--coin)} .mood.keen{color:var(--good);border-color:var(--good)}
+.mood.fair{color:var(--muted)} .mood.thrifty{color:var(--bad);border-color:var(--bad)}
+.tell{margin:0;color:var(--muted);font-size:.9rem}
+.offerbox{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.offerbox b{font-family:var(--display);font-size:1.6rem;color:var(--coin);font-variant-numeric:tabular-nums}
 .who{font-family:var(--display);font-size:.8rem;color:var(--copper)}
 .price{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .price b{font-family:var(--display);font-size:1.6rem;color:var(--coin);font-variant-numeric:tabular-nums}
@@ -169,9 +176,9 @@ const RECIPES=[
 ];
 const CUST=[
  {n:"Village Kid",bud:[.85,1.02],cats:["potion","trinket"],w:3,say:i=>`Um... how much for the ${i}?`},
- {n:"Townsfolk",bud:[.95,1.2],cats:null,w:5,say:i=>`I've been looking for a ${i}.`},
+ {n:"Townsfolk",bud:[.95,1.2],cats:null,w:5,say:i=>`I've been looking for ${an(i)}.`},
  {n:"Adventurer",bud:[1.05,1.35],cats:["weapon","armor","potion","supply"],w:4,say:i=>`That ${i} could save my life. What's the price?`},
- {n:"Gem Collector",bud:[1.1,1.5],cats:["gem","trinket"],w:2,say:i=>`Ooh, a ${i}. I simply must have it.`},
+ {n:"Gem Collector",bud:[1.1,1.5],cats:["gem","trinket"],w:2,say:i=>`Ooh, ${an(i)}. I simply must have it.`},
  {n:"Noble",bud:[1.25,1.7],cats:null,w:1,say:i=>`I'll take the ${i}. Name your price.`}
 ];
 const UPG=[
@@ -658,6 +665,13 @@ function learn(k){
 }
 
 /* ================= Shop ================= */
+const MOODS=[
+ {min:1.3,k:"eager",n:"Eager",ic:"\u25b2\u25b2",tells:["Their eyes light up the moment they see it.","They're already reaching for a bulging coin purse.","They can barely stand still with excitement."]},
+ {min:1.1,k:"keen",n:"Keen",ic:"\u25b2",tells:["They turn it over admiringly.","They nod along, clearly impressed.","They smile and run a finger along it."]},
+ {min:.95,k:"fair",n:"Fair",ic:"\u25a0",tells:["They glance at your price tags, then back at you.","They weigh it in their hands, unhurried.","They look it over with a practiced eye."]},
+ {min:0,k:"thrifty",n:"Thrifty",ic:"\u25bc",tells:["They count their coins twice.","Their coin purse looks awfully thin.","They wince a little at your price tags."]}
+];
+const moodOf=c=>MOODS.find(m=>c.max/val(c.k)>=m.min);
 function openShop(){S.shop={left:custN(),cur:null,combo:0,today:0,log:[],pct:S.shop?.pct||130,served:0};nextCust();save();render()}
 function slog(m){S.shop.log.unshift(m);S.shop.log=S.shop.log.slice(0,6)}
 function nextCust(){
@@ -669,7 +683,9 @@ function nextCust(){
     const m=S.inv.filter(k=>!C.cats||C.cats.includes(IT[k].c));
     if(!m.length){slog(`A ${C.n.toLowerCase()} browsed but found nothing they wanted.`);continue}
     const k=C.n==="Noble"?m.reduce((a,b)=>val(b)>val(a)?b:a):pick(m);
-    P.cur={t:ti,k,max:Math.round(val(k)*rnd(...C.bud)*signB()),pat:patMax(),pmax:patMax(),counter:null,fb:""};
+    const max=Math.round(val(k)*rnd(...C.bud)*signB());
+    P.cur={t:ti,k,max,pat:patMax(),pmax:patMax(),counter:null,fb:"",phase:"offer",offer:Math.max(1,Math.round(max*rnd(.72,.88)))};
+    P.cur.tell=pick(moodOf(P.cur).tells);
     return;
   }
 }
@@ -688,8 +704,14 @@ function offer(){
   c.pat--;
   if(c.pat<=0){slog(`The ${CUST[c.t].n.toLowerCase()} left in a huff.`);P.combo=0;sfx.fail();nextCust();return save(),render()}
   c.fb=price>c.max*1.3?"“That's way too much!”":price>c.max*1.1?"“Hmm, that's steep.”":"“Just a little lower...”";
-  c.counter=Math.max(1,Math.round(Math.min(price-1,c.max*rnd(.82,.96))));
+  c.counter=Math.max(c.counter||1,Math.round(Math.min(price-1,c.max*rnd(.85,.97))));
   sfx.hurt();save();render();
+}
+function startHaggle(){
+  const P=S.shop,c=P.cur,v=val(c.k);if(!c)return;
+  c.phase="haggle";c.counter=c.offer;
+  P.pct=Math.max(50,Math.round(Math.max(v,c.offer)/v*100));
+  save();render();
 }
 function refuse(){const P=S.shop;slog(`You turned away a ${CUST[P.cur.t].n.toLowerCase()}.`);P.combo=0;nextCust();save();render()}
 
@@ -853,15 +875,28 @@ function vShop(){
   const P=S.shop,c=P.cur;
   let body;
   if(c){
-    const C=CUST[c.t],v=val(c.k),price=Math.max(1,Math.round(v*P.pct/100)),pm=c.pmax||3;
-    body=`<div class="card">
-      <span class="who">${C.n}</span>
+    const C=CUST[c.t],v=val(c.k),price=Math.max(1,Math.round(v*P.pct/100)),pm=c.pmax||3,M=moodOf(c);
+    const sMax=Math.max(200,P.pct+40);
+    const head=`<div class="custhead"><span class="who">${C.n}</span><span class="mood ${M.k}">${M.ic} ${M.n}</span></div>
+      ${c.tell?`<p class="tell">${c.tell}</p>`:""}
       <p class="quote">“${C.say(IT[c.k].n)}”</p>
-      <div class="row" style="padding:0;border:0"><span><b>${IT[c.k].n}</b><span class="cat">${IT[c.k].c}</span></span><span class="sub">Market value ${v}G</span><span class="right">Patience ${"●".repeat(Math.max(0,c.pat))}${"○".repeat(Math.max(0,pm-c.pat))}</span></div>
+      <div class="row" style="padding:0;border:0"><span><b>${IT[c.k].n}</b><span class="cat">${IT[c.k].c}</span></span><span class="sub">Market value ${v}G</span><span class="right">Patience ${"●".repeat(Math.max(0,c.pat))}${"○".repeat(Math.max(0,pm-c.pat))}</span></div>`;
+    if(c.phase==="offer")body=`<div class="card">
+      ${head}
+      <div class="offerbox"><span class="lbl">Their offer</span><b>${fmt(c.offer)}G</b><span class="sub">${Math.round(c.offer/v*100)}% of market</span></div>
+      <div class="btns">
+        <button class="btn gold" data-act="acceptOffer">Accept ${fmt(c.offer)}G</button>
+        <button class="btn" data-act="haggle">Haggle</button>
+        <button class="btn alt" data-act="refuse">Refuse sale</button>
+      </div>
+      <p class="hint">Their mood hints at how far they'll go: ▲▲ Eager pays well above market, ▼ Thrifty wants a bargain.</p>
+    </div>`;
+    else body=`<div class="card">
+      ${head}
       <label for="price" class="lbl">Your price</label>
       <div class="price"><b id="pv">${fmt(price)}G</b><span id="pp" class="sub">${P.pct}% of market</span></div>
-      <input type="range" id="price" min="50" max="200" step="1" value="${P.pct}">
-      ${c.fb?`<p class="fb bad">${c.fb} They offer ${fmt(c.counter)}G.</p>`:""}
+      <input type="range" id="price" min="50" max="${sMax}" step="1" value="${P.pct}">
+      ${c.fb?`<p class="fb bad">${c.fb} They offer ${fmt(c.counter)}G.</p>`:`<p class="hint">Their opening offer was ${fmt(c.offer||c.counter||0)}G.</p>`}
       <div class="btns">
         <button class="btn" data-act="offer">Offer</button>
         ${c.counter?`<button class="btn gold" data-act="accept">Accept ${fmt(c.counter)}G</button>`:""}
@@ -926,7 +961,7 @@ app.addEventListener("click",e=>{
     quick:()=>{const k=b.dataset.k;if(!sk("quick")||!S.inv.includes(k))return;const p=quickPrice(k);
       S.inv.splice(S.inv.indexOf(k),1);S.gold+=p;S.earned+=p;S.sold++;sfx.coin();toast(`Sold ${an(IT[k].n)} for <b>${fmt(p)}G</b>.`);save();render()},
     explore, attack, guard, flee, descend, boss:challengeBoss, leave:leaveDungeon,
-    offer, accept:()=>sell(S.shop.cur.counter), refuse, close:endDay,
+    offer, accept:()=>sell(S.shop.cur.counter), acceptOffer:()=>sell(S.shop.cur.offer), haggle:startHaggle, refuse, close:endDay,
     exportSave:()=>{
       save();saveCode="LS1:"+btoa(unescape(encodeURIComponent(JSON.stringify(S))));saveBox="export";
       const done=ok=>{saveMsg=ok?"Copied to your clipboard. Paste it somewhere safe, like a note.":"Select the code below and copy it.";render();if(!ok){const t=document.getElementById("exportCode");t&&t.select()}};
