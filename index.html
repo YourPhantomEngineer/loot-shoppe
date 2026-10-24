@@ -283,9 +283,9 @@ const TRACKS={
   town:{bpm:84,root:62,chords:[[0,4,7],[-5,-1,2],[-3,0,4],[-7,-3,0]],scale:[0,2,4,7,9],
     padCut:900,padV:.03,arp:[0,2,4,2,3,2,4,2],arpOct:0,arpV:.06,
     mel:{dens:.35,every:2,oct:12,len:4,v:.05},bass:[0,null,null,null,null,null,null,null],bassLen:6,low:[],hat:[]},
-  shop:{bpm:100,root:55,chords:[[0,4,7],[5,9,12],[7,11,14],[0,4,7]],scale:[0,2,4,7,9],
-    padCut:1100,padV:.022,arp:[0,4,2,4,1,4,2,4],arpOct:12,arpV:.055,
-    mel:{dens:.5,every:2,oct:24,len:2,v:.04},bass:[0,null,null,null,1,null,null,null],bassLen:3,low:[0],hat:[2,6]},
+  shop:{bpm:94,root:55,chords:[[0,4,7],[5,9,12],[-3,0,4],[7,11,14]],scale:[0,2,4,7,9],
+    padCut:800,padV:.026,arp:[0,2,1,2,0,2,1,2],arpOct:0,arpV:.045,
+    mel:{dens:.42,every:2,oct:12,len:3,v:.038,top:6},bass:[0,null,null,null,1,null,null,null],bassLen:3,low:[0,4],lowV:.14,hat:[]},
   dungeon:{bpm:66,root:50,chords:[[0,3,7],[-4,0,3],[-2,2,5],[-5,-2,2]],scale:[0,3,5,7,10],
     padCut:550,padV:.045,arp:null,
     mel:{dens:.22,every:2,oct:12,len:3,v:.075,inst:"pluck"},bass:[0,null,null,null,null,null,null,null],bassLen:8,low:[0],lowV:.15,hat:[]},
@@ -349,7 +349,7 @@ function playStep(T,step,t,sp){
   if(T.hat.includes(s))drum(t,.035,false);
   const m=T.mel;
   if(s%m.every===0&&Math.random()<m.dens){
-    M.walk=Math.max(0,Math.min(9,M.walk+pick([-2,-1,-1,0,1,1,2])));
+    M.walk=Math.max(0,Math.min(m.top??9,M.walk+pick([-2,-1,-1,0,1,1,2])));
     const n=R+m.oct+T.scale[M.walk%5]+12*Math.floor(M.walk/5),d=sp*m.len;
     if(m.inst==="pluck")pluck(mf(n),t,m.v);else if(m.inst==="strings")strings(mf(n),t,d,m.v,2200);else flute(mf(n),t,d,m.v);
   }
