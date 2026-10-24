@@ -1,7 +1,7 @@
 // Loot Shoppe offline support.
 // The game page is fetched fresh when online (so updates arrive right away)
 // and served from the cache when offline. Icons and fonts are cached as they load.
-const CACHE = "loot-shoppe-v3";
+const CACHE = "loot-shoppe-v4";
 const CORE = ["./", "index.html", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png"];
 

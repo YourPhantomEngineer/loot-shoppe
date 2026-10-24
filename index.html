@@ -84,6 +84,8 @@ button.row:disabled>*{opacity:.5}
 .usebtn{background:none;color:var(--fg);cursor:pointer;font-family:inherit}
 .usebtn.on{border-color:var(--coin);color:var(--coin)}
 .usebtn:disabled{opacity:.45;cursor:default}
+.chip.dropsel{border-color:var(--bad);color:var(--bad);background:rgba(224,106,90,.1)}
+.leftbox{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border:1px dashed var(--coin);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:.88rem}
 .chip.rare{border-color:var(--coin);color:var(--coin)}
 .modbar{border:1px solid var(--arcane);color:var(--arcane);border-radius:6px;padding:8px 12px;font-size:.85rem}
 .modbar b{font-family:var(--display);font-weight:400}
@@ -411,7 +413,16 @@ function rollItem(boost){
   return pick(ITEMS.filter(i=>i.t===t&&!i.craft&&!i.sec&&i.c!=="supply")).k;
 }
 const secretItem=()=>ITEMS.find(i=>i.sec&&i.t===DUN[S.run.d].t).k;
-function bagAdd(k){if(S.run.bag.length>=cap())return false;S.run.bag.push(k);return true}
+function bagAdd(k){if(S.run.bag.length>=cap()){S.run.left=k;return false}S.run.bag.push(k);return true}
+function dropPick(i){
+  const R=S.run;if(!R.bag[i])return;
+  if(R.dropSel!==i){R.dropSel=i;return render()}
+  const k=R.bag.splice(i,1)[0];R.dropSel=null;R.event=`You drop the ${IT[k].n} to make room.`;rlog(R.event);sfx.step();save();render();
+}
+function pickUp(){
+  const R=S.run,k=R.left;if(!k||R.bag.length>=cap())return;
+  R.bag.push(k);R.left=null;R.dropSel=null;R.event=`You pick up the ${IT[k].n}.`;rlog(R.event);sfx.loot();save();render();
+}
 function hurtPct(p){const R=S.run,d=Math.max(1,Math.round(maxHp()*p));R.hp-=d;return d}
 function dropMats(n){
   const R=S.run,D=DUN[R.d];const got=[];
@@ -425,7 +436,7 @@ function makeFight(n,kind){
   R.fight={n,hp,max:hp,atk:Math.round((2+R.floor*.8)*f*am),turn:0,kind,boss:kind==="mini"||kind==="boss",wind:false};
 }
 function explore(){
-  const R=S.run,D=DUN[R.d],f=TF[D.t-1];R.steps++;sfx.step();
+  const R=S.run,D=DUN[R.d],f=TF[D.t-1];R.steps++;R.left=null;R.dropSel=null;sfx.step();
   const last=R.floor===D.floors,mod=R.mod;
   if(!R.secretFloor&&!last&&!R.stairs&&R.steps>=2&&Math.random()<(mod==="dark"?.1:.22)){R.stairs=true;R.event="You spot a staircase leading down.";rlog(R.event);return save(),render()}
   if(last&&!R.lair&&!R.bossDone&&R.steps>=2&&Math.random()<.25){R.lair=true;R.event=`Heavy footsteps echo ahead. The lair of the ${D.boss} is close.`;sfx.boss();rlog(R.event);return save(),render()}
@@ -617,7 +628,7 @@ function unequip(i){if(S.belt[i]){S.inv.push(S.belt.splice(i,1)[0]);save();rende
 
 /* ---------- Movement ---------- */
 function descend(){
-  const R=S.run;R.floor++;R.stairs=false;R.steps=0;R.ev=null;R.mod=rollMod(R.floor);
+  const R=S.run;R.floor++;R.stairs=false;R.steps=0;R.ev=null;R.left=null;R.dropSel=null;R.mod=rollMod(R.floor);
   let m=`You descend to floor ${R.floor}.`;
   if(sk("wind")){const h=Math.round(maxHp()*.15*sk("wind"));R.hp=Math.min(maxHp(),R.hp+h);m+=` Second Wind restores ${h} HP.`}
   if(R.mod)m+=` This floor is ${MODS[R.mod].n}.`;
@@ -625,7 +636,7 @@ function descend(){
   R.event=m;rlog(m);sfx.step();save();render();
 }
 function secretStairs(){
-  const R=S.run;R.floor=DUN[R.d].floors+1;R.secretFloor=true;R.secret=false;R.stairs=false;R.lair=false;R.mod=null;R.steps=0;
+  const R=S.run;R.left=null;R.dropSel=null;R.floor=DUN[R.d].floors+1;R.secretFloor=true;R.secret=false;R.stairs=false;R.lair=false;R.mod=null;R.steps=0;
   R.ev={type:"chest"};
   R.event="You descend into a forgotten treasury. Strange relics glitter in the dust, and a locked chest waits nearby.";
   rlog(R.event);sfx.lvl();save();render();
@@ -867,7 +878,9 @@ function vDelve(){
   </div>
   ${usePanel()}
   <section><h2>Pack <small>${R.bag.length}/${cap()} · worth ~${fmt(R.bag.reduce((a,k)=>a+val(k),0))}G</small></h2>
-    <div class="bag">${R.bag.length?R.bag.map(k=>`<span class="chip${IT[k].sec?" rare":""}">${IT[k].n} · ${val(k)}G</span>`).join(""):`<span class="hint">Empty so far.</span>`}${gotMats}</div></section>
+    ${R.left?`<div class="leftbox"><span>Left behind: <b>${IT[R.left].n}</b> · ${val(R.left)}G</span><button class="btn gold sm" data-act="pickup" ${R.bag.length>=cap()?"disabled":""}>${R.bag.length>=cap()?"Drop something to take it":"Pick it up"}</button></div>`:""}
+    <div class="bag">${R.bag.length?R.bag.map((k,i)=>`<button class="chip usebtn${IT[k].sec?" rare":""}${R.dropSel===i?" dropsel":""}" data-act="drop" data-i="${i}">${R.dropSel===i?`Drop ${IT[k].n}?`:`${IT[k].n} · ${val(k)}G`}</button>`).join(""):`<span class="hint">Empty so far.</span>`}${gotMats}</div>
+    ${R.bag.length?`<p class="hint" style="margin-top:8px">Tap an item, then tap it again to drop it.</p>`:""}</section>
   <section><h2>Log</h2><ul class="log">${R.log.map(l=>`<li>${l}</li>`).join("")}</ul></section>`;
 }
 
@@ -956,6 +969,7 @@ app.addEventListener("click",e=>{
     up:()=>{const u=UPG.find(x=>x.k===b.dataset.k),c=upCost(u);if(S.gold>=c&&S.gear[u.k]<10){S.gold-=c;S.gear[u.k]++;sfx.loot();save();render()}},
     craft:()=>craft(+b.dataset.i),
     ev:()=>evChoice(b.dataset.c), use:()=>useItem(b.dataset.s,+b.dataset.i),
+    drop:()=>dropPick(+b.dataset.i), pickup:pickUp,
     equip:()=>equip(b.dataset.k), unequip:()=>unequip(+b.dataset.i), secret:secretStairs,
     learn:()=>learn(b.dataset.k),
     quick:()=>{const k=b.dataset.k;if(!sk("quick")||!S.inv.includes(k))return;const p=quickPrice(k);
