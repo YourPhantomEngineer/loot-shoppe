@@ -117,6 +117,12 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 .pips{letter-spacing:2px;color:var(--coin)}
 .code{display:block;width:100%;box-sizing:border-box;min-height:84px;margin-top:6px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px;font:12px/1.4 ui-monospace,monospace;word-break:break-all;resize:vertical;-webkit-user-select:text;user-select:text}
 .starnum{font-family:var(--display);font-size:1.6rem;color:var(--coin);display:block}
+.tag{font:600 .7rem var(--body);text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--good);color:var(--good);background:none;border-radius:999px;padding:2px 8px;margin-left:4px;cursor:pointer}
+.tag.keep{border-color:var(--muted);color:var(--muted)}
+.report{border:1px solid var(--coin)}
+.rlog li{color:var(--fg)}
+.staffcard{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.row.locked{opacity:.55}
 .confirm{border:1px solid var(--bad);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:10px;font-size:.88rem;text-align:center}
 .over{text-align:center;gap:14px}
 .over .big-num{font-family:var(--display);font-size:2.4rem;color:var(--coin)}
@@ -212,6 +218,7 @@ const SK=[
  {k:"patience",b:"merc",n:"Calm Presence",max:2,d:"Customers allow +1 haggle per rank"},
  {k:"showman",b:"merc",n:"Showman",max:2,req:2,d:"+1 customer a day per rank"},
  {k:"bulk",b:"merc",n:"Master Crafter",max:2,req:2,d:"20% chance per rank to craft two"},
+ {k:"boss2",b:"merc",n:"Good Employer",max:2,d:"Your shopkeeper sells for +5% more per rank"},
  {k:"quick",b:"merc",n:"Quick Sale",max:5,d:"Sell stock instantly from the Town tab for 15% of base value, +10% per extra rank"}
 ];
 const dmgAt=l=>4+3*l, hpAt=l=>30+15*l, capAt=l=>6+2*l;
@@ -220,10 +227,11 @@ const dmgAt=l=>4+3*l, hpAt=l=>30+15*l, capAt=l=>6+2*l;
 const KEY="dungeon-loot-shoppe-v1",OLD_KEYS=["haggle-hollow-v1"];
 const fresh=()=>({day:1,gold:150,xp:0,inv:["herb","herb","dagger","quartz"],gear:{blade:0,armor:0,pack:0,shelf:0,sign:0},
   trend:{weapon:1,armor:1,potion:1,trinket:1,gem:1},run:null,shop:null,over:null,sold:0,earned:0,sound:true,news:"",
-  mats:{},skills:{},bosses:{},crafted:0,music:true,belt:[],legacy:{stars:0,perks:{},count:0,total:0},lifeStart:0});
+  mats:{},skills:{},bosses:{},crafted:0,music:true,belt:[],legacy:{stars:0,perks:{},count:0,total:0},lifeStart:0,hired:null,staffs:{},keep:{},report:null});
 let S=fresh();
 try{let raw=localStorage.getItem(KEY);if(!raw)for(const k of OLD_KEYS){raw=localStorage.getItem(k);if(raw){localStorage.setItem(KEY,raw);break}}const s=JSON.parse(raw);if(s)S=Object.assign(S,s)}catch(e){}
 function migrate(){
+  S.staffs=S.staffs||{};S.keep=S.keep||{};S.hired=S.hired||null;S.report=S.report||null;
   S.legacy=S.legacy||{stars:0,perks:{},count:0,total:0};S.legacy.perks=S.legacy.perks||{};S.lifeStart=S.lifeStart||0;
   S.over=null;S.belt=S.belt||[];S.mats=S.mats||{};S.skills=S.skills||{};S.bosses=S.bosses||{};
   if(S.run){const R=S.run;R.got=R.got||{};R.atkB=R.atkB||1;R.ev=R.ev||null;if(R.fight){R.fight.turn=R.fight.turn||0;if(!R.fight.kind)R.fight.kind=R.fight.boss?"boss":"mob"}}
@@ -394,12 +402,73 @@ function addXp(n){
 }
 function addMat(k,n){S.mats[k]=(S.mats[k]||0)+n}
 function endDay(){
+  if(S.run)settleShift();else S.report=null;
   S.run=null;S.shop=null;
   const finished=S.day;S.day++;
   CATS.forEach(c=>{let t=S.trend[c]*rnd(.88,1.12);t+=(1-t)*.15;S.trend[c]=Math.min(1.6,Math.max(.6,t))});
   S.news="";
   if(Math.random()<.18){const c=pick(CATS);S.trend[c]=Math.min(1.6,S.trend[c]+.3);S.news=`Word around town: ${CATN[c].toLowerCase()} are in demand.`}
   tab="town";save();render();
+}
+
+/* ================= Shop staff ================= */
+const STAFF=[
+ {k:"pip",n:"Pip",title:"Nervous apprentice",wage:15,sells:2,rate:.8,need:()=>true,lock:"",bio:"Cheap and eager, but undersells everything."},
+ {k:"marlo",n:"Marlo",title:"Smooth talker",wage:45,sells:3,rate:.95,need:()=>lvl()>=4,lock:"Reach level 4",bio:"Knows how to chat up a customer."},
+ {k:"greta",n:"Old Greta",title:"Shrewd veteran",wage:140,sells:4,rate:1.08,need:()=>!!S.bosses[1],lock:"Defeat the Kobold Foreman in the Sunken Mine",bio:"Forty years behind a counter. Nobody fools her."},
+ {k:"sable",n:"Sable",title:"Silver-tongued dealer",wage:420,sells:5,rate:1.2,need:()=>!!S.bosses[2],lock:"Defeat the Cinder Colossus in the Ember Vault",bio:"Could sell a rusty dagger to a king, and has."}
+];
+const ST=k=>STAFF.find(x=>x.k===k);
+const staffRec=k=>(S.staffs[k]=S.staffs[k]||{sold:0,wageB:0,rateB:0});
+const staffLvl=k=>Math.min(5,1+Math.floor(staffRec(k).sold/12));
+const staffNext=k=>staffLvl(k)>=5?null:(staffLvl(k))*12;
+const staffRate=k=>ST(k).rate+.03*(staffLvl(k)-1)+staffRec(k).rateB+.05*sk("boss2");
+const staffSells=k=>ST(k).sells+Math.floor((staffLvl(k)-1)/2);
+const staffWage=k=>Math.round(ST(k).wage*(1+staffRec(k).wageB));
+const forSale=()=>S.inv.filter(k=>!S.keep[k]);
+function pickCust(){
+  let w=Math.random()*CUST.reduce((a,c)=>a+c.w,0),ti=0;for(;ti<CUST.length;ti++){w-=CUST[ti].w;if(w<=0)break}
+  return CUST[Math.min(ti,CUST.length-1)];
+}
+function hire(k){const s=ST(k);if(!s||!s.need())return;S.hired=k;confirmFire=false;sfx.coin();toast(`<b>${s.n}</b> will mind the shop on days you go delving.`);save();render()}
+let confirmFire=false;
+function fire(){const s=ST(S.hired);S.hired=null;confirmFire=false;toast(`${s?s.n:"Your shopkeeper"} packs up and leaves.`);save();render()}
+/* Runs when you head into a dungeon: the shopkeeper's day is settled now and reported when you return. */
+function staffShift(){
+  const k=S.hired;if(!k)return null;
+  const st=ST(k),w=staffWage(k);
+  if(!forSale().length)return {who:st.n,lines:[`Nothing was marked For sale, so ${st.n} took the day off.`],gold:0,wage:0};
+  if(S.gold<w)return {who:st.n,lines:[`You couldn't cover ${st.n}'s ${w}G wage, so the shop stayed closed.`],gold:0,wage:0};
+  const rec=staffRec(k),L0=staffLvl(k),rate=staffRate(k),target=staffSells(k);
+  const lines=[];let gold=0,sold=0;
+  let ev=Math.random()<.35?pick(["great","swindle","trade","tip","raise",...(L0<=2?["thief"]:[])]):null;
+  const take=key=>S.inv.splice(S.inv.indexOf(key),1);
+  for(let i=0;i<custN()+2&&sold<target;i++){
+    const C=pickCust(),m=forSale().filter(x=>!C.cats||C.cats.includes(IT[x].c));
+    if(!m.length)continue;
+    const key=pick(m),v=val(key);let price=Math.max(1,Math.round(v*rate*rnd(.95,1.05)));
+    const max=Math.round(v*rnd(...C.bud)*signB());
+    if(price>max){lines.push(`A ${C.n.toLowerCase()} balked at ${st.n}'s price for the ${IT[key].n}.`);continue}
+    if(ev==="trade"){
+      const pool=[...new Set(DUN.filter(d=>lvl()>=d.lvl).flatMap(d=>d.mats))],mt=pick(pool);
+      take(key);addMat(mt,2);sold++;ev=null;lines.push(`A traveler traded 2 ${MATS[mt]} for ${an(IT[key].n)}.`);continue;
+    }
+    let note="";
+    if(ev==="great"){price=Math.round(price*1.4);note=` ${st.n} charmed them into paying 40% extra!`;ev=null}
+    else if(ev==="swindle"){price=Math.max(1,Math.round(price*.5));note=` A fast talker haggled ${st.n} down to half price.`;ev=null}
+    take(key);gold+=price;sold++;lines.push(`Sold ${an(IT[key].n)} for ${fmt(price)}G.${note}`);
+  }
+  if(ev==="thief"){const p=forSale();if(p.length){const key=pick(p);take(key);lines.push(`While ${st.n} was distracted, a thief made off with ${an(IT[key].n)}!`)}}
+  if(ev==="tip"&&sold){const t=Math.round(rnd(.05,.12)*gold)+5;gold+=t;lines.push(`A regular customer left ${st.n} a ${t}G tip.`)}
+  if(!sold&&!lines.length)lines.push(`No customers wanted anything on the shelves today.`);
+  rec.sold+=sold;S.sold+=sold;
+  const L1=staffLvl(k);if(L1>L0)lines.push(`${st.n} reached level ${L1}! Better prices from now on.`);
+  return {who:st.n,k,lines,gold,wage:w,raise:ev==="raise"};
+}
+function settleShift(){
+  const R=S.run;if(!R||!R.shift)return;const r=R.shift;
+  S.gold=Math.max(0,S.gold+r.gold-r.wage);S.earned+=r.gold;
+  S.report=r;
 }
 
 /* ================= Dungeon ================= */
@@ -419,6 +488,7 @@ function startDelve(i){
   S.run={d:i,floor:1,hp:maxHp(),bag:[],got:{},fight:null,stairs:false,lair:false,bossDone:false,steps:0,
     mod:null,atkB:1,ev:null,elite:false,miniDone:false,secret:false,secretFloor:false,
     event:`You step into the ${DUN[i].n}. Torchlight flickers on damp stone.`,log:[]};
+  S.report=null;S.run.shift=staffShift();
   save();render();
 }
 function rlog(m){S.run.log.unshift(m);S.run.log=S.run.log.slice(0,5)}
@@ -695,6 +765,7 @@ const PERKS=[
  {k:"pack",n:"Packrat",max:3,base:2,d:r=>`+${2*r} → +${2*(r+1)} pack space`},
  {k:"luck",n:"Lucky Finds",max:3,base:2,d:r=>`Rarer loot in every dungeon (rank ${r} → ${r+1})`},
  {k:"conn",n:"Old Connections",max:3,base:3,d:r=>`+${r} → +${r+1} customers a day`},
+ {k:"loyal",n:"Loyal Staff",max:1,base:3,d:()=>"Your shopkeeper and their experience stay when you retire"},
  {k:"head",n:"Head Start",max:3,base:3,d:r=>`+${2*r} → +${2*(r+1)} bonus skill points`}
 ];
 const pk=k=>S.legacy?.perks?.[k]||0;
@@ -712,7 +783,7 @@ function buyPerk(k){
 function retire(){
   const g=starsNow();if(g<1||lvl()<RETIRE_LVL)return;
   const L=S.legacy;L.stars+=g;L.total+=g;L.count++;
-  const keep={legacy:L,sound:S.sound,music:S.music,sold:S.sold,earned:S.earned,crafted:S.crafted};
+  const keep={legacy:L,sound:S.sound,music:S.music,sold:S.sold,earned:S.earned,crafted:S.crafted,...(pk("loyal")?{hired:S.hired,staffs:S.staffs,keep:S.keep}:{})};
   S=Object.assign(fresh(),keep);S.lifeStart=S.earned;S.gold=150+250*pk("fortune");migrate();
   confirmRetire=false;tab="legacy";sfx.win();
   toast(`A new shop opens its doors. <b>+${g} Legacy star${g===1?"":"s"}</b>`);
@@ -801,20 +872,24 @@ function vTown(){
   const L=lvl();
   const chips=CATS.map(c=>{const p=Math.round(S.trend[c]*100);return `<span class="chip ${p>=108?"up":p<=92?"down":""}">${CATN[c]} ${p}%</span>`}).join("");
   const inv=groupInv(S.inv),eq=groupInv(S.inv.filter(k=>HEAL[k]||IT[k].c==="supply"));
+  const H=S.hired?ST(S.hired):null;
   return `
+  ${reportCard()}
   <section><h2>Market today</h2><div class="chips">${chips}</div>${S.news?`<p class="hint" style="margin-top:8px">${S.news}</p>`:""}</section>
   <button class="big" data-act="shop" ${S.inv.length?"":"disabled"}>Open the shop<small>${S.inv.length?`Up to ${custN()} customers · ${S.inv.length} item${S.inv.length===1?"":"s"} in stock · uses the day`:"Your shelves are empty. Go delving first."}</small></button>
-  <section><h2>Go delving <small>uses the day</small></h2><div class="list">
+  <section><h2>Go delving <small>${H?`${H.n} minds the shop · ${staffWage(S.hired)}G wage`:"uses the day"}</small></h2><div class="list">
     ${DUN.map((d,i)=>`<button class="row" data-act="delve" data-i="${i}" ${L<d.lvl?"disabled":""}>
       <span><b>${d.n}</b>${S.bosses[i]?`<span class="crown">Boss beaten</span>`:""}</span><span class="sub">${L<d.lvl?`Unlocks at level ${d.lvl}`:`${d.floors} floors · boss: ${d.boss}`}</span>
       <span class="right">${L<d.lvl?"Locked":"Enter"}</span></button>`).join("")}
   </div></section>
+  ${staffSection()}
   <section><h2>Supply belt <small>${S.belt.length}/${BELT} · tap to unequip</small></h2>
     <div class="chips">${S.belt.length?S.belt.map((k,i)=>`<button class="chip usebtn on" data-act="unequip" data-i="${i}">${IT[k].n}</button>`).join(""):`<span class="hint">Empty. Supplies on your belt come with you into every dungeon.</span>`}</div>
     ${eq.length?`<div class="chips" style="margin-top:8px">${eq.map(([k,n])=>`<button class="chip usebtn" data-act="equip" data-k="${k}" ${S.belt.length>=BELT?"disabled":""}>+ ${IT[k].n}${n>1?` ×${n}`:""}</button>`).join("")}</div>`:`<p class="hint" style="margin-top:8px">Craft bombs, ropes, whetstones, and lockpicks in the Workshop. Potions in stock can go on your belt too.</p>`}
   </section>
   <section><h2>Stock <small>${S.inv.length} item${S.inv.length===1?"":"s"}</small></h2>
-    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">Market value ${val(k)}G</span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
+    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">Market value ${val(k)}G${H?` · <button class="tag${S.keep[k]?" keep":""}" data-act="keep" data-k="${k}">${S.keep[k]?"Keep":"For sale"}</button>`:""}</span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
+    ${H&&inv.length?`<p class="hint" style="margin-top:8px">${H.n} only sells items marked For sale. Tap a tag to switch it.</p>`:""}
     ${sk("quick")&&inv.length?`<p class="hint" style="margin-top:8px">Quick Sale pays ${Math.round(quickPct()*100)}% of base value instantly and doesn't use the day.</p>`:""}
   </section>
   <p class="hint">Sold ${fmt(S.sold)} items for ${fmt(S.earned)}G · crafted ${fmt(S.crafted)}. Progress is saved in this browser.</p>
@@ -826,6 +901,38 @@ function vTown(){
     ${saveMsg?`<p class="hint" style="margin-top:8px">${saveMsg}</p>`:""}
   </section>
   ${confirmReset?`<div class="confirm">Start over from day 1? This erases everything.<div class="btns"><button class="btn danger" data-act="resetYes">Erase all</button><button class="btn alt" data-act="resetNo">Keep playing</button></div></div>`:`<button class="ghost" data-act="reset" style="align-self:center">Start over</button>`}`;
+}
+
+function reportCard(){
+  const r=S.report;if(!r)return "";
+  const net=r.gold-r.wage;
+  return `<div class="card report">
+    <div class="custhead"><span class="who">While you were out</span><span class="sub">${r.who}'s report</span></div>
+    <ul class="log rlog">${r.lines.map(l=>`<li>${l}</li>`).join("")}</ul>
+    ${r.wage||r.gold?`<div class="chips"><span class="chip up">Sales +${fmt(r.gold)}G</span><span class="chip down">Wage \u2212${fmt(r.wage)}G</span><span class="chip ${net>=0?"up":"down"}">Net ${net>=0?"+":"\u2212"}${fmt(Math.abs(net))}G</span></div>`:""}
+    ${r.raise&&S.hired===r.k?`<div class="confirm" style="border-color:var(--coin)">${r.who} asks for a raise to ${fmt(Math.round(ST(r.k).wage*(1+staffRec(r.k).wageB+.2)))}G a day, promising to work harder.
+      <div class="btns"><button class="btn gold" data-act="raiseYes">Give the raise</button><button class="btn alt" data-act="raiseNo">Not now</button></div></div>`
+      :`<button class="ghost" data-act="reportOk" style="align-self:flex-start">Got it</button>`}
+  </div>`;
+}
+function staffSection(){
+  const H=S.hired?ST(S.hired):null;
+  const stats=k=>`Sells ${staffSells(k)} a day · ${Math.round(staffRate(k)*100)}% of market · ${fmt(staffWage(k))}G wage`;
+  let hired="";
+  if(H){const k=H.k,L=staffLvl(k),nx=staffNext(k),rec=staffRec(k);
+    hired=`<div class="staffcard"><div class="custhead"><span><b>${H.n}</b> <span class="sub">${H.title}</span></span><span class="mood keen">Level ${L}</span></div>
+      <span class="sub">${stats(k)}</span>
+      ${nx?`<div class="bar"><i style="width:${Math.round(((rec.sold-(L-1)*12)/12)*100)}%"></i></div><span class="sub">${rec.sold} sold · next level at ${nx}</span>`:`<span class="sub">${rec.sold} sold · max level</span>`}
+      ${confirmFire?`<div class="btns"><button class="btn danger sm" data-act="fireDo">Let ${H.n} go</button><button class="btn alt sm" data-act="fireNo">Keep ${H.n}</button></div>`:`<button class="ghost" data-act="fireAsk" style="align-self:flex-start">Dismiss</button>`}
+    </div>`}
+  const others=STAFF.filter(s=>s.k!==S.hired);
+  return `<section><h2>Shop staff <small>${H?"works on delve days":"hire help for delve days"}</small></h2>
+    ${hired}
+    <div class="list">${others.map(s=>{const open=s.need();return open?`<button class="row" data-act="hire" data-k="${s.k}">
+        <span><b>${s.n}</b> <span class="sub">${s.title}</span>${S.staffs[s.k]?` <span class="sub">· Lv ${staffLvl(s.k)}</span>`:""}</span>
+        <span class="sub">${s.bio} ${stats(s.k)}</span><span class="right">${H?"Swap":"Hire"}</span></button>`
+      :`<div class="row locked"><span><b>???</b> <span class="sub">${s.title}</span></span><span class="sub">${s.lock} to meet them.</span><span class="right sub">Locked</span></div>`}).join("")}
+    </div></section>`;
 }
 
 function vWork(){
@@ -1048,6 +1155,11 @@ app.addEventListener("click",e=>{
     drop:()=>dropPick(+b.dataset.i), pickup:pickUp,
     equip:()=>equip(b.dataset.k), unequip:()=>unequip(+b.dataset.i), secret:secretStairs,
     learn:()=>learn(b.dataset.k),
+    hire:()=>hire(b.dataset.k), fireAsk:()=>{confirmFire=true;render()}, fireNo:()=>{confirmFire=false;render()}, fireDo:fire,
+    keep:()=>{const k=b.dataset.k;if(S.keep[k])delete S.keep[k];else S.keep[k]=true;save();render()},
+    reportOk:()=>{S.report=null;save();render()},
+    raiseYes:()=>{const r=S.report,rec=staffRec(r.k);rec.wageB+=.2;rec.rateB+=.05;toast(`${r.who} beams. <b>+5% prices</b>, wage now ${fmt(staffWage(r.k))}G.`);sfx.coin();S.report=null;save();render()},
+    raiseNo:()=>{toast(`${S.report.who} sighs and gets back to work.`);S.report=null;save();render()},
     perk:()=>buyPerk(b.dataset.k),
     retireAsk:()=>{confirmRetire=true;render()}, retireNo:()=>{confirmRetire=false;render()}, retireDo:retire,
     quick:()=>{const k=b.dataset.k;if(!sk("quick")||!S.inv.includes(k))return;const p=quickPrice(k);
