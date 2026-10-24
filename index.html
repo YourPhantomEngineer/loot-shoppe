@@ -39,8 +39,8 @@ h2 small{font:600 .78rem var(--body);color:var(--muted);text-align:right}
 .tools{display:flex;gap:6px;flex-shrink:0}
 button{font-family:inherit}
 button:focus-visible,input:focus-visible{outline:2px solid var(--coin);outline-offset:2px}
-.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--panel);border-radius:8px;padding:4px;gap:4px}
-.tabs button{border:0;background:none;color:var(--muted);font:700 .82rem var(--body);padding:9px 2px;border-radius:6px;cursor:pointer;position:relative}
+.tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--panel);border-radius:8px;padding:4px;gap:4px}
+.tabs button{border:0;background:none;color:var(--muted);font:700 .78rem var(--body);padding:9px 1px;border-radius:6px;cursor:pointer;position:relative}
 .tabs button[aria-selected="true"]{background:var(--line);color:var(--fg)}
 .dot{display:inline-block;vertical-align:1px;min-width:18px;padding:0 5px;border-radius:9px;background:var(--coin);color:#2a2008;font-size:.7rem;margin-left:4px;line-height:18px}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -80,7 +80,7 @@ button.row:disabled>*{opacity:.5}
 .warn{color:var(--coin);font-weight:700;font-size:.85rem;margin:6px 0 0}
 .btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
 .btn{border:0;border-radius:6px;padding:12px;font-weight:700;font-size:.95rem;cursor:pointer;background:var(--copper);color:#24130a}
-.btn:disabled{background:var(--line);color:var(--muted);cursor:default;opacity:.6}
+.btn:disabled,.btn.gold:disabled,.btn.danger:disabled,.btn.alt:disabled{background:var(--line);color:var(--muted);cursor:default;opacity:.6}
 .usebtn{background:none;color:var(--fg);cursor:pointer;font-family:inherit}
 .usebtn.on{border-color:var(--coin);color:var(--coin)}
 .usebtn:disabled{opacity:.45;cursor:default}
@@ -116,6 +116,7 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 .branch h3 small{font:600 .75rem var(--body);color:var(--muted)}
 .pips{letter-spacing:2px;color:var(--coin)}
 .code{display:block;width:100%;box-sizing:border-box;min-height:84px;margin-top:6px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px;font:12px/1.4 ui-monospace,monospace;word-break:break-all;resize:vertical;-webkit-user-select:text;user-select:text}
+.starnum{font-family:var(--display);font-size:1.6rem;color:var(--coin);display:block}
 .confirm{border:1px solid var(--bad);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:10px;font-size:.88rem;text-align:center}
 .over{text-align:center;gap:14px}
 .over .big-num{font-family:var(--display);font-size:2.4rem;color:var(--coin)}
@@ -219,10 +220,11 @@ const dmgAt=l=>4+3*l, hpAt=l=>30+15*l, capAt=l=>6+2*l;
 const KEY="haggle-hollow-v1";
 const fresh=()=>({day:1,gold:150,xp:0,inv:["herb","herb","dagger","quartz"],gear:{blade:0,armor:0,pack:0,shelf:0,sign:0},
   trend:{weapon:1,armor:1,potion:1,trinket:1,gem:1},run:null,shop:null,over:null,sold:0,earned:0,sound:true,news:"",
-  mats:{},skills:{},bosses:{},crafted:0,music:true,belt:[]});
+  mats:{},skills:{},bosses:{},crafted:0,music:true,belt:[],legacy:{stars:0,perks:{},count:0,total:0},lifeStart:0});
 let S=fresh();
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s)S=Object.assign(S,s)}catch(e){}
 function migrate(){
+  S.legacy=S.legacy||{stars:0,perks:{},count:0,total:0};S.legacy.perks=S.legacy.perks||{};S.lifeStart=S.lifeStart||0;
   S.over=null;S.belt=S.belt||[];S.mats=S.mats||{};S.skills=S.skills||{};S.bosses=S.bosses||{};
   if(S.run){const R=S.run;R.got=R.got||{};R.atkB=R.atkB||1;R.ev=R.ev||null;if(R.fight){R.fight.turn=R.fight.turn||0;if(!R.fight.kind)R.fight.kind=R.fight.boss?"boss":"mob"}}
 }
@@ -238,15 +240,15 @@ const sk=k=>S.skills[k]||0;
 const lvl=()=>Math.floor(Math.sqrt(S.xp/25))+1;
 const xpFor=l=>(l-1)*(l-1)*25;
 const spent=()=>Object.values(S.skills).reduce((a,b)=>a+b,0);
-const pts=()=>lvl()-1+Object.keys(S.bosses).length-spent();
+const pts=()=>lvl()-1+Object.keys(S.bosses).length+2*pk("head")-spent();
 const brSpent=b=>SK.filter(s=>s.b===b).reduce((a,s)=>a+sk(s.k),0);
-const dmg=()=>Math.round(dmgAt(S.gear.blade)*(1+.15*sk("power")));
-const maxHp=()=>Math.round(hpAt(S.gear.armor)*(1+.1*sk("skin")));
-const cap=()=>capAt(S.gear.pack)+2*sk("pockets");
+const dmg=()=>Math.round(dmgAt(S.gear.blade)*(1+.15*sk("power"))*(1+.1*pk("heir")));
+const maxHp=()=>Math.round(hpAt(S.gear.armor)*(1+.1*sk("skin"))*(1+.1*pk("heir")));
+const cap=()=>capAt(S.gear.pack)+2*sk("pockets")+2*pk("pack");
 const crit=()=>.1+.08*sk("exec");
 const fleeCh=()=>Math.min(.95,.6+.15*sk("escape"));
-const custN=()=>3+S.gear.shelf+sk("showman");
-const signB=()=>1+.08*S.gear.sign+.05*sk("tongue");
+const custN=()=>3+S.gear.shelf+sk("showman")+pk("conn");
+const signB=()=>1+.08*S.gear.sign+.05*sk("tongue")+.05*pk("name");
 const patMax=()=>3+sk("patience");
 const quickPct=()=>sk("quick")?.05+.1*sk("quick"):0;
 const quickPrice=k=>Math.max(1,Math.round(IT[k].b*quickPct()));
@@ -422,7 +424,7 @@ function startDelve(i){
 function rlog(m){S.run.log.unshift(m);S.run.log=S.run.log.slice(0,5)}
 function rollItem(boost){
   const R=S.run,D=DUN[R.d];let t=D.t;const r=Math.random();
-  const up=R.floor*.05+.04*sk("keen")+(R.mod==="haunted"?.15:0)+(R.secretFloor?.25:0);
+  const up=R.floor*.05+.04*sk("keen")+.05*pk("luck")+(R.mod==="haunted"?.15:0)+(R.secretFloor?.25:0);
   if(boost)t=Math.min(4,t+1);
   else if(r<up&&t<4)t++;else if(r>.85&&t>1)t--;
   return pick(ITEMS.filter(i=>i.t===t&&!i.craft&&!i.sec&&i.c!=="supply")).k;
@@ -575,7 +577,7 @@ function guard(){
 function winFight(pre){({mob:mobWin,elite:eliteWin,mini:miniWin,boss:bossWin})[S.run.fight.kind||"mob"](pre||"")}
 function mobWin(pre){
   const R=S.run,F=R.fight,D=DUN[R.d],f=TF[D.t-1];
-  const g=Math.round(rnd(2,6)*f*R.floor),x=Math.round(5*D.t*R.floor);
+  const g=Math.round(rnd(2,6)*f*R.floor),x=xpm(5*D.t*R.floor);
   S.gold+=g;R.fight=null;R.event=`${pre}You defeat the ${F.n}! +${g}G.`;
   if(Math.random()<.7){let n=1;if(Math.random()<.5*sk("salvage"))n++;R.event+=` Got ${dropMats(n).join(", ")}.`}
   if(Math.random()<.4){const k=rollItem();if(bagAdd(k)){R.event+=` It dropped ${an(IT[k].n)}.`;sfx.loot()}}
@@ -583,7 +585,7 @@ function mobWin(pre){
 }
 function eliteWin(pre){
   const R=S.run,F=R.fight,D=DUN[R.d],f=TF[D.t-1];
-  const g=Math.round(rnd(8,16)*f*R.floor),x=Math.round(15*D.t*R.floor),k=rollItem(true);
+  const g=Math.round(rnd(8,16)*f*R.floor),x=xpm(15*D.t*R.floor),k=rollItem(true);
   S.gold+=g;R.fight=null;
   R.event=`${pre}The ${F.n} falls! +${g}G, ${dropMats(3).join(", ")}`+(bagAdd(k)?`, and its treasure: ${an(IT[k].n)}!`:`. Its treasure, ${an(IT[k].n)}, won't fit in your pack.`);
   R.event+=` +${x} XP.`;sfx.win();rlog(R.event);addXp(x);save();render();
@@ -594,12 +596,12 @@ function miniWin(pre){
   S.gold+=g;R.fight=null;R.miniDone=true;
   const where=giveSupply(sup);
   R.event=`${pre}The ${MINI[R.d]} collapses! +${g}G, ${dropMats(2).join(", ")}`+(bagAdd(k)?`, ${an(IT[k].n)}`:"")+(where?`, and ${an(IT[sup].n)} (${where}).`:".");
-  R.event+=` +${25*D.t} XP.`;sfx.win();rlog(R.event);addXp(25*D.t);save();render();
+  {const x=xpm(25*D.t);R.event+=` +${x} XP.`;sfx.win();rlog(R.event);addXp(x)}save();render();
 }
 function bossWin(pre){
   const R=S.run,D=DUN[R.d],f=TF[D.t-1];
   const first=!S.bosses[R.d];S.bosses[R.d]=(S.bosses[R.d]||0)+1;
-  const g=Math.round(rnd(40,80)*f*D.t),x=40*D.t;
+  const g=Math.round(rnd(40,80)*f*D.t),x=xpm(40*D.t);
   S.gold+=g;addMat(D.heart,1);R.got[D.heart]=(R.got[D.heart]||0)+1;
   const k=rollItem(true);const fit=bagAdd(k);
   R.fight=null;R.bossDone=true;
@@ -679,9 +681,42 @@ function craft(i){
   Object.entries(r.mats).forEach(([k,n])=>S.mats[k]-=n);
   const two=Math.random()<.2*sk("bulk");
   S.inv.push(r.out);if(two)S.inv.push(r.out);S.crafted++;
-  const xp=Math.ceil(val(r.out)/20);
+  const xp=xpm(Math.ceil(val(r.out)/20));
   sfx.craft();toast(`Crafted ${two?"<b>two</b> ":""}<b>${IT[r.out].n}</b> (worth about ${val(r.out)}G each) · +${xp} XP`);
   addXp(xp);save();render();
+}
+
+/* ================= Legacy (prestige) ================= */
+const PERKS=[
+ {k:"fortune",n:"Family Fortune",max:5,base:1,d:r=>`Start each new shop with ${150+250*r}G → ${150+250*(r+1)}G`},
+ {k:"xp",n:"Seasoned",max:5,base:1,d:r=>`+${10*r}% → +${10*(r+1)}% XP from everything`},
+ {k:"heir",n:"Heirloom Gear",max:5,base:2,d:r=>`+${10*r}% → +${10*(r+1)}% attack and max HP`},
+ {k:"name",n:"Renowned Name",max:5,base:2,d:r=>`+${5*r}% → +${5*(r+1)}% customer budgets`},
+ {k:"pack",n:"Packrat",max:3,base:2,d:r=>`+${2*r} → +${2*(r+1)} pack space`},
+ {k:"luck",n:"Lucky Finds",max:3,base:2,d:r=>`Rarer loot in every dungeon (rank ${r} → ${r+1})`},
+ {k:"conn",n:"Old Connections",max:3,base:3,d:r=>`+${r} → +${r+1} customers a day`},
+ {k:"head",n:"Head Start",max:3,base:3,d:r=>`+${2*r} → +${2*(r+1)} bonus skill points`}
+];
+const pk=k=>S.legacy?.perks?.[k]||0;
+const xpm=n=>Math.round(n*(1+.1*pk("xp")));
+const RETIRE_LVL=5;
+const lifeEarned=()=>Math.max(0,S.earned-(S.lifeStart||0));
+const starsFromGold=()=>Math.floor(Math.sqrt(lifeEarned()/1500));
+const starsNow=()=>starsFromGold()+Object.keys(S.bosses).length;
+const perkCost=p=>p.base*(pk(p.k)+1);
+let confirmRetire=false;
+function buyPerk(k){
+  const p=PERKS.find(x=>x.k===k),L=S.legacy;if(!p||pk(k)>=p.max||L.stars<perkCost(p))return;
+  L.stars-=perkCost(p);L.perks[k]=pk(k)+1;sfx.lvl();save();render();
+}
+function retire(){
+  const g=starsNow();if(g<1||lvl()<RETIRE_LVL)return;
+  const L=S.legacy;L.stars+=g;L.total+=g;L.count++;
+  const keep={legacy:L,sound:S.sound,music:S.music,sold:S.sold,earned:S.earned,crafted:S.crafted};
+  S=Object.assign(fresh(),keep);S.lifeStart=S.earned;S.gold=150+250*pk("fortune");migrate();
+  confirmRetire=false;tab="legacy";sfx.win();
+  toast(`A new shop opens its doors. <b>+${g} Legacy star${g===1?"":"s"}</b>`);
+  save();render();
 }
 
 /* ================= Skills ================= */
@@ -720,7 +755,7 @@ function sell(price){
   const P=S.shop,c=P.cur,v=val(c.k);
   S.inv.splice(S.inv.indexOf(c.k),1);S.gold+=price;P.today+=price;S.earned+=price;S.sold++;
   const perfect=price/c.max>=.92;P.combo=perfect?P.combo+1:0;
-  const x=Math.ceil(v/8*(1+.25*P.combo));
+  const x=xpm(Math.ceil(v/8*(1+.25*P.combo)));
   slog(`Sold ${IT[c.k].n} for ${fmt(price)}G · +${x} XP${perfect?` · great price! combo ×${P.combo}`:""}`);
   sfx.coin();if(perfect&&P.combo>1)toast(`Haggle combo <b>×${P.combo}</b> · bonus XP`);
   addXp(x);nextCust();save();render();
@@ -749,9 +784,9 @@ function groupInv(arr){const g={};arr.forEach(k=>g[k]=(g[k]||0)+1);return Object
 const unlockedTier=()=>Math.max(...DUN.filter(d=>lvl()>=d.lvl).map(d=>d.t));
 
 function tabs(){
-  const p=pts(),c=RECIPES.filter(canCraft).length,u=UPG.filter(x=>S.gear[x.k]<10&&S.gold>=upCost(x)).length;
+  const p=pts(),c=RECIPES.filter(canCraft).length,u=UPG.filter(x=>S.gear[x.k]<10&&S.gold>=upCost(x)).length,lg=PERKS.filter(x=>pk(x.k)<x.max&&S.legacy.stars>=perkCost(x)).length;
   const t=(k,n,badge)=>`<button role="tab" aria-selected="${tab===k}" data-act="tab" data-t="${k}">${n}${badge?`<span class="dot">${badge}</span>`:""}</button>`;
-  return `<div class="tabs" role="tablist">${t("town","Town")}${t("work","Workshop",c)}${t("upg","Upgrades",u)}${t("skills","Skills",p)}</div>`;
+  return `<div class="tabs" role="tablist">${t("town","Town")}${t("work","Workshop",c)}${t("upg","Upgrades",u)}${t("skills","Skills",p)}${t("legacy","Legacy",lg)}</div>`;
 }
 function topStats(){
   const L=lvl(),pct=Math.round((S.xp-xpFor(L))/(xpFor(L+1)-xpFor(L))*100);
@@ -818,6 +853,31 @@ function vUpg(){
       <span><b>${u.n}</b> <span class="sub">Lv ${l}</span></span><span class="sub">${max?"Fully upgraded":u.d(l)}</span>
       <span class="right coin">${max?"Max":fmt(c)+"G"}</span></button>`}).join("")}
   </div></section>`;
+}
+
+function vLegacy(){
+  const L=S.legacy,g=starsNow(),ok=lvl()>=RETIRE_LVL&&g>=1;
+  const nextGold=Math.pow(starsFromGold()+1,2)*1500;
+  const why=lvl()<RETIRE_LVL?`Reach level ${RETIRE_LVL} to retire (you're level ${lvl()}).`:g<1?"Earn more gold or beat a boss to earn your first star.":`Retiring now earns ${g} star${g===1?"":"s"}.`;
+  return `
+  <div class="card">
+    <div class="pline">
+      <div><span class="lbl">Legacy stars</span><b class="starnum">\u2605 ${fmt(L.stars)}</b></div>
+      <button class="btn gold" data-act="retireAsk" ${ok?"":"disabled"}>Retire${ok?` +${g}\u2605`:""}</button>
+    </div>
+    <p class="hint">${why}</p>
+    <div class="chips"><span class="chip">${Object.keys(S.bosses).length} boss star${Object.keys(S.bosses).length===1?"":"s"}</span><span class="chip">${starsFromGold()} gold star${starsFromGold()===1?"":"s"}</span><span class="chip">Next gold star at ${fmt(nextGold)}G sold (${fmt(lifeEarned())}G so far)</span></div>
+    ${confirmRetire?`<div class="confirm">Retire and open a new shop? Your day, gold, level, stock, materials, upgrades, skills, and bosses reset. You keep Legacy stars and perks.
+      <div class="btns"><button class="btn gold" data-act="retireDo">Retire +${g}\u2605</button><button class="btn alt" data-act="retireNo">Not yet</button></div></div>`:""}
+  </div>
+  <p class="hint" style="margin:0">Retiring starts you over from day 1. Each boss you beat this life is worth a star, and so is selling enough goods. Spend stars on perks that carry into every future shop.</p>
+  <section><h2>Legacy perks <small>permanent</small></h2><div class="list">
+    ${PERKS.map(p=>{const r=pk(p.k),max=r>=p.max,c=perkCost(p);return `<button class="row" data-act="perk" data-k="${p.k}" ${max||L.stars<c?"disabled":""}>
+      <span><b>${p.n}</b> <span class="pips">${"\u25c6".repeat(r)}${"\u25c7".repeat(p.max-r)}</span></span>
+      <span class="sub">${max?"Fully upgraded":p.d(r)}</span>
+      <span class="right coin">${max?"Max":`${c}\u2605`}</span></button>`}).join("")}
+  </div></section>
+  ${L.count?`<p class="hint">Retired ${L.count} time${L.count===1?"":"s"} · ${L.total} stars earned in all.</p>`:""}`;
 }
 
 function vSkills(){
@@ -965,7 +1025,7 @@ function render(){
   if(S.over)app.innerHTML=vOver();
   else if(S.run)app.innerHTML=vDelve();
   else if(S.shop)app.innerHTML=vShop();
-  else app.innerHTML=`<header><h1>Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():vTown());
+  else app.innerHTML=`<header><h1>Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():tab==="legacy"?vLegacy():vTown());
   const r=document.getElementById("price");
   if(r)r.addEventListener("input",()=>{S.shop.pct=+r.value;const p=Math.max(1,Math.round(val(S.shop.cur.k)*S.shop.pct/100));
     document.getElementById("pv").textContent=fmt(p)+"G";document.getElementById("pp").textContent=S.shop.pct+"% of market"});
@@ -988,6 +1048,8 @@ app.addEventListener("click",e=>{
     drop:()=>dropPick(+b.dataset.i), pickup:pickUp,
     equip:()=>equip(b.dataset.k), unequip:()=>unequip(+b.dataset.i), secret:secretStairs,
     learn:()=>learn(b.dataset.k),
+    perk:()=>buyPerk(b.dataset.k),
+    retireAsk:()=>{confirmRetire=true;render()}, retireNo:()=>{confirmRetire=false;render()}, retireDo:retire,
     quick:()=>{const k=b.dataset.k;if(!sk("quick")||!S.inv.includes(k))return;const p=quickPrice(k);
       S.inv.splice(S.inv.indexOf(k),1);S.gold+=p;S.earned+=p;S.sold++;sfx.coin();toast(`Sold ${an(IT[k].n)} for <b>${fmt(p)}G</b>.`);save();render()},
     explore, attack, guard, flee, descend, boss:challengeBoss, leave:leaveDungeon,
