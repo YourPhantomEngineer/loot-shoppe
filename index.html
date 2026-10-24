@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Loot Shoppe</title>
+<title>Dungeon Loot Shoppe</title>
 <meta name="description" content="A cozy dungeon-delving shopkeeping game. Explore dungeons for loot, then haggle it away in your shop.">
 <meta name="theme-color" content="#0f2326">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Loot Shoppe">
+<meta name="apple-mobile-web-app-title" content="Dungeon Loot Shoppe">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
@@ -217,12 +217,12 @@ const SK=[
 const dmgAt=l=>4+3*l, hpAt=l=>30+15*l, capAt=l=>6+2*l;
 
 /* ================= State ================= */
-const KEY="haggle-hollow-v1";
+const KEY="dungeon-loot-shoppe-v1",OLD_KEYS=["haggle-hollow-v1"];
 const fresh=()=>({day:1,gold:150,xp:0,inv:["herb","herb","dagger","quartz"],gear:{blade:0,armor:0,pack:0,shelf:0,sign:0},
   trend:{weapon:1,armor:1,potion:1,trinket:1,gem:1},run:null,shop:null,over:null,sold:0,earned:0,sound:true,news:"",
   mats:{},skills:{},bosses:{},crafted:0,music:true,belt:[],legacy:{stars:0,perks:{},count:0,total:0},lifeStart:0});
 let S=fresh();
-try{const s=JSON.parse(localStorage.getItem(KEY));if(s)S=Object.assign(S,s)}catch(e){}
+try{let raw=localStorage.getItem(KEY);if(!raw)for(const k of OLD_KEYS){raw=localStorage.getItem(k);if(raw){localStorage.setItem(KEY,raw);break}}const s=JSON.parse(raw);if(s)S=Object.assign(S,s)}catch(e){}
 function migrate(){
   S.legacy=S.legacy||{stars:0,perks:{},count:0,total:0};S.legacy.perks=S.legacy.perks||{};S.lifeStart=S.lifeStart||0;
   S.over=null;S.belt=S.belt||[];S.mats=S.mats||{};S.skills=S.skills||{};S.bosses=S.bosses||{};
@@ -1012,7 +1012,7 @@ function vShop(){
 
 function vOver(){
   const O=S.over;
-  return `<header><h1>Loot Shoppe</h1>${soundBtn()}</header>
+  return `<header><h1>Dungeon Loot Shoppe</h1>${soundBtn()}</header>
   <div class="card over">
     <span class="lbl">Weeks survived</span><div class="big-num">${O.weeks}</div>
     <p style="margin:0">Rent of ${fmt(O.due)}G came due and the landlord changed the locks.</p>
@@ -1025,7 +1025,7 @@ function render(){
   if(S.over)app.innerHTML=vOver();
   else if(S.run)app.innerHTML=vDelve();
   else if(S.shop)app.innerHTML=vShop();
-  else app.innerHTML=`<header><h1>Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():tab==="legacy"?vLegacy():vTown());
+  else app.innerHTML=`<header><h1>Dungeon Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():tab==="legacy"?vLegacy():vTown());
   const r=document.getElementById("price");
   if(r)r.addEventListener("input",()=>{S.shop.pct=+r.value;const p=Math.max(1,Math.round(val(S.shop.cur.k)*S.shop.pct/100));
     document.getElementById("pv").textContent=fmt(p)+"G";document.getElementById("pp").textContent=S.shop.pct+"% of market"});
@@ -1069,7 +1069,7 @@ app.addEventListener("click",e=>{
         if(!o||typeof o.day!=="number"||!Array.isArray(o.inv))throw 0;
         const snd=S.sound,mus=S.music;S=Object.assign(fresh(),o);S.sound=snd;S.music=mus;migrate();save();
         saveBox=null;saveMsg=`Save loaded: day ${S.day}, level ${lvl()}, ${fmt(S.gold)}G.`;sfx.lvl();render();
-      }catch(e){saveMsg="That isn't a valid Loot Shoppe save code. Make sure you copied all of it, starting with LS1:.";render()}
+      }catch(e){saveMsg="That isn't a valid Dungeon Loot Shoppe save code. Make sure you copied all of it, starting with LS1:.";render()}
     },
     reset:()=>{confirmReset=true;render()}, resetNo:()=>{confirmReset=false;render()},
     resetYes:()=>{const s=S.sound;S=fresh();S.sound=s;confirmReset=false;save();render()},

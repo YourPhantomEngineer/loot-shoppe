@@ -1,4 +1,4 @@
-# Loot Shoppe
+# Dungeon Loot Shoppe
 
 A cozy dungeon-delving shopkeeping game that runs in the browser.
 
