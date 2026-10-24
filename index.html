@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loot Shoppe</title>
+<meta name="description" content="A cozy dungeon-delving shopkeeping game. Explore dungeons for loot, then haggle it away in your shop.">
+<meta name="theme-color" content="#0f2326">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Loot Shoppe">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Karla:wght@400;600;700&display=swap">
+<style>:root{color-scheme:dark;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<style>
+/* Layout: one-column phone app; town has three tabs (Town, Workshop, Skills), plus dungeon and shop screens. Single deliberate look: deep teal stone, copper fittings, coin gold. */
+:root{
+  --bg:#0f2326; --panel:#17333a; --line:#24474f; --fg:#eef2e6; --muted:#93b0aa;
+  --copper:#e0904f; --coin:#f2c94c; --hp:#e06a5a; --good:#7fd18b; --bad:#e06a5a; --arcane:#9fb7f0;
+  --display:"Silkscreen","Courier New",monospace; --body:"Karla",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.4;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-tap-highlight-color:transparent}
+.wrap{max-width:480px;margin:0 auto;padding-block:16px 40px;display:flex;flex-direction:column;gap:18px}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+h1{font-family:var(--display);font-weight:700;font-size:1.15rem;margin:0;color:var(--copper);text-wrap:balance}
+h2{font-family:var(--display);font-weight:400;font-size:.85rem;margin:0 0 8px;color:var(--muted);letter-spacing:.04em;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+h2 small{font:600 .78rem var(--body);color:var(--muted);text-align:right}
+.ghost{background:none;border:1px solid var(--line);color:var(--muted);font:600 .72rem var(--body);text-transform:uppercase;letter-spacing:.08em;padding:6px 10px;border-radius:4px;cursor:pointer}
+.ghost[aria-pressed="true"]{color:var(--coin);border-color:var(--coin)}
+.tools{display:flex;gap:6px;flex-shrink:0}
+button{font-family:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid var(--coin);outline-offset:2px}
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--panel);border-radius:8px;padding:4px;gap:4px}
+.tabs button{border:0;background:none;color:var(--muted);font:700 .82rem var(--body);padding:9px 2px;border-radius:6px;cursor:pointer;position:relative}
+.tabs button[aria-selected="true"]{background:var(--line);color:var(--fg)}
+.dot{display:inline-block;vertical-align:1px;min-width:18px;padding:0 5px;border-radius:9px;background:var(--coin);color:#2a2008;font-size:.7rem;margin-left:4px;line-height:18px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stat{background:var(--panel);border-radius:6px;padding:10px;min-width:0}
+.lbl{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.stat b{font-family:var(--display);font-size:1.15rem;font-variant-numeric:tabular-nums;display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.coin{color:var(--coin)}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--copper)}
+.bar.hp i{background:var(--hp)}
+.rent{border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:.88rem;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.rent.urgent{border-color:var(--bad)}
+.rent b{color:var(--coin);font-variant-numeric:tabular-nums;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.78rem;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-variant-numeric:tabular-nums}
+.chip.up{border-color:var(--good);color:var(--good)} .chip.down{border-color:var(--bad);color:var(--bad)}
+.chip.mat{border-color:var(--arcane);color:var(--arcane)}
+.big{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;background:var(--copper);color:#24130a;border:0;border-radius:8px;padding:14px 16px;font-weight:700;font-size:1.05rem;cursor:pointer}
+.big small{font-weight:600;font-size:.8rem;opacity:.8}
+.big:disabled{background:var(--line);color:var(--muted);cursor:default}
+.list{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center;padding:11px 4px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--fg);text-align:left;font:inherit;width:100%}
+button.row{cursor:pointer}
+button.row:disabled{cursor:default}
+button.row:disabled>*{opacity:.5}
+.row .sub{font-size:.8rem;color:var(--muted)}
+.row .right{grid-row:1/3;grid-column:2;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.row .right.coin{font-family:var(--display);font-weight:400}
+.have{color:var(--good)} .need{color:var(--bad)}
+.cat{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--copper);margin-left:6px}
+.crown{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--coin);margin-left:6px}
+.card{background:var(--panel);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.event{font-size:1.05rem;font-weight:600;min-height:2.8em}
+.monster{border:1px solid var(--bad);border-radius:6px;padding:10px 12px}
+.monster.boss{border-width:2px;background:rgba(224,106,90,.08)}
+.monster b{color:var(--bad)}
+.warn{color:var(--coin);font-weight:700;font-size:.85rem;margin:6px 0 0}
+.btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.btn{border:0;border-radius:6px;padding:12px;font-weight:700;font-size:.95rem;cursor:pointer;background:var(--copper);color:#24130a}
+.btn:disabled{background:var(--line);color:var(--muted);cursor:default;opacity:.6}
+.usebtn{background:none;color:var(--fg);cursor:pointer;font-family:inherit}
+.usebtn.on{border-color:var(--coin);color:var(--coin)}
+.usebtn:disabled{opacity:.45;cursor:default}
+.chip.rare{border-color:var(--coin);color:var(--coin)}
+.modbar{border:1px solid var(--arcane);color:var(--arcane);border-radius:6px;padding:8px 12px;font-size:.85rem}
+.modbar b{font-family:var(--display);font-weight:400}
+.btn.alt{background:var(--line);color:var(--fg)}
+.btn.danger{background:var(--bad);color:#2a0d08}
+.btn.gold{background:var(--coin);color:#2a2008}
+.bag{display:flex;flex-wrap:wrap;gap:6px}
+.log{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
+.log li:first-child{color:var(--fg)}
+.quote{font-size:1.02rem;font-style:italic;margin:0}
+.who{font-family:var(--display);font-size:.8rem;color:var(--copper)}
+.price{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.price b{font-family:var(--display);font-size:1.6rem;color:var(--coin);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--coin);height:28px}
+.fb{font-weight:700;min-height:1.3em;margin:0}
+.fb.bad{color:var(--bad)}
+.hint{font-size:.8rem;color:var(--muted);margin:0}
+.branch{border:1px solid var(--line);border-radius:8px;padding:12px 12px 4px}
+.branch h3{font-family:var(--display);font-size:.9rem;margin:0;color:var(--copper);display:flex;justify-content:space-between}
+.branch h3 small{font:600 .75rem var(--body);color:var(--muted)}
+.pips{letter-spacing:2px;color:var(--coin)}
+.code{display:block;width:100%;box-sizing:border-box;min-height:84px;margin-top:6px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px;font:12px/1.4 ui-monospace,monospace;word-break:break-all;resize:vertical;-webkit-user-select:text;user-select:text}
+.confirm{border:1px solid var(--bad);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:10px;font-size:.88rem;text-align:center}
+.over{text-align:center;gap:14px}
+.over .big-num{font-family:var(--display);font-size:2.4rem;color:var(--coin)}
+#toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translate(-50%,160%);background:var(--panel);border:1px solid var(--coin);border-radius:8px;padding:10px 16px;font-size:.88rem;max-width:calc(100% - 32px);transition:transform .3s ease;z-index:20;text-align:center}
+#toast.show{transform:translate(-50%,0)}
+#toast b{color:var(--coin)}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+
+<div id="app" class="wrap"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ================= Data ================= */
+const ITEMS=[
+ ["dagger","Rusty Dagger","weapon",40,1],["cap","Leather Cap","armor",35,1],["herb","Herb Bundle","potion",18,1],["ring","Copper Ring","trinket",50,1],["quartz","Quartz Shard","gem",30,1],
+ ["sword","Iron Sword","weapon",130,2],["coif","Chain Coif","armor",115,2],["tonic","Healing Tonic","potion",65,2],["locket","Silver Locket","trinket",170,2],["amethyst","Amethyst","gem",150,2],
+ ["halberd","Steel Halberd","weapon",420,3],["helm","Knight's Helm","armor",380,3],["draught","Ember Draught","potion",260,3],["bird","Clockwork Bird","trinket",600,3],["ruby","Ruby","gem",540,3],
+ ["rune","Runeblade","weapon",1400,4],["scale","Wyrmscale Mail","armor",1600,4],["elixir","Starlight Elixir","potion",950,4],["orrery","Brass Orrery","trinket",2100,4],["sapphire","Star Sapphire","gem",2400,4],
+ ["charm","Mossheart Charm","trinket",320,1,1],["lantern","Foreman's Lantern","trinket",950,2,1],["crown","Cinder Crown","gem",2800,3,1],["aegis","Astral Aegis","armor",7500,4,1],
+ ["bomb","Fire Bomb","supply",45,1],["rope","Escape Rope","supply",30,1],["whet","Whetstone","supply",40,1],["pick","Lockpick","supply",25,1],
+ ["idol","Mossglass Idol","trinket",900,1,0,1],["gpick","Golden Pickaxe","weapon",2600,2,0,1],["feather","Phoenix Feather","trinket",7000,3,0,1],["star","Fallen Star","gem",20000,4,0,1]
+].map(([k,n,c,b,t,craft,sec])=>({k,n,c,b,t,craft:!!craft,sec:!!sec}));
+const IT=Object.fromEntries(ITEMS.map(i=>[i.k,i]));
+const CATS=["weapon","armor","potion","trinket","gem"];
+const CATN={weapon:"Weapons",armor:"Armor",potion:"Potions",trinket:"Trinkets",gem:"Gems"};
+const MATS={fiber:"Moss Fiber",gel:"Slime Gel",scrap:"Scrap Iron",ore:"Ore Chunk",ember:"Ember Core",dust:"Stardust",
+  h1:"Mossheart",h2:"Foreman's Lamp",h3:"Cinder Heart",h4:"Astral Scale"};
+const DUN=[
+ {n:"Mossy Cellar",t:1,lvl:1,floors:5,mon:["Cellar Rat","Slime","Moss Beetle"],mats:["fiber","gel","scrap"],boss:"Slime Monarch",heart:"h1"},
+ {n:"Sunken Mine",t:2,lvl:3,floors:6,mon:["Cave Bat","Kobold Miner","Rock Crab"],mats:["scrap","ore"],boss:"Kobold Foreman",heart:"h2"},
+ {n:"Ember Vault",t:3,lvl:6,floors:7,mon:["Fire Imp","Ash Wraith","Magma Hound"],mats:["ore","ember"],boss:"Cinder Colossus",heart:"h3"},
+ {n:"Starfall Spire",t:4,lvl:10,floors:8,mon:["Star Wisp","Spire Sentinel","Void Drake"],mats:["ember","dust"],boss:"Astral Wyrm",heart:"h4"}
+];
+const TF=[1,2.6,6,14];
+const RECIPES=[
+ {out:"bomb",items:{},mats:{scrap:1,gel:1}},
+ {out:"rope",items:{},mats:{fiber:3}},
+ {out:"pick",items:{},mats:{scrap:2}},
+ {out:"whet",items:{},mats:{scrap:1,ore:1}},
+ {out:"tonic",items:{herb:2},mats:{gel:1}},
+ {out:"sword",items:{dagger:1},mats:{scrap:3}},
+ {out:"coif",items:{cap:1},mats:{scrap:3}},
+ {out:"amethyst",items:{quartz:3},mats:{}},
+ {out:"locket",items:{ring:1,quartz:1},mats:{fiber:2}},
+ {out:"charm",items:{ring:1},mats:{h1:1,fiber:2}},
+ {out:"halberd",items:{sword:1},mats:{ore:3}},
+ {out:"helm",items:{coif:1},mats:{ore:3}},
+ {out:"draught",items:{tonic:1},mats:{ember:2}},
+ {out:"bird",items:{locket:1},mats:{ore:2,ember:1}},
+ {out:"ruby",items:{amethyst:2},mats:{ember:1}},
+ {out:"lantern",items:{locket:1},mats:{h2:1,ore:2}},
+ {out:"rune",items:{halberd:1},mats:{dust:3}},
+ {out:"scale",items:{helm:1},mats:{dust:3}},
+ {out:"elixir",items:{draught:1},mats:{dust:2}},
+ {out:"orrery",items:{bird:1,ruby:1},mats:{dust:2}},
+ {out:"sapphire",items:{ruby:2},mats:{dust:1}},
+ {out:"crown",items:{ruby:1},mats:{h3:1,ember:2}},
+ {out:"aegis",items:{scale:1},mats:{h4:1,dust:3}}
+];
+const CUST=[
+ {n:"Village Kid",bud:[.85,1.02],cats:["potion","trinket"],w:3,say:i=>`Um... how much for the ${i}?`},
+ {n:"Townsfolk",bud:[.95,1.2],cats:null,w:5,say:i=>`I've been looking for a ${i}.`},
+ {n:"Adventurer",bud:[1.05,1.35],cats:["weapon","armor","potion","supply"],w:4,say:i=>`That ${i} could save my life. What's the price?`},
+ {n:"Gem Collector",bud:[1.1,1.5],cats:["gem","trinket"],w:2,say:i=>`Ooh, a ${i}. I simply must have it.`},
+ {n:"Noble",bud:[1.25,1.7],cats:null,w:1,say:i=>`I'll take the ${i}. Name your price.`}
+];
+const UPG=[
+ {k:"blade",n:"Sharpen Blade",d:l=>`Base attack ${dmgAt(l)} → ${dmgAt(l+1)}`,base:120},
+ {k:"armor",n:"Reinforce Armor",d:l=>`Base HP ${hpAt(l)} → ${hpAt(l+1)}`,base:120},
+ {k:"pack",n:"Bigger Pack",d:l=>`Carry ${capAt(l)} → ${capAt(l+1)} items`,base:90},
+ {k:"shelf",n:"More Shelves",d:l=>`+1 customer a day (now +${l})`,base:150},
+ {k:"sign",n:"Painted Sign",d:l=>`Customer budgets +${l*8}% → +${(l+1)*8}%`,base:200}
+];
+const BR=[{k:"war",n:"Warrior"},{k:"scav",n:"Scavenger"},{k:"merc",n:"Merchant"}];
+const SK=[
+ {k:"power",b:"war",n:"Power Strike",max:3,d:"+15% attack per rank"},
+ {k:"skin",b:"war",n:"Thick Skin",max:3,d:"+10% max HP per rank"},
+ {k:"wind",b:"war",n:"Second Wind",max:2,req:2,d:"Heal 15% HP per rank on each new floor"},
+ {k:"exec",b:"war",n:"Executioner",max:2,req:2,d:"+8% critical hit chance per rank"},
+ {k:"pockets",b:"scav",n:"Deep Pockets",max:3,d:"+2 pack space per rank"},
+ {k:"keen",b:"scav",n:"Keen Eye",max:3,d:"More loot finds and rarer drops"},
+ {k:"salvage",b:"scav",n:"Salvager",max:2,req:2,d:"+50% chance per rank of an extra material"},
+ {k:"escape",b:"scav",n:"Escape Artist",max:2,req:2,d:"+15% flee chance per rank"},
+ {k:"tongue",b:"merc",n:"Silver Tongue",max:3,d:"+5% customer budgets per rank"},
+ {k:"patience",b:"merc",n:"Calm Presence",max:2,d:"Customers allow +1 haggle per rank"},
+ {k:"showman",b:"merc",n:"Showman",max:2,req:2,d:"+1 customer a day per rank"},
+ {k:"bulk",b:"merc",n:"Master Crafter",max:2,req:2,d:"20% chance per rank to craft two"}
+];
+const dmgAt=l=>4+3*l, hpAt=l=>30+15*l, capAt=l=>6+2*l;
+
+/* ================= State ================= */
+const KEY="haggle-hollow-v1";
+const fresh=()=>({day:1,gold:150,xp:0,inv:["herb","herb","dagger","quartz"],gear:{blade:0,armor:0,pack:0,shelf:0,sign:0},
+  trend:{weapon:1,armor:1,potion:1,trinket:1,gem:1},run:null,shop:null,over:null,sold:0,earned:0,sound:true,news:"",
+  mats:{},skills:{},bosses:{},crafted:0,music:true,belt:[]});
+let S=fresh();
+try{const s=JSON.parse(localStorage.getItem(KEY));if(s)S=Object.assign(S,s)}catch(e){}
+function migrate(){
+  S.over=null;S.belt=S.belt||[];S.mats=S.mats||{};S.skills=S.skills||{};S.bosses=S.bosses||{};
+  if(S.run){const R=S.run;R.got=R.got||{};R.atkB=R.atkB||1;R.ev=R.ev||null;if(R.fight){R.fight.turn=R.fight.turn||0;if(!R.fight.kind)R.fight.kind=R.fight.boss?"boss":"mob"}}
+}
+migrate();
+if(S.run){S.run.got=S.run.got||{};if(S.run.fight)S.run.fight.turn=S.run.fight.turn||0}
+function save(){S.savedAt=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+let confirmReset=false, tab="town", saveBox=null, saveMsg="", saveCode="";
+
+const rnd=(a,b)=>a+Math.random()*(b-a), ri=(a,b)=>Math.floor(rnd(a,b+1)), pick=a=>a[Math.floor(Math.random()*a.length)];
+const an=n=>(/^[AEIOU]/.test(n)?"an ":"a ")+n;
+const fmt=n=>Math.round(n).toLocaleString();
+const sk=k=>S.skills[k]||0;
+const lvl=()=>Math.floor(Math.sqrt(S.xp/25))+1;
+const xpFor=l=>(l-1)*(l-1)*25;
+const spent=()=>Object.values(S.skills).reduce((a,b)=>a+b,0);
+const pts=()=>lvl()-1+Object.keys(S.bosses).length-spent();
+const brSpent=b=>SK.filter(s=>s.b===b).reduce((a,s)=>a+sk(s.k),0);
+const dmg=()=>Math.round(dmgAt(S.gear.blade)*(1+.15*sk("power")));
+const maxHp=()=>Math.round(hpAt(S.gear.armor)*(1+.1*sk("skin")));
+const cap=()=>capAt(S.gear.pack)+2*sk("pockets");
+const crit=()=>.1+.08*sk("exec");
+const fleeCh=()=>Math.min(.95,.6+.15*sk("escape"));
+const custN=()=>3+S.gear.shelf+sk("showman");
+const signB=()=>1+.08*S.gear.sign+.05*sk("tongue");
+const patMax=()=>3+sk("patience");
+const val=k=>Math.max(1,Math.round(IT[k].b*(S.trend[IT[k].c]||1)));
+const upCost=u=>Math.round(u.base*Math.pow(1.9,S.gear[u.k]));
+const week=()=>Math.ceil(S.day/7);
+const rentFor=w=>Math.round(250*Math.pow(w,1.8)/10)*10;
+const count=(arr,k)=>arr.filter(x=>x===k).length;
+
+/* ================= Sound ================= */
+let ac=null;
+function tone(f,t0,d,type,v,f2){
+  if(!S.sound)return;
+  if(!audioCtx())return;
+  const o=ac.createOscillator(),g=ac.createGain(),s=ac.currentTime+t0;
+  o.type=type||"sine";o.frequency.setValueAtTime(f,s);if(f2)o.frequency.exponentialRampToValueAtTime(f2,s+d);
+  g.gain.setValueAtTime(.0001,s);g.gain.exponentialRampToValueAtTime(v||.1,s+.01);g.gain.exponentialRampToValueAtTime(.0001,s+d);
+  o.connect(g).connect(ac.destination);o.start(s);o.stop(s+d+.03);
+}
+const sfx={
+  step:()=>tone(220,0,.06,"triangle",.06,180),
+  loot:()=>{tone(784,0,.08,"square",.05);tone(1175,.07,.12,"square",.05)},
+  hit:()=>tone(160,0,.12,"sawtooth",.08,60),
+  hurt:()=>tone(300,0,.15,"square",.06,120),
+  guard:()=>tone(520,0,.12,"triangle",.07,480),
+  coin:()=>{tone(1900,0,.06,"triangle",.08);tone(2600,.05,.1,"sine",.06)},
+  fail:()=>tone(330,0,.3,"triangle",.09,140),
+  craft:()=>{[392,523,659].forEach((f,i)=>tone(f,i*.06,.12,"square",.05))},
+  boss:()=>{tone(90,0,.8,"sawtooth",.09,60);tone(135,.1,.7,"sawtooth",.06,90)},
+  win:()=>[392,523,659,784,1047].forEach((f,i)=>tone(f,i*.1,.3,"triangle",.1)),
+  lvl:()=>[523,659,784,1047].forEach((f,i)=>tone(f,i*.08,.22,"triangle",.1))
+};
+
+function audioCtx(){
+  try{if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();if(ac.state==="suspended")ac.resume();return ac}catch(e){return null}
+}
+
+/* ================= Music (generated live, no files) ================= */
+/* Soft orchestral-folk instruments: harp pluck, warm string pad, breathy flute, frame drum, shaker — all through a generated reverb. */
+const TRACKS={
+  town:{bpm:84,root:62,chords:[[0,4,7],[-5,-1,2],[-3,0,4],[-7,-3,0]],scale:[0,2,4,7,9],
+    padCut:900,padV:.03,arp:[0,2,4,2,3,2,4,2],arpOct:0,arpV:.06,
+    mel:{dens:.35,every:2,oct:12,len:4,v:.05},bass:[0,null,null,null,null,null,null,null],bassLen:6,low:[],hat:[]},
+  shop:{bpm:100,root:55,chords:[[0,4,7],[5,9,12],[7,11,14],[0,4,7]],scale:[0,2,4,7,9],
+    padCut:1100,padV:.022,arp:[0,4,2,4,1,4,2,4],arpOct:12,arpV:.055,
+    mel:{dens:.5,every:2,oct:24,len:2,v:.04},bass:[0,null,null,null,1,null,null,null],bassLen:3,low:[0],hat:[2,6]},
+  dungeon:{bpm:66,root:50,chords:[[0,3,7],[-4,0,3],[-2,2,5],[-5,-2,2]],scale:[0,3,5,7,10],
+    padCut:550,padV:.045,arp:null,
+    mel:{dens:.22,every:2,oct:12,len:3,v:.075,inst:"pluck"},bass:[0,null,null,null,null,null,null,null],bassLen:8,low:[0],lowV:.15,hat:[]},
+  boss:{bpm:126,root:52,chords:[[0,3,7],[-4,0,3],[-2,2,5],[-5,-1,2]],scale:[0,3,5,7,10],
+    padCut:800,padV:.025,arp:null,ost:true,
+    mel:{dens:.45,every:2,oct:12,len:2,v:.04,inst:"strings"},bass:[0,null,0,null,0,null,0,null],bassLen:1.5,low:[0,3,4,6],hat:[1,3,5,7]}
+};
+const M={track:null,step:0,next:0,timer:null,gain:null,rv:null,noise:null,walk:4};
+const mf=m=>440*Math.pow(2,(m-69)/12);
+const ct=(ch,i)=>ch[i%3]+12*Math.floor(i/3);
+function setupMusic(){
+  if(M.gain)return;
+  const comp=ac.createDynamicsCompressor();comp.connect(ac.destination);
+  M.gain=ac.createGain();M.gain.gain.value=.7;M.gain.connect(comp);
+  const len=Math.floor(ac.sampleRate*2.8),buf=ac.createBuffer(2,len,ac.sampleRate);
+  for(let c=0;c<2;c++){const d=buf.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.5)}
+  const conv=ac.createConvolver();conv.buffer=buf;
+  M.rv=ac.createGain();M.rv.gain.value=.4;M.rv.connect(conv);conv.connect(comp);
+  const nb=ac.createBuffer(1,ac.sampleRate,ac.sampleRate),nd=nb.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;M.noise=nb;
+}
+function send(node,wet){node.connect(M.gain);if(wet)node.connect(M.rv)}
+function env(t,a,d,v){const g=ac.createGain();g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+a);g.gain.exponentialRampToValueAtTime(.0001,t+a+d);return g}
+function osc(type,f,t,stop,dest,det){const o=ac.createOscillator();o.type=type;o.frequency.value=f;if(det)o.detune.value=det;o.connect(dest);o.start(t);o.stop(stop);return o}
+function pluck(f,t,v){
+  const g=env(t,.004,1.4,v),fl=ac.createBiquadFilter();fl.type="lowpass";
+  fl.frequency.setValueAtTime(Math.min(8000,f*6),t);fl.frequency.exponentialRampToValueAtTime(Math.max(300,f*1.4),t+.5);
+  osc("triangle",f,t,t+1.5,fl);const hg=ac.createGain();hg.gain.value=.25;hg.connect(fl);osc("sine",f*2,t,t+1.5,hg);
+  fl.connect(g);send(g,true);
+}
+function pad(f,t,d,v,cut){
+  const g=ac.createGain();g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+d*.35);g.gain.linearRampToValueAtTime(.0001,t+d+.4);
+  const fl=ac.createBiquadFilter();fl.type="lowpass";fl.frequency.value=cut;fl.Q.value=.3;
+  osc("sawtooth",f,t,t+d+.5,fl,-7);osc("sawtooth",f,t,t+d+.5,fl,7);fl.connect(g);send(g,true);
+}
+function strings(f,t,d,v,cut){
+  const g=env(t,.03,d,v),fl=ac.createBiquadFilter();fl.type="lowpass";fl.frequency.value=cut;
+  osc("sawtooth",f,t,t+d+.1,fl,-5);osc("sawtooth",f,t,t+d+.1,fl,5);fl.connect(g);send(g,true);
+}
+function flute(f,t,d,v){
+  const g=ac.createGain();g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+.09);g.gain.setValueAtTime(v,t+d*.7);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  const o=osc("sine",f,t,t+d+.05,g);
+  const lfo=ac.createOscillator(),lg=ac.createGain();lfo.frequency.value=5;lg.gain.setValueAtTime(0,t);lg.gain.linearRampToValueAtTime(f*.007,t+.35);
+  lfo.connect(lg).connect(o.frequency);lfo.start(t);lfo.stop(t+d+.05);
+  const og=ac.createGain();og.gain.value=.07;og.connect(g);osc("triangle",f*2,t,t+d+.05,og);
+  send(g,true);
+}
+function bassN(f,t,d,v){const g=env(t,.02,d,v),fl=ac.createBiquadFilter();fl.type="lowpass";fl.frequency.value=380;osc("triangle",f,t,t+d+.1,fl);fl.connect(g);send(g,false)}
+function drum(t,v,low){
+  const s=ac.createBufferSource();s.buffer=M.noise;const fl=ac.createBiquadFilter();
+  fl.type=low?"lowpass":"highpass";fl.frequency.value=low?180:6500;
+  const g=env(t,.002,low?.3:.05,low?v*.5:v);s.connect(fl).connect(g);send(g,low);s.start(t);s.stop(t+.4);
+  if(low){const o=ac.createOscillator(),og=env(t,.003,.3,v);o.frequency.setValueAtTime(110,t);o.frequency.exponentialRampToValueAtTime(52,t+.25);o.connect(og);send(og,true);o.start(t);o.stop(t+.4)}
+}
+function playStep(T,step,t,sp){
+  const s=step%8,ch=T.chords[Math.floor(step/8)%4],R=T.root;
+  if(s===0)ch.forEach(n=>pad(mf(R+n),t,sp*8,T.padV,T.padCut));
+  const a=T.arp?T.arp[s]:null;if(a!=null)pluck(mf(R+T.arpOct+ct(ch,a)),t,T.arpV);
+  const b=T.bass[s];if(b!=null)bassN(mf(R-12+(b?ch[2]:ch[0])),t,sp*T.bassLen,.16);
+  if(T.ost)strings(mf(R+(s%2?ch[0]+12:ch[0])),t,sp*.9,.03,1500);
+  if(T.low.includes(s))drum(t,T.lowV||.22,true);
+  if(T.hat.includes(s))drum(t,.035,false);
+  const m=T.mel;
+  if(s%m.every===0&&Math.random()<m.dens){
+    M.walk=Math.max(0,Math.min(9,M.walk+pick([-2,-1,-1,0,1,1,2])));
+    const n=R+m.oct+T.scale[M.walk%5]+12*Math.floor(M.walk/5),d=sp*m.len;
+    if(m.inst==="pluck")pluck(mf(n),t,m.v);else if(m.inst==="strings")strings(mf(n),t,d,m.v,2200);else flute(mf(n),t,d,m.v);
+  }
+}
+function schedule(){
+  const T=TRACKS[M.track];if(!T||!ac)return;const sp=60/T.bpm/2;
+  if(M.next<ac.currentTime)M.next=ac.currentTime+.05;
+  while(M.next<ac.currentTime+.25){playStep(T,M.step,M.next,sp);M.next+=sp;M.step=(M.step+1)%32}
+}
+function musicUpdate(){
+  if(!S.music){if(M.timer){clearInterval(M.timer);M.timer=null;M.track=null}return}
+  if(!ac)return;
+  setupMusic();
+  const want=S.run?.fight?.boss?"boss":S.run?"dungeon":S.shop?"shop":"town";
+  if(M.track!==want){M.track=want;M.step=0;M.walk=4;M.next=ac.currentTime+.08}
+  if(!M.timer)M.timer=setInterval(schedule,50);
+}
+
+/* ================= Helpers ================= */
+let toastT;
+function toast(h){const t=document.getElementById("toast");t.innerHTML=h;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2800)}
+function addXp(n){
+  const b=lvl();S.xp+=n;const a=lvl();
+  if(a>b){sfx.lvl();const d=DUN.find(x=>x.lvl===a);toast(`Level <b>${a}</b>! +1 skill point.`+(d?` ${d.n} is open.`:""))}
+}
+function addMat(k,n){S.mats[k]=(S.mats[k]||0)+n}
+function endDay(){
+  S.run=null;S.shop=null;
+  const finished=S.day;S.day++;
+  CATS.forEach(c=>{let t=S.trend[c]*rnd(.88,1.12);t+=(1-t)*.15;S.trend[c]=Math.min(1.6,Math.max(.6,t))});
+  S.news="";
+  if(Math.random()<.18){const c=pick(CATS);S.trend[c]=Math.min(1.6,S.trend[c]+.3);S.news=`Word around town: ${CATN[c].toLowerCase()} are in demand.`}
+  tab="town";save();render();
+}
+
+/* ================= Dungeon ================= */
+const MODS={
+ flooded:{n:"Flooded",d:"Traps are twice as common."},
+ haunted:{n:"Haunted",d:"More monsters, but rarer loot."},
+ vault:{n:"Treasure Vault",d:"Locked chests are everywhere."},
+ dark:{n:"Pitch Dark",d:"Stairs are hard to find, but ore veins are rich."},
+ blessed:{n:"Blessed",d:"Springs and strange encounters are common."}
+};
+const MINI=["Rat Matriarch","Tunnel Wurm","Ember Knight","Prism Golem"];
+const HEAL={herb:.2,tonic:.4,draught:.65,elixir:1};
+const BELT=4;
+const runDmg=()=>Math.round(dmg()*(S.run?.atkB||1));
+function rollMod(floor){return floor>1&&Math.random()<.45?pick(Object.keys(MODS)):null}
+function startDelve(i){
+  S.run={d:i,floor:1,hp:maxHp(),bag:[],got:{},fight:null,stairs:false,lair:false,bossDone:false,steps:0,
+    mod:null,atkB:1,ev:null,elite:false,miniDone:false,secret:false,secretFloor:false,
+    event:`You step into the ${DUN[i].n}. Torchlight flickers on damp stone.`,log:[]};
+  save();render();
+}
+function rlog(m){S.run.log.unshift(m);S.run.log=S.run.log.slice(0,5)}
+function rollItem(boost){
+  const R=S.run,D=DUN[R.d];let t=D.t;const r=Math.random();
+  const up=R.floor*.05+.04*sk("keen")+(R.mod==="haunted"?.15:0)+(R.secretFloor?.25:0);
+  if(boost)t=Math.min(4,t+1);
+  else if(r<up&&t<4)t++;else if(r>.85&&t>1)t--;
+  return pick(ITEMS.filter(i=>i.t===t&&!i.craft&&!i.sec&&i.c!=="supply")).k;
+}
+const secretItem=()=>ITEMS.find(i=>i.sec&&i.t===DUN[S.run.d].t).k;
+function bagAdd(k){if(S.run.bag.length>=cap())return false;S.run.bag.push(k);return true}
+function hurtPct(p){const R=S.run,d=Math.max(1,Math.round(maxHp()*p));R.hp-=d;return d}
+function dropMats(n){
+  const R=S.run,D=DUN[R.d];const got=[];
+  for(let i=0;i<n;i++){const m=pick(D.mats);addMat(m,1);R.got[m]=(R.got[m]||0)+1;got.push(MATS[m])}
+  return got;
+}
+function makeFight(n,kind){
+  const R=S.run,D=DUN[R.d],f=TF[D.t-1];
+  const hm={mob:1,elite:2.2,mini:2.4,boss:3.5}[kind],am={mob:1,elite:1.35,mini:1.2,boss:1.3}[kind];
+  const hp=Math.round((10+R.floor*3)*f*hm);
+  R.fight={n,hp,max:hp,atk:Math.round((2+R.floor*.8)*f*am),turn:0,kind,boss:kind==="mini"||kind==="boss",wind:false};
+}
+function explore(){
+  const R=S.run,D=DUN[R.d],f=TF[D.t-1];R.steps++;sfx.step();
+  const last=R.floor===D.floors,mod=R.mod;
+  if(!R.secretFloor&&!last&&!R.stairs&&R.steps>=2&&Math.random()<(mod==="dark"?.1:.22)){R.stairs=true;R.event="You spot a staircase leading down.";rlog(R.event);return save(),render()}
+  if(last&&!R.lair&&!R.bossDone&&R.steps>=2&&Math.random()<.25){R.lair=true;R.event=`Heavy footsteps echo ahead. The lair of the ${D.boss} is close.`;sfx.boss();rlog(R.event);return save(),render()}
+  if(R.floor===Math.ceil(D.floors/2)&&!R.miniDone&&R.steps>=2&&Math.random()<.3){
+    R.ev={type:"mini"};R.event=`A massive shape blocks the corridor: the ${MINI[R.d]}, guardian of this depth.`;sfx.boss();rlog(R.event);return save(),render()}
+  if(Math.random()<(mod==="blessed"?.2:.13)+(mod==="vault"?.15:0)){startEvent();return save(),render()}
+  const r=Math.random();let c=.36+.04*sk("keen")+(R.secretFloor?.15:0);
+  if(r<c){
+    const k=R.secretFloor&&Math.random()<.3?secretItem():rollItem();
+    if(bagAdd(k)){R.event=`You find ${an(IT[k].n)}! (worth about ${val(k)}G)`;sfx.loot()}else R.event=`You find ${an(IT[k].n)}, but your pack is full.`;
+  }
+  else if(r<(c+=mod==="dark"?.16:.08)){const g=dropMats(mod==="dark"?ri(2,3):ri(1,2));R.event=`You pry loose ${g.join(" and ")} from the walls.`;sfx.loot()}
+  else if(r<(c+=.30+(mod==="haunted"?.2:0)+R.floor*.01)){makeFight(pick(D.mon),"mob");R.event=`A ${R.fight.n} blocks your path!`}
+  else if(r<(c+=mod==="flooded"?.18:.09)){const d=hurtPct(.12);R.event=mod==="flooded"?`You slip into a flooded pit! You lose ${d} HP.`:`A trap springs! You lose ${d} HP.`;sfx.hurt()}
+  else if(r<(c+=mod==="blessed"?.12:.07)){const h=Math.round(maxHp()*.3);R.hp=Math.min(maxHp(),R.hp+h);R.event=`A clear spring restores ${h} HP.`}
+  else{const g=Math.round(rnd(4,12)*f*R.floor);S.gold+=g;R.event=`You find a dropped purse with ${g}G.`;sfx.coin()}
+  rlog(R.event);
+  if(R.hp<=0)return faint();
+  save();render();
+}
+
+/* ---------- Room events ---------- */
+function merchantOffers(){
+  const D=DUN[S.run.d],pot=["herb","tonic","draught","elixir"][D.t-1],sup=pick(["bomb","rope","whet","pick"]);
+  return [{k:pot,p:Math.round(IT[pot].b*1.4)},{k:sup,p:Math.round(IT[sup].b*1.6)}];
+}
+function startEvent(){
+  const R=S.run,D=DUN[R.d];
+  const types=["chest","merchant","shrine","sleeper","fountain"];
+  if(R.floor>=2&&!R.elite&&!R.secretFloor)types.push("elite","elite");
+  const t=R.mod==="vault"&&Math.random()<.6?"chest":pick(types);
+  R.ev={type:t};
+  if(t==="chest")R.event="A locked iron chest sits in an alcove.";
+  if(t==="merchant"){R.ev.offers=merchantOffers();R.event="A hooded peddler waves you over. “Supplies, friend? Fair prices, this deep.”"}
+  if(t==="shrine")R.event="A cracked shrine hums with old power. It asks for blood.";
+  if(t==="sleeper"){R.ev.mon=pick(D.mon);R.event=`A ${R.ev.mon} is asleep across the passage.`}
+  if(t==="fountain")R.event="A glowing fountain bubbles in the dark. The water smells strange.";
+  if(t==="elite"){R.ev.mon=pick(D.mon);R.elite=true;R.event=`A sealed door glows with runes. Behind it, an elite ${R.ev.mon} guards a treasure.`}
+  rlog(R.event);
+}
+const sneakCh=()=>Math.min(.95,.65+.1*sk("escape"));
+function openChest(pre){
+  const R=S.run,D=DUN[R.d];
+  const k=R.secretFloor&&Math.random()<.5?secretItem():rollItem(Math.random()<.5);
+  const g=Math.round(rnd(10,25)*TF[D.t-1]*R.floor);S.gold+=g;
+  R.ev=null;R.event=`${pre} Inside: ${g}G`+(bagAdd(k)?` and ${an(IT[k].n)}!`:`, and ${an(IT[k].n)} you have no room for.`);sfx.loot();
+}
+function giveSupply(k){
+  if(S.belt.length<BELT){S.belt.push(k);return "on your belt"}
+  if(bagAdd(k))return "in your pack";
+  return null;
+}
+function evChoice(c){
+  const R=S.run,E=R.ev;if(!E)return;
+  if(c==="leave"){R.ev=null;R.event=E.type==="mini"?`You back away from the ${MINI[R.d]}. It may still find you.`:"You leave it be and press on."}
+  else if(E.type==="chest"){
+    if(c==="pick"&&S.belt.includes("pick")){S.belt.splice(S.belt.indexOf("pick"),1);openChest("Your lockpick clicks the lock open.")}
+    else if(c==="force"){if(Math.random()<.55)openChest("You pry the lid open.");else{const d=hurtPct(.15);R.ev=null;R.event=`A needle trap jabs you for ${d}. The chest jams shut.`;sfx.hurt()}}
+  }
+  else if(E.type==="merchant"&&c.startsWith("buy")){
+    const o=E.offers[+c.slice(3)];
+    if(o&&!o.sold&&S.gold>=o.p){const where=giveSupply(o.k);
+      if(where){S.gold-=o.p;o.sold=true;R.event=`You buy ${an(IT[o.k].n)}. It's ${where}.`;sfx.coin()}else R.event="You have no room to carry that."}
+    if(E.offers.every(o=>o.sold)){R.ev=null;R.event+=" The peddler packs up and vanishes."}
+  }
+  else if(E.type==="shrine"&&c==="offer"){
+    const d=Math.min(R.hp-1,Math.round(maxHp()*.2));R.hp-=d;R.atkB+=.25;R.ev=null;
+    R.event=`You offer ${d} HP. Power surges through your blade: +25% attack for this delve.`;sfx.lvl();
+  }
+  else if(E.type==="fountain"&&c==="drink"){
+    const r=Math.random();R.ev=null;
+    if(r<.4){R.hp=maxHp();R.event="The water is pure. You're fully healed!";sfx.guard()}
+    else if(r<.7){R.atkB+=.15;R.event="The water burns pleasantly. +15% attack for this delve.";sfx.lvl()}
+    else{const d=hurtPct(.2);R.event=`The water is foul! You lose ${d} HP.`;sfx.hurt()}
+  }
+  else if(E.type==="sleeper"){
+    R.ev=null;
+    if(c==="sneak"){
+      if(Math.random()<sneakCh())R.event=`You tiptoe past the ${E.mon}. It never stirs.`;
+      else{makeFight(E.mon,"mob");R.event=`A loose stone clatters and the ${E.mon} wakes! `+monsterTurn(false)}
+    }else if(c==="ambush"){
+      makeFight(E.mon,"mob");const d=runDmg()*3;R.fight.hp-=d;sfx.hit();
+      if(R.fight.hp<=0)return winFight(`Your ambush deals ${d} and finishes it instantly. `);
+      R.event=`Your ambush deals ${d} damage! The ${E.mon} scrambles up to fight.`;
+    }
+  }
+  else if(E.type==="elite"&&c==="fight"){R.ev=null;makeFight("Elite "+E.mon,"elite");R.event=`The door grinds open. The elite ${E.mon} charges!`;sfx.boss()}
+  else if(E.type==="mini"&&c==="fight"){R.ev=null;makeFight(MINI[R.d],"mini");R.event=`The ${MINI[R.d]} roars and attacks!`;sfx.boss()}
+  rlog(R.event);
+  if(R.hp<=0)return faint();
+  save();render();
+}
+
+/* ---------- Combat ---------- */
+function challengeBoss(){
+  const R=S.run,D=DUN[R.d];
+  makeFight(D.boss,"boss");R.lair=false;R.event=`The ${D.boss} rises to face you!`;sfx.boss();rlog(R.event);save();render();
+}
+function monsterTurn(guard){
+  const R=S.run,F=R.fight;F.turn++;
+  const heavy=F.boss&&F.wind;if(heavy)F.wind=false;
+  const t=Math.max(1,Math.round(F.atk*rnd(.8,1.2)*(heavy?2:1)*(guard?.3:1)));
+  R.hp-=t;guard?sfx.guard():sfx.hurt();
+  let m=heavy?`The ${F.n} unleashes a crushing blow for ${t}!`:`The ${F.n} hits you for ${t}.`;
+  if(F.boss&&!heavy&&F.turn%3===2){F.wind=true;m+=` It's winding up a heavy attack!`}
+  return m;
+}
+function attack(){
+  const R=S.run,F=R.fight;
+  let d=Math.round(runDmg()*rnd(.8,1.2));const c=Math.random()<crit();if(c)d*=2;
+  F.hp-=d;sfx.hit();
+  if(F.hp<=0)return winFight(c?"Critical hit! ":"");
+  R.event=`${c?"Critical hit! ":""}You deal ${d}. `+monsterTurn(false);
+  if(R.hp<=0)return faint();
+  save();render();
+}
+function guard(){
+  const R=S.run;R.event="You raise your guard. "+monsterTurn(true);
+  if(R.hp<=0)return faint();save();render();
+}
+function winFight(pre){({mob:mobWin,elite:eliteWin,mini:miniWin,boss:bossWin})[S.run.fight.kind||"mob"](pre||"")}
+function mobWin(pre){
+  const R=S.run,F=R.fight,D=DUN[R.d],f=TF[D.t-1];
+  const g=Math.round(rnd(2,6)*f*R.floor),x=Math.round(5*D.t*R.floor);
+  S.gold+=g;R.fight=null;R.event=`${pre}You defeat the ${F.n}! +${g}G.`;
+  if(Math.random()<.7){let n=1;if(Math.random()<.5*sk("salvage"))n++;R.event+=` Got ${dropMats(n).join(", ")}.`}
+  if(Math.random()<.4){const k=rollItem();if(bagAdd(k)){R.event+=` It dropped ${an(IT[k].n)}.`;sfx.loot()}}
+  rlog(R.event);addXp(x);save();render();
+}
+function eliteWin(pre){
+  const R=S.run,F=R.fight,D=DUN[R.d],f=TF[D.t-1];
+  const g=Math.round(rnd(8,16)*f*R.floor),x=Math.round(15*D.t*R.floor),k=rollItem(true);
+  S.gold+=g;R.fight=null;
+  R.event=`${pre}The ${F.n} falls! +${g}G, ${dropMats(3).join(", ")}`+(bagAdd(k)?`, and its treasure: ${an(IT[k].n)}!`:`. Its treasure, ${an(IT[k].n)}, won't fit in your pack.`);
+  sfx.win();rlog(R.event);addXp(x);save();render();
+}
+function miniWin(pre){
+  const R=S.run,D=DUN[R.d],f=TF[D.t-1];
+  const g=Math.round(rnd(20,40)*f*D.t),k=rollItem(true),sup=pick(["bomb","rope","whet","pick"]);
+  S.gold+=g;R.fight=null;R.miniDone=true;
+  const where=giveSupply(sup);
+  R.event=`${pre}The ${MINI[R.d]} collapses! +${g}G, ${dropMats(2).join(", ")}`+(bagAdd(k)?`, ${an(IT[k].n)}`:"")+(where?`, and ${an(IT[sup].n)} (${where}).`:".");
+  sfx.win();rlog(R.event);addXp(25*D.t);save();render();
+}
+function bossWin(pre){
+  const R=S.run,D=DUN[R.d],f=TF[D.t-1];
+  const first=!S.bosses[R.d];S.bosses[R.d]=(S.bosses[R.d]||0)+1;
+  const g=Math.round(rnd(40,80)*f*D.t),x=40*D.t;
+  S.gold+=g;addMat(D.heart,1);R.got[D.heart]=(R.got[D.heart]||0)+1;
+  const k=rollItem(true);const fit=bagAdd(k);
+  R.fight=null;R.bossDone=true;
+  R.event=`${pre}The ${D.boss} falls! +${g}G, ${MATS[D.heart]}${fit?`, and ${an(IT[k].n)}`:""}.`+(first?" First victory: +1 skill point!":"");
+  if(Math.random()<.35+.05*sk("keen")){R.secret=true;R.event+=" Behind the lair, a hidden stairway grinds open...";}
+  rlog(R.event);sfx.win();addXp(x);
+  if(first)toast(`<b>${D.boss}</b> defeated! +1 skill point.`);
+  save();render();
+}
+function flee(){
+  const R=S.run,F=R.fight;
+  if(Math.random()<fleeCh()){R.event=`You slip away from the ${F.n}.`;if(F.kind==="boss")R.lair=true;R.fight=null}
+  else{R.event=`You couldn't escape! `+monsterTurn(false);if(R.hp<=0)return faint()}
+  rlog(R.event);save();render();
+}
+
+/* ---------- Consumables ---------- */
+function canUse(k){
+  const R=S.run;if(!R||R.ev)return false;
+  if(HEAL[k])return R.hp<maxHp();
+  if(k==="bomb"||k==="rope")return !!R.fight;
+  return k==="whet";
+}
+function useItem(src,i){
+  const R=S.run,F=R.fight,arr=src==="belt"?S.belt:R.bag,k=arr[i];
+  if(!k||!canUse(k))return;
+  arr.splice(i,1);let m;
+  if(HEAL[k]){const h=Math.max(1,Math.round(maxHp()*HEAL[k]));R.hp=Math.min(maxHp(),R.hp+h);m=`You drink the ${IT[k].n} and recover ${h} HP.`;sfx.guard()}
+  else if(k==="whet"){R.atkB+=.3;m="You hone your blade: +30% attack for this delve.";sfx.craft()}
+  else if(k==="rope"){m=`You yank the Escape Rope and vanish from the ${F.n}'s reach.`;if(F.kind==="boss")R.lair=true;R.fight=null;R.event=m;rlog(m);return save(),render()}
+  else if(k==="bomb"){
+    const d=Math.round((10+R.floor*3)*TF[DUN[R.d].t-1]*.8);F.hp-=d;sfx.hit();m=`The Fire Bomb explodes for ${d} damage!`;
+    if(F.hp<=0)return winFight(m+" ");
+  }
+  if(F){m+=" "+monsterTurn(false);R.event=m;rlog(m);if(R.hp<=0)return faint()}
+  else{R.event=m;rlog(m)}
+  save();render();
+}
+function equip(k){if(S.belt.length>=BELT||!S.inv.includes(k))return;S.inv.splice(S.inv.indexOf(k),1);S.belt.push(k);sfx.loot();save();render()}
+function unequip(i){if(S.belt[i]){S.inv.push(S.belt.splice(i,1)[0]);save();render()}}
+
+/* ---------- Movement ---------- */
+function descend(){
+  const R=S.run;R.floor++;R.stairs=false;R.steps=0;R.ev=null;R.mod=rollMod(R.floor);
+  let m=`You descend to floor ${R.floor}.`;
+  if(sk("wind")){const h=Math.round(maxHp()*.15*sk("wind"));R.hp=Math.min(maxHp(),R.hp+h);m+=` Second Wind restores ${h} HP.`}
+  if(R.mod)m+=` This floor is ${MODS[R.mod].n}.`;
+  if(R.floor===DUN[R.d].floors)m+=" This is the deepest floor.";
+  R.event=m;rlog(m);sfx.step();save();render();
+}
+function secretStairs(){
+  const R=S.run;R.floor=DUN[R.d].floors+1;R.secretFloor=true;R.secret=false;R.stairs=false;R.lair=false;R.mod=null;R.steps=0;
+  R.ev={type:"chest"};
+  R.event="You descend into a forgotten treasury. Strange relics glitter in the dust, and a locked chest waits nearby.";
+  rlog(R.event);sfx.lvl();save();render();
+}
+function leaveDungeon(){
+  const R=S.run;S.inv.push(...R.bag);
+  const mats=Object.values(R.got).reduce((a,b)=>a+b,0);
+  toast(`Back in town with <b>${R.bag.length}</b> item${R.bag.length===1?"":"s"}`+(mats?` and ${mats} material${mats===1?"":"s"}`:"")+".");
+  endDay();
+}
+function faint(){
+  const R=S.run;const kept=R.bag.length?[pick(R.bag)]:[];
+  S.inv.push(...kept);sfx.fail();
+  toast(kept.length?`You fainted and crawled home with only a <b>${IT[kept[0]].n}</b>. Materials are safe.`:"You fainted and crawled home empty-handed.");
+  endDay();
+}
+
+/* ================= Crafting ================= */
+function canCraft(r){
+  return Object.entries(r.items).every(([k,n])=>count(S.inv,k)>=n)&&Object.entries(r.mats).every(([k,n])=>(S.mats[k]||0)>=n);
+}
+function craft(i){
+  const r=RECIPES[i];if(!canCraft(r))return;
+  Object.entries(r.items).forEach(([k,n])=>{for(let j=0;j<n;j++)S.inv.splice(S.inv.indexOf(k),1)});
+  Object.entries(r.mats).forEach(([k,n])=>S.mats[k]-=n);
+  const two=Math.random()<.2*sk("bulk");
+  S.inv.push(r.out);if(two)S.inv.push(r.out);S.crafted++;
+  sfx.craft();toast(`Crafted ${two?"<b>two</b> ":""}<b>${IT[r.out].n}</b> (worth about ${val(r.out)}G each).`);
+  addXp(Math.ceil(val(r.out)/20));save();render();
+}
+
+/* ================= Skills ================= */
+function learn(k){
+  const s=SK.find(x=>x.k===k);
+  if(pts()<1||sk(k)>=s.max||(s.req&&brSpent(s.b)<s.req))return;
+  S.skills[k]=sk(k)+1;sfx.lvl();save();render();
+}
+
+/* ================= Shop ================= */
+function openShop(){S.shop={left:custN(),cur:null,combo:0,today:0,log:[],pct:S.shop?.pct||130,served:0};nextCust();save();render()}
+function slog(m){S.shop.log.unshift(m);S.shop.log=S.shop.log.slice(0,6)}
+function nextCust(){
+  const P=S.shop;P.cur=null;
+  while(P.left>0){
+    P.left--;P.served++;
+    let w=Math.random()*CUST.reduce((a,c)=>a+c.w,0),ti=0;for(;ti<CUST.length;ti++){w-=CUST[ti].w;if(w<=0)break}
+    ti=Math.min(ti,CUST.length-1);const C=CUST[ti];
+    const m=S.inv.filter(k=>!C.cats||C.cats.includes(IT[k].c));
+    if(!m.length){slog(`A ${C.n.toLowerCase()} browsed but found nothing they wanted.`);continue}
+    const k=C.n==="Noble"?m.reduce((a,b)=>val(b)>val(a)?b:a):pick(m);
+    P.cur={t:ti,k,max:Math.round(val(k)*rnd(...C.bud)*signB()),pat:patMax(),pmax:patMax(),counter:null,fb:""};
+    return;
+  }
+}
+function sell(price){
+  const P=S.shop,c=P.cur,v=val(c.k);
+  S.inv.splice(S.inv.indexOf(c.k),1);S.gold+=price;P.today+=price;S.earned+=price;S.sold++;
+  const perfect=price/c.max>=.92;P.combo=perfect?P.combo+1:0;
+  const x=Math.ceil(v/8*(1+.25*P.combo));
+  slog(`Sold ${IT[c.k].n} for ${fmt(price)}G${perfect?` · great price! combo ×${P.combo}`:""}`);
+  sfx.coin();if(perfect&&P.combo>1)toast(`Haggle combo <b>×${P.combo}</b> · bonus XP`);
+  addXp(x);nextCust();save();render();
+}
+function offer(){
+  const P=S.shop,c=P.cur,price=Math.max(1,Math.round(val(c.k)*P.pct/100));
+  if(price<=c.max)return sell(price);
+  c.pat--;
+  if(c.pat<=0){slog(`The ${CUST[c.t].n.toLowerCase()} left in a huff.`);P.combo=0;sfx.fail();nextCust();return save(),render()}
+  c.fb=price>c.max*1.3?"“That's way too much!”":price>c.max*1.1?"“Hmm, that's steep.”":"“Just a little lower...”";
+  c.counter=Math.max(1,Math.round(Math.min(price-1,c.max*rnd(.82,.96))));
+  sfx.hurt();save();render();
+}
+function refuse(){const P=S.shop;slog(`You turned away a ${CUST[P.cur.t].n.toLowerCase()}.`);P.combo=0;nextCust();save();render()}
+
+/* ================= Views ================= */
+const app=document.getElementById("app");
+const soundBtn=()=>`<div class="tools"><button class="ghost" data-act="music" aria-pressed="${S.music}">${S.music?"Music on":"Music off"}</button><button class="ghost" data-act="sound" aria-pressed="${S.sound}">${S.sound?"SFX on":"SFX off"}</button></div>`;
+function groupInv(arr){const g={};arr.forEach(k=>g[k]=(g[k]||0)+1);return Object.entries(g).sort((a,b)=>val(b[0])-val(a[0]))}
+const unlockedTier=()=>Math.max(...DUN.filter(d=>lvl()>=d.lvl).map(d=>d.t));
+
+function tabs(){
+  const p=pts(),c=RECIPES.filter(canCraft).length,u=UPG.filter(x=>S.gear[x.k]<10&&S.gold>=upCost(x)).length;
+  const t=(k,n,badge)=>`<button role="tab" aria-selected="${tab===k}" data-act="tab" data-t="${k}">${n}${badge?`<span class="dot">${badge}</span>`:""}</button>`;
+  return `<div class="tabs" role="tablist">${t("town","Town")}${t("work","Workshop",c)}${t("upg","Upgrades",u)}${t("skills","Skills",p)}</div>`;
+}
+function topStats(){
+  const L=lvl(),pct=Math.round((S.xp-xpFor(L))/(xpFor(L+1)-xpFor(L))*100);
+  return `<div class="stats">
+    <div class="stat"><span class="lbl">Gold</span><b class="coin">${fmt(S.gold)}G</b></div>
+    <div class="stat"><span class="lbl">Day</span><b>${S.day}</b></div>
+    <div class="stat"><span class="lbl">Level ${L}</span><b>${fmt(S.xp)} xp</b><div class="bar"><i style="width:${pct}%"></i></div></div>
+  </div>`;
+}
+
+function vTown(){
+  const L=lvl();
+  const chips=CATS.map(c=>{const p=Math.round(S.trend[c]*100);return `<span class="chip ${p>=108?"up":p<=92?"down":""}">${CATN[c]} ${p}%</span>`}).join("");
+  const inv=groupInv(S.inv),eq=groupInv(S.inv.filter(k=>HEAL[k]||IT[k].c==="supply"));
+  return `
+  <section><h2>Market today</h2><div class="chips">${chips}</div>${S.news?`<p class="hint" style="margin-top:8px">${S.news}</p>`:""}</section>
+  <button class="big" data-act="shop" ${S.inv.length?"":"disabled"}>Open the shop<small>${S.inv.length?`Up to ${custN()} customers · ${S.inv.length} item${S.inv.length===1?"":"s"} in stock · uses the day`:"Your shelves are empty. Go delving first."}</small></button>
+  <section><h2>Go delving <small>uses the day</small></h2><div class="list">
+    ${DUN.map((d,i)=>`<button class="row" data-act="delve" data-i="${i}" ${L<d.lvl?"disabled":""}>
+      <span><b>${d.n}</b>${S.bosses[i]?`<span class="crown">Boss beaten</span>`:""}</span><span class="sub">${L<d.lvl?`Unlocks at level ${d.lvl}`:`${d.floors} floors · boss: ${d.boss}`}</span>
+      <span class="right">${L<d.lvl?"Locked":"Enter"}</span></button>`).join("")}
+  </div></section>
+  <section><h2>Supply belt <small>${S.belt.length}/${BELT} · tap to unequip</small></h2>
+    <div class="chips">${S.belt.length?S.belt.map((k,i)=>`<button class="chip usebtn on" data-act="unequip" data-i="${i}">${IT[k].n}</button>`).join(""):`<span class="hint">Empty. Supplies on your belt come with you into every dungeon.</span>`}</div>
+    ${eq.length?`<div class="chips" style="margin-top:8px">${eq.map(([k,n])=>`<button class="chip usebtn" data-act="equip" data-k="${k}" ${S.belt.length>=BELT?"disabled":""}>+ ${IT[k].n}${n>1?` ×${n}`:""}</button>`).join("")}</div>`:`<p class="hint" style="margin-top:8px">Craft bombs, ropes, whetstones, and lockpicks in the Workshop. Potions in stock can go on your belt too.</p>`}
+  </section>
+  <section><h2>Stock <small>${S.inv.length} item${S.inv.length===1?"":"s"}</small></h2>
+    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">Market value</span><span class="right coin">${val(k)}G</span></div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
+  </section>
+  <p class="hint">Sold ${fmt(S.sold)} items for ${fmt(S.earned)}G · crafted ${fmt(S.crafted)}. Progress is saved in this browser.</p>
+  <section><h2>Save code <small>back up or move your progress</small></h2>
+    <div class="btns"><button class="btn alt" data-act="exportSave">Copy save code</button><button class="btn alt" data-act="importOpen">Load a save code</button></div>
+    ${saveBox==="export"?`<label class="lbl" for="exportCode" style="margin-top:10px">Your save code</label><textarea id="exportCode" class="code" readonly>${saveCode}</textarea>`:""}
+    ${saveBox==="import"?`<label class="lbl" for="importCode" style="margin-top:10px">Paste a save code. This replaces your current progress.</label><textarea id="importCode" class="code" placeholder="LS1:..."></textarea>
+      <div class="btns" style="margin-top:8px"><button class="btn" data-act="importDo">Load this save</button><button class="btn alt" data-act="saveClose">Cancel</button></div>`:""}
+    ${saveMsg?`<p class="hint" style="margin-top:8px">${saveMsg}</p>`:""}
+  </section>
+  ${confirmReset?`<div class="confirm">Start over from day 1? This erases everything.<div class="btns"><button class="btn danger" data-act="resetYes">Erase all</button><button class="btn alt" data-act="resetNo">Keep playing</button></div></div>`:`<button class="ghost" data-act="reset" style="align-self:center">Start over</button>`}`;
+}
+
+function vWork(){
+  const mats=Object.entries(S.mats).filter(([,n])=>n>0);
+  const ut=unlockedTier();
+  const recs=RECIPES.map((r,i)=>({r,i})).filter(({r})=>IT[r.out].t<=ut+1).sort((a,b)=>canCraft(b.r)-canCraft(a.r));
+  const part=(name,need,have)=>`<span class="${have>=need?"have":"need"}">${need} ${name}</span> (${have})`;
+  return `
+  <section><h2>Materials <small>crafting doesn't use the day</small></h2>
+    <div class="chips">${mats.length?mats.map(([k,n])=>`<span class="chip mat">${MATS[k]} ×${n}</span>`).join(""):`<span class="hint">Defeat monsters and search walls in dungeons to gather materials.</span>`}</div></section>
+  <section><h2>Recipes</h2><div class="list">
+    ${recs.map(({r,i})=>{const o=IT[r.out];const parts=[...Object.entries(r.items).map(([k,n])=>part(IT[k].n,n,count(S.inv,k))),...Object.entries(r.mats).map(([k,n])=>part(MATS[k],n,S.mats[k]||0))];
+      return `<button class="row" data-act="craft" data-i="${i}" ${canCraft(r)?"":"disabled"}>
+        <span><b>${o.n}</b><span class="${o.craft?"crown":"cat"}">${o.craft?"boss craft":o.c}</span></span>
+        <span class="sub">${parts.join(" + ")}</span>
+        <span class="right coin">${val(r.out)}G</span></button>`}).join("")}
+  </div><p class="hint" style="margin-top:8px">More recipes appear as you unlock deeper dungeons.</p></section>`;
+}
+
+function vUpg(){
+  return `
+  <div class="chips"><span class="chip">Attack ${dmg()}</span><span class="chip">Max HP ${maxHp()}</span><span class="chip">Pack ${cap()}</span><span class="chip">${custN()} customers a day</span></div>
+  <section><h2>Gear &amp; shop upgrades</h2><div class="list">
+    ${UPG.map(u=>{const l=S.gear[u.k],c=upCost(u),max=l>=10;return `<button class="row" data-act="up" data-k="${u.k}" ${max||S.gold<c?"disabled":""}>
+      <span><b>${u.n}</b> <span class="sub">Lv ${l}</span></span><span class="sub">${max?"Fully upgraded":u.d(l)}</span>
+      <span class="right coin">${max?"Max":fmt(c)+"G"}</span></button>`}).join("")}
+  </div></section>`;
+}
+
+function vSkills(){
+  const p=pts();
+  return `
+  <div class="card" style="flex-direction:row;justify-content:space-between;align-items:center">
+    <div><span class="lbl">Skill points</span><b style="font-family:var(--display);font-size:1.6rem;color:var(--coin)">${p}</b></div>
+    <p class="hint" style="max-width:60%;text-align:right">Earn 1 per level and 1 for each boss you beat the first time.</p>
+  </div>
+  ${BR.map(b=>{const bs=brSpent(b.k);return `<section class="branch"><h3>${b.n}<small>${bs} point${bs===1?"":"s"} spent</small></h3><div class="list" style="border-top:0">
+    ${SK.filter(s=>s.b===b.k).map(s=>{const r=sk(s.k),locked=s.req&&bs<s.req,maxed=r>=s.max,can=!locked&&!maxed&&p>0;
+      return `<button class="row" data-act="learn" data-k="${s.k}" ${can?"":"disabled"}>
+        <span><b>${s.n}</b> <span class="pips">${"◆".repeat(r)}${"◇".repeat(s.max-r)}</span></span>
+        <span class="sub">${locked?`Spend ${s.req} points in ${b.n} to unlock`:s.d}</span>
+        <span class="right">${maxed?"Max":locked?"Locked":"Learn"}</span></button>`}).join("")}
+  </div></section>`}).join("")}`;
+}
+
+function evButtons(){
+  const R=S.run,E=R.ev,b=(c,label,cls="",dis=false)=>`<button class="btn ${cls}" data-act="ev" data-c="${c}" ${dis?"disabled":""}>${label}</button>`;
+  switch(E.type){
+    case "chest":return (S.belt.includes("pick")?b("pick","Use lockpick","gold"):"")+b("force","Force it open (55%)")+b("leave","Leave it","alt");
+    case "merchant":return E.offers.map((o,i)=>o.sold?"":b("buy"+i,`${IT[o.k].n} · ${fmt(o.p)}G`,"gold",S.gold<o.p)).join("")+b("leave","Move on","alt");
+    case "shrine":return b("offer","Offer blood (−20% HP, +25% attack)","danger")+b("leave","Walk away","alt");
+    case "sleeper":return b("sneak",`Sneak past (${Math.round(sneakCh()*100)}%)`)+b("ambush","Ambush it (triple damage)","danger");
+    case "fountain":return b("drink","Drink from it")+b("leave","Leave it","alt");
+    case "elite":return b("fight",`Fight the elite ${E.mon}`,"danger")+b("leave","Leave it","alt");
+    case "mini":return b("fight",`Fight the ${MINI[R.d]}`,"danger")+b("leave","Back away","alt");
+  }
+  return b("leave","Move on","alt");
+}
+function usePanel(){
+  const R=S.run;
+  const items=[...S.belt.map((k,i)=>({k,s:"belt",i})),...R.bag.map((k,i)=>({k,s:"bag",i})).filter(o=>HEAL[o.k])];
+  return `<section><h2>Supplies <small>${R.fight?"using one takes your turn":`belt ${S.belt.length}/${BELT}`}</small></h2>
+    <div class="chips">${items.length?items.map(o=>`<button class="chip usebtn" data-act="use" data-s="${o.s}" data-i="${o.i}" ${canUse(o.k)?"":"disabled"}>${IT[o.k].n}${o.s==="bag"?" (pack)":""}</button>`).join("")
+    :`<span class="hint">No supplies. Equip potions, bombs, ropes, whetstones, or lockpicks on your belt in town.</span>`}</div></section>`;
+}
+function vDelve(){
+  const R=S.run,D=DUN[R.d],F=R.fight,hp=Math.max(0,R.hp);
+  const gotMats=Object.entries(R.got).map(([k,n])=>`<span class="chip mat">${MATS[k]} ×${n}</span>`).join("");
+  let actions;
+  if(F){
+    const tag={elite:"Elite · ",mini:"Mini-boss · ",boss:"Boss · "}[F.kind]||"";
+    actions=`<div class="monster ${F.boss||F.kind==="elite"?"boss":""}"><b>${tag}${F.n}</b> <span class="sub">· hits for ~${F.atk}${F.boss?" · heavy blow every few turns":""}</span>
+      <div class="bar hp"><i style="width:${Math.max(0,F.hp)/F.max*100}%"></i></div>
+      ${F.wind?`<p class="warn">Heavy attack incoming! Guard to block most of it.</p>`:""}</div>
+    <div class="btns"><button class="btn" data-act="attack">Attack</button><button class="btn alt" data-act="guard">Guard</button><button class="btn alt" data-act="flee">Flee (${Math.round(fleeCh()*100)}%)</button></div>`;
+  }
+  else if(R.ev)actions=`<div class="btns">${evButtons()}</div>`;
+  else actions=`<div class="btns">
+      ${R.lair?`<button class="btn danger" data-act="boss">Fight the ${D.boss}</button>`:""}
+      ${R.secret?`<button class="btn gold" data-act="secret">Take the hidden stairway</button>`:""}
+      <button class="btn" data-act="explore">Explore</button>
+      ${R.stairs?`<button class="btn gold" data-act="descend">Descend to floor ${R.floor+1}</button>`:""}
+      <button class="btn alt" data-act="leave">Return to town</button></div>`;
+  const hint=R.secretFloor?"A secret floor: exclusive relics can be found here."
+    :R.floor===D.floors&&!R.bossDone?`The ${D.boss} lurks somewhere on this floor.`
+    :R.floor===Math.ceil(D.floors/2)&&!R.miniDone?`The ${MINI[R.d]} prowls this floor.`
+    :"Deeper floors hold better loot and tougher monsters.";
+  const buff=R.atkB>1?` · attack +${Math.round((R.atkB-1)*100)}%`:"";
+  return `
+  <header><h1>${D.n}</h1>${soundBtn()}</header>
+  <div class="stats">
+    <div class="stat"><span class="lbl">Floor</span><b>${R.secretFloor?"Secret":`${R.floor}/${D.floors}`}</b></div>
+    <div class="stat"><span class="lbl">HP</span><b>${hp}/${maxHp()}</b><div class="bar hp"><i style="width:${hp/maxHp()*100}%"></i></div></div>
+    <div class="stat"><span class="lbl">Gold</span><b class="coin">${fmt(S.gold)}G</b></div>
+  </div>
+  ${R.mod?`<div class="modbar"><b>${MODS[R.mod].n}</b> · ${MODS[R.mod].d}</div>`:""}
+  <div class="card">
+    <p class="event" style="margin:0">${R.event}</p>
+    ${actions}
+    <p class="hint">${hint}${buff} If you faint you keep one item; materials are always safe.</p>
+  </div>
+  ${usePanel()}
+  <section><h2>Pack <small>${R.bag.length}/${cap()} · worth ~${fmt(R.bag.reduce((a,k)=>a+val(k),0))}G</small></h2>
+    <div class="bag">${R.bag.length?R.bag.map(k=>`<span class="chip${IT[k].sec?" rare":""}">${IT[k].n} · ${val(k)}G</span>`).join(""):`<span class="hint">Empty so far.</span>`}${gotMats}</div></section>
+  <section><h2>Log</h2><ul class="log">${R.log.map(l=>`<li>${l}</li>`).join("")}</ul></section>`;
+}
+
+function vShop(){
+  const P=S.shop,c=P.cur;
+  let body;
+  if(c){
+    const C=CUST[c.t],v=val(c.k),price=Math.max(1,Math.round(v*P.pct/100)),pm=c.pmax||3;
+    body=`<div class="card">
+      <span class="who">${C.n}</span>
+      <p class="quote">“${C.say(IT[c.k].n)}”</p>
+      <div class="row" style="padding:0;border:0"><span><b>${IT[c.k].n}</b><span class="cat">${IT[c.k].c}</span></span><span class="sub">Market value ${v}G</span><span class="right">Patience ${"●".repeat(Math.max(0,c.pat))}${"○".repeat(Math.max(0,pm-c.pat))}</span></div>
+      <label for="price" class="lbl">Your price</label>
+      <div class="price"><b id="pv">${fmt(price)}G</b><span id="pp" class="sub">${P.pct}% of market</span></div>
+      <input type="range" id="price" min="50" max="200" step="1" value="${P.pct}">
+      ${c.fb?`<p class="fb bad">${c.fb} They offer ${fmt(c.counter)}G.</p>`:""}
+      <div class="btns">
+        <button class="btn" data-act="offer">Offer</button>
+        ${c.counter?`<button class="btn gold" data-act="accept">Accept ${fmt(c.counter)}G</button>`:""}
+        <button class="btn alt" data-act="refuse">Refuse sale</button>
+      </div>
+      <p class="hint">Sell close to the most they'll pay to build a combo for bonus XP.</p>
+    </div>`;
+  }else{
+    body=`<div class="card"><p class="event" style="margin:0">That's everyone for today. You earned <span class="coin">${fmt(P.today)}G</span>.</p>
+      <button class="btn" data-act="close">Close up and end the day</button></div>`;
+  }
+  return `
+  <header><h1>Shop open</h1>${soundBtn()}</header>
+  <div class="stats">
+    <div class="stat"><span class="lbl">Gold</span><b class="coin">${fmt(S.gold)}G</b></div>
+    <div class="stat"><span class="lbl">Today</span><b>+${fmt(P.today)}G</b></div>
+    <div class="stat"><span class="lbl">Combo</span><b>×${P.combo}</b></div>
+  </div>
+  <p class="hint" style="margin:0">Customer ${Math.min(P.served,custN())} of ${custN()} · ${S.inv.length} item${S.inv.length===1?"":"s"} left in stock</p>
+  ${body}
+  <section><h2>Today's sales</h2><ul class="log">${P.log.length?P.log.map(l=>`<li>${l}</li>`).join(""):`<li>No sales yet.</li>`}</ul></section>
+  ${c?`<button class="ghost" data-act="close" style="align-self:center">Close early</button>`:""}`;
+}
+
+function vOver(){
+  const O=S.over;
+  return `<header><h1>Loot Shoppe</h1>${soundBtn()}</header>
+  <div class="card over">
+    <span class="lbl">Weeks survived</span><div class="big-num">${O.weeks}</div>
+    <p style="margin:0">Rent of ${fmt(O.due)}G came due and the landlord changed the locks.</p>
+    <p class="hint">Day ${S.day-1} · level ${lvl()} · ${Object.keys(S.bosses).length} bosses beaten · ${fmt(S.sold)} items sold for ${fmt(S.earned)}G</p>
+    <button class="btn" data-act="restart">Open a new shop</button>
+  </div>`;
+}
+
+function render(){
+  if(S.over)app.innerHTML=vOver();
+  else if(S.run)app.innerHTML=vDelve();
+  else if(S.shop)app.innerHTML=vShop();
+  else app.innerHTML=`<header><h1>Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():vTown());
+  const r=document.getElementById("price");
+  if(r)r.addEventListener("input",()=>{S.shop.pct=+r.value;const p=Math.max(1,Math.round(val(S.shop.cur.k)*S.shop.pct/100));
+    document.getElementById("pv").textContent=fmt(p)+"G";document.getElementById("pp").textContent=S.shop.pct+"% of market"});
+  musicUpdate();
+}
+
+app.addEventListener("click",e=>{
+  const b=e.target.closest("[data-act]");if(!b||b.disabled)return;
+  const a=b.dataset.act;
+  if(S.sound||S.music||a==="music")audioCtx();
+  ({
+    sound:()=>{S.sound=!S.sound;save();render();sfx.coin()},
+    music:()=>{S.music=!S.music;save();render()},
+    tab:()=>{tab=b.dataset.t;confirmReset=false;render();window.scrollTo(0,0)},
+    shop:openShop,
+    delve:()=>startDelve(+b.dataset.i),
+    up:()=>{const u=UPG.find(x=>x.k===b.dataset.k),c=upCost(u);if(S.gold>=c&&S.gear[u.k]<10){S.gold-=c;S.gear[u.k]++;sfx.loot();save();render()}},
+    craft:()=>craft(+b.dataset.i),
+    ev:()=>evChoice(b.dataset.c), use:()=>useItem(b.dataset.s,+b.dataset.i),
+    equip:()=>equip(b.dataset.k), unequip:()=>unequip(+b.dataset.i), secret:secretStairs,
+    learn:()=>learn(b.dataset.k),
+    explore, attack, guard, flee, descend, boss:challengeBoss, leave:leaveDungeon,
+    offer, accept:()=>sell(S.shop.cur.counter), refuse, close:endDay,
+    exportSave:()=>{
+      save();saveCode="LS1:"+btoa(unescape(encodeURIComponent(JSON.stringify(S))));saveBox="export";
+      const done=ok=>{saveMsg=ok?"Copied to your clipboard. Paste it somewhere safe, like a note.":"Select the code below and copy it.";render();if(!ok){const t=document.getElementById("exportCode");t&&t.select()}};
+      try{navigator.clipboard.writeText(saveCode).then(()=>done(true),()=>done(false))}catch(e){done(false)}
+    },
+    importOpen:()=>{saveBox="import";saveMsg="";render();document.getElementById("importCode")?.focus()},
+    saveClose:()=>{saveBox=null;saveMsg="";render()},
+    importDo:()=>{
+      const raw=(document.getElementById("importCode")?.value||"").trim();
+      try{
+        if(!raw.startsWith("LS1:"))throw 0;
+        const o=JSON.parse(decodeURIComponent(escape(atob(raw.slice(4)))));
+        if(!o||typeof o.day!=="number"||!Array.isArray(o.inv))throw 0;
+        const snd=S.sound,mus=S.music;S=Object.assign(fresh(),o);S.sound=snd;S.music=mus;migrate();save();
+        saveBox=null;saveMsg=`Save loaded: day ${S.day}, level ${lvl()}, ${fmt(S.gold)}G.`;sfx.lvl();render();
+      }catch(e){saveMsg="That isn't a valid Loot Shoppe save code. Make sure you copied all of it, starting with LS1:.";render()}
+    },
+    reset:()=>{confirmReset=true;render()}, resetNo:()=>{confirmReset=false;render()},
+    resetYes:()=>{const s=S.sound;S=fresh();S.sound=s;confirmReset=false;save();render()},
+    restart:()=>{const s=S.sound;S=fresh();S.sound=s;save();render()}
+  })[a]?.();
+});
+document.addEventListener("pointerdown",()=>{if(S.music&&!ac){audioCtx();musicUpdate()}},{once:true});
+document.addEventListener("visibilitychange",()=>{
+  if(!ac)return;
+  if(document.hidden)ac.suspend();else{ac.resume();M.next=ac.currentTime+.08}
+});
+render();
+</script>
+
+<script>
+if("serviceWorker" in navigator && (location.protocol==="https:"||location.hostname==="localhost")){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+</script>
+</body>
+</html>
