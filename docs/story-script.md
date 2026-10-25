@@ -1424,7 +1424,7 @@ Regulars whose style you already know are shown as known, whatever your skills.
 
 **Optional hires:** Marlo, Old Greta, and Sable can each be declined. Anyone not on staff stays in town (on the Tavern hire board, hireable later) and still appears in every story scene, walking in from the Tavern or the street. Only idle lines and shop sales need them on staff (one exception: Greta's Voss idle line plays at the counter either way). Pip is the one required hire, since he's part of the Chapter 2 tutorial.
 
-**Several staff at once (interpretation):** the script has more than one person "on staff", so hired staff work as a team. On each delve day they share that day's customers, each selling up to their own daily limit, and each draws their own wage.
+**Several staff at once (interpretation):** the script has more than one person "on staff", so hired staff work as a team. On each delve day they share that day's customers, each selling up to their own daily limit. One shopkeeper costs their normal wage; each shopkeeper after the first multiplies the entire team's payroll by another 1.5× (1× / 1.5× / 2.25× / 3.375× for one through four staff).
 
 **New content needed in-game:** Celestial Executor (mini-boss) and Voss (final boss, three phases) in the Hollow Heart, entered through the shop cellar.
 
