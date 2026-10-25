@@ -22,6 +22,8 @@ Oct 24, 2026 · @Boss
 
 **Delve buffs** (like the Whetstone's or the shrine's attack bonus) show under the HP bar at the top of the delve screen.
 
+**Enemy HP:** in a fight, the enemy's HP shows as numbers under its health bar ("HP 7 / 12").
+
 # Chapter 1: Dust and Doorbells
 
 **Chapter goal:** teach the core loop (delve → sell → haggle → craft) and introduce Wren, Maribel, and the Celestials.
@@ -1446,7 +1448,7 @@ Regulars whose style you already know are shown as known, whatever your skills.
 
 **Optional hires:** Marlo, Old Greta, and Sable can each be declined. Anyone not on staff stays in town (on the Tavern hire board, hireable later) and still appears in every story scene, walking in from the Tavern or the street. Only idle lines and shop sales need them on staff (one exception: Greta's Voss idle line plays at the counter either way). Pip is the one required hire, since he's part of the Chapter 2 tutorial.
 
-**Several staff at once (interpretation):** the script has more than one person "on staff", so hired staff work as a team. On each delve day they share that day's customers, each selling up to their own daily limit. One shopkeeper costs their normal wage; each shopkeeper after the first multiplies the entire team's payroll by another 1.5× (1× / 1.5× / 2.25× / 3.375× for one through four staff).
+**Several staff at once (interpretation):** the script has more than one person "on staff", so hired staff work as a team. On each delve day they share that day's customers, each selling up to their own daily limit. Each sale goes to a staff member picked at random from those still under their limit, weighted toward later hires and higher levels: Pip 1, Marlo 2, Old Greta 3, Sable 4, plus 1 for each level above 1 (so at equal levels they sell about 10/20/30/40% of items, and a level 5 Pip outsells a level 1 Sable). Better sellers also talk customers into more: a customer's budget stretches by 6% per hire after Pip and 3% per staff level, so the pricier staff don't lose most of their customers. One shopkeeper costs their normal wage; each shopkeeper after the first multiplies the entire team's payroll by another 1.5× (1× / 1.5× / 2.25× / 3.375× for one through four staff).
 
 **New content needed in-game:** Celestial Executor (mini-boss) and Voss (final boss, three phases) in the Hollow Heart, entered through the shop cellar.
 

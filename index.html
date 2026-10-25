@@ -117,6 +117,7 @@ button.row[aria-disabled="true"]>*{opacity:.5}
 .ii{position:relative;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:6px;border:1px solid currentColor;border-radius:50%;font:700 .68rem/1 var(--body);font-style:normal;color:var(--muted);vertical-align:middle;cursor:pointer;flex:none}
 .ii::after{content:"";position:absolute;inset:-10px}
 .ii:hover,.ii:focus-visible{color:var(--coin)}
+.mhp{display:block;margin-top:4px;font-size:.8rem;font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums}
 .buff{display:block;margin-top:6px;font-size:.78rem;font-weight:700;color:var(--coin)}
 .chend{display:flex;flex-direction:column;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 .chend .hint{margin:0}
@@ -1490,6 +1491,12 @@ let confirmFire=null;
 function fire(k){const s=ST(k);S.crew=S.crew.filter(x=>x!==k);confirmFire=null;toast(`${s?s.n:"Your shopkeeper"} heads back to the Tavern hire board.`);save();render()}
 const nameList=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
 /* Runs when you head into a dungeon: every shopkeeper on staff shares the day's customers. Settled now, reported on return. */
+/* Who makes a sale: later hires start with more pull (Pip 1, Marlo 2, Greta 3, Sable 4, so 10/20/30/40% at equal levels),
+   and each level above 1 adds 1. A level 5 Pip (5) outsells a level 1 Sable (4). */
+const staffWeight=k=>STAFF.findIndex(s=>s.k===k)+1+(staffLvl(k)-1);
+/* Better sellers talk customers into more: their higher prices put fewer people off. */
+const staffSway=k=>1+.06*STAFF.findIndex(s=>s.k===k)+.03*(staffLvl(k)-1);
+function pickStaff(list){let r=Math.random()*list.reduce((a,st)=>a+staffWeight(st.k),0);for(const st of list){r-=staffWeight(st.k);if(r<0)return st}return list[list.length-1]}
 function staffShift(){
   const crew=S.crew.map(ST).filter(Boolean);if(!crew.length)return null;
   const who=nameList(crew.map(c=>c.n)),wage=staffPayroll(crew.map(c=>c.k));
@@ -1499,28 +1506,31 @@ function staffShift(){
   const evSt=pick(crew);
   let ev=Math.random()<.35?pick(["great","swindle","trade","tip","raise",...(THIEF_TARGETS.includes(evSt.k)?["thief"]:[])]):null;
   const take=key=>S.inv.splice(S.inv.indexOf(key),1);
-  for(const st of crew){
-    const k=st.k,rec=staffRec(k),L0=staffLvl(k),rate=staffRate(k),target=staffSells(k);let sold=0;
-    while(attempts>0&&sold<target){
-      attempts--;
-      const C=pickCust(),m=forSale().filter(x=>!C.cats||C.cats.includes(IT[x].c));
-      if(!m.length)continue;
-      const key=pick(m),v=val(key);let price=Math.max(1,Math.round(v*rate*rnd(.95,1.05)));
-      const max=Math.round(v*rnd(...C.bud)*signB());
-      if(price>max){lines.push(`A ${C.n.toLowerCase()} balked at ${st.n}'s price for the ${IT[key].n}.`);continue}
-      const mine=st===evSt;
-      if(mine&&ev==="trade"){
-        const pool=[...new Set(DUN.filter((d,i)=>dunOpen(i)).flatMap(d=>d.mats))],mt=pick(pool);
-        take(key);addMat(mt,2);sold++;ev=null;lines.push(`A traveler traded ${st.n} 2 ${MATS[mt]} for ${an(IT[key].n)}.`);continue;
-      }
-      let note="";
-      if(mine&&ev==="great"){price=Math.round(price*1.4);note=` ${st.n} charmed them into paying 40% extra!`;ev=null}
-      else if(mine&&ev==="swindle"){price=Math.max(1,Math.round(price*.5));note=` A fast talker haggled ${st.n} down to half price.`;ev=null}
-      take(key);gold+=price;sold++;lines.push(`${st.n} sold ${an(IT[key].n)} for ${fmt(price)}G.${note}`);
-      if(!forSale().length)break;
+  // Each sale goes to a staff member picked at random, weighted toward later, more skilled hires and higher levels,
+  // from those who haven't reached their daily limit.
+  const sold={},L0={};for(const st of crew){sold[st.k]=0;L0[st.k]=staffLvl(st.k)}
+  const free=()=>crew.filter(st=>sold[st.k]<staffSells(st.k));
+  while(attempts>0&&forSale().length&&free().length){
+    attempts--;
+    const st=pickStaff(free()),rate=staffRate(st.k);
+    const C=pickCust(),m=forSale().filter(x=>!C.cats||C.cats.includes(IT[x].c));
+    if(!m.length)continue;
+    const key=pick(m),v=val(key);let price=Math.max(1,Math.round(v*rate*rnd(.95,1.05)));
+    const max=Math.round(v*rnd(...C.bud)*signB()*staffSway(st.k));
+    if(price>max){lines.push(`A ${C.n.toLowerCase()} balked at ${st.n}'s price for the ${IT[key].n}.`);continue}
+    const mine=st===evSt;
+    if(mine&&ev==="trade"){
+      const pool=[...new Set(DUN.filter((d,i)=>dunOpen(i)).flatMap(d=>d.mats))],mt=pick(pool);
+      take(key);addMat(mt,2);sold[st.k]++;ev=null;lines.push(`A traveler traded ${st.n} 2 ${MATS[mt]} for ${an(IT[key].n)}.`);continue;
     }
-    rec.sold+=sold;S.sold+=sold;
-    const L1=staffLvl(k);if(L1>L0)lines.push(`${st.n} reached level ${L1}! Better prices from now on.`);
+    let note="";
+    if(mine&&ev==="great"){price=Math.round(price*1.4);note=` ${st.n} charmed them into paying 40% extra!`;ev=null}
+    else if(mine&&ev==="swindle"){price=Math.max(1,Math.round(price*.5));note=` A fast talker haggled ${st.n} down to half price.`;ev=null}
+    take(key);gold+=price;sold[st.k]++;lines.push(`${st.n} sold ${an(IT[key].n)} for ${fmt(price)}G.${note}`);
+  }
+  for(const st of crew){
+    const rec=staffRec(st.k);rec.sold+=sold[st.k];S.sold+=sold[st.k];
+    const L1=staffLvl(st.k);if(L1>L0[st.k])lines.push(`${st.n} reached level ${L1}! Better prices from now on.`);
   }
   if(ev==="thief"){const p=forSale();if(p.length){
     const key=pick(p);lines.push(`While ${evSt.n} was distracted, a thief made off with ${an(IT[key].n)}!`);
@@ -2277,7 +2287,7 @@ function vDelve(){
   if(F){
     const tag={elite:"Elite · ",mini:"Mini-boss · ",boss:"Boss · ",voss:`Phase ${F.phase} · ${VOSS_PHASE[F.phase]} · `}[F.kind]||"";
     actions=`<div class="monster ${F.boss||F.kind==="elite"?"boss":""}"><div class="monsterhead">${portrait(F.n,"foe")}<div class="monsterinfo"><b>${tag}${F.n}</b> <span class="sub">· <span class="mdmg">hits for ~${F.atk}</span>${F.boss?" · heavy blow every few turns":""}</span>
-      <div class="bar hp"><i style="width:${Math.max(0,F.hp)/F.max*100}%"></i></div></div></div>
+      <div class="bar hp"><i style="width:${Math.max(0,F.hp)/F.max*100}%"></i></div><span class="mhp">HP ${fmt(Math.max(0,F.hp))} / ${fmt(F.max)}</span></div></div>
       ${F.wind?`<p class="warn">Heavy attack incoming! Guard to block most of it.</p>`:""}
       ${F.star?`<p class="warn">Starfire is gathering overhead. Guard!</p>`:""}
       ${F.kind==="voss"&&F.phase===2?`<p class="hint" style="margin:6px 0 0">He heals from the heart each turn, less every time as Sable pulls the thread.</p>`:""}
