@@ -181,6 +181,16 @@ Opening entry:
 
 Market values: 45G, 90G, 150G, 260G and 450G. A bomb's damage shows on its supply button in a fight and in its item info. Blasting Powder resets with the other gear upgrades at a Grand Reopening.
 
+**Whetstones and Master Grindstone (defined):** there are five kinds of whetstone. Each gives a fixed attack bonus for the rest of the delve and uses the player's turn in a fight. The player can carry as many as they like, but **only one whetstone of any kind works per delve**. Once one is used, the rest show "used this delve" until the next delve. **Master Grindstone** is an upgrade in the Upgrades tab, available once the Smithy is repaired. It has 4 ranks starting at 180G, with normal upgrade cost scaling. Each rank unlocks the next, costlier whetstone recipe, and the Workshop shows the next locked one as a teaser. Bosses, mini-bosses and dungeon peddlers only ever give plain Whetstones. Master Grindstone resets with the other gear upgrades at a Grand Reopening.
+
+| Whetstone | Attack bonus | Recipe | Market value |
+| --- | --- | --- | --- |
+| Whetstone (from the start) | +30% | 1 Scrap Iron + 1 Ore Chunk | 40G |
+| Fine Whetstone (rank 1) | +45% | 2 Scrap Iron + 2 Ore Chunk | 80G |
+| Steel Hone (rank 2) | +60% | 1 Scrap Iron + 2 Ore Chunk + 1 Ember Core | 140G |
+| Ember Hone (rank 3) | +80% | 2 Ore Chunk + 2 Ember Core | 240G |
+| Starsteel Hone (rank 4) | +100% | 2 Ore Chunk + 2 Ember Core + 1 Stardust | 420G |
+
 ## Scene 1.6: Upgrades
 
 **Trigger:** first time opening the Upgrades tab.
