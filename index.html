@@ -152,6 +152,8 @@ body.ovopen{overflow:hidden}
 .entries{display:flex;flex-direction:column;gap:10px}
 .entry{margin:0;font-family:Georgia,serif;font-style:italic;line-height:1.5;border-left:2px solid var(--line);padding-left:10px}
 .entry.done{border-color:var(--coin)}.entry.open{border-color:var(--copper)}.entry.note{border-color:var(--arcane)}
+.loanpay{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}
+.loanpay input{width:90px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px;font:inherit}
 .confirm{border:1px solid var(--bad);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:10px;font-size:.88rem;text-align:center}
 .over{text-align:center;gap:14px}
 .over .big-num{font-family:var(--display);font-size:2.4rem;color:var(--coin)}
@@ -894,6 +896,79 @@ function journalExtras2(){
   if(built("festival"))h+=`<section><h2>Shop colors <small>Festival Grounds</small></h2><div class="list">${THEMES.map(t=>`<button class="row" data-act="theme" data-k="${t.k}" ${(S.theme||"")===t.k?"disabled":""}><span><b>${t.n}</b></span><span class="sub">${t.d}</span><span class="right">${(S.theme||"")===t.k?"In use":"Use"}</span></button>`).join("")}</div></section>`;
   return h;
 }
+/* ---------- Grand Reopening, startup loan, Reputation ---------- */
+const loanLender=()=>!seen("4.4")?"Celestial Consortium":S.story.ended?"Hollowmere Mutual, in the old Consortium office":"Hollowmere Mutual, at a Tavern table";
+function askReopen(){
+  if(S.story.loan>0){tipNow("Wren","Clear the last loan first. One debt at a time.");return render()}
+  if(!built("well")||S.run||S.shop)return;
+  queue("reopenAsk");playNext();
+}
+function reopenLine(){
+  const st=S.story;
+  if(!st.ended&&st.ch===4)return "The Celestials are watching. Let them watch us start over and not flinch.";
+  if(!st.ended&&st.ch===5)return "The Spire's still open. Someone up there is still waiting.";
+  if(!st.ended&&st.ch===6)return "No time for a slow start. Voss is under our feet.";
+  return "You've gone soft behind that counter. Grab a stick. The cellar won't clear itself.";
+}
+SCN.reopenAsk={repeat:true,title:"Grand Reopening",cards:[
+ {s:[["Wren","Close up tonight? Sell it all, borrow what it takes, start fresh. Town stays. Staff stays. You'll be rusty, but folk will remember the name."]],c:[["Close up shop","close"],["Not yet","no"]]}],
+ done:ch=>{if(ch==="close")doReopen()}};
+SCN.reopen={repeat:true,title:"The reopening",cards:[
+ {s:["The shelves go bare. The till goes empty. You sweep the floor yourself, then sit on the step until the lamp is the only light on the street."],b:"Continue"},
+ ()=>({s:[["Wren","Feels strange, doesn't it? Empty shelves, full town."],["Wren",reopenLine()]],b:"Open the doors"}),
+ ()=>seen("4.4")
+   ?{s:[["Marlo",S.story.ended?"Hollowmere Mutual, open for business. Low interest, no stars, and the town always gets paid back.":"Hollowmere Mutual. The office is a Tavern table for now. No stars, no clauses."]],b:"Sign"}
+   :{s:["A Celestial courier is waiting at dawn with fresh papers. A small gold star is pressed into the seal.",["Voss","A grand reopening! The Consortium is delighted to extend further credit. We do so love a long relationship.","in a note"]],b:"Sign"}]};
+SCN.reopenEnd={title:"Reopening",cards:[
+ {s:[["Maribel","A grand reopening! First lesson, all over again: a customer's mood can lie, but their feet never do.","from her chair by the counter"],["Wren","That's _my_ line."],["Maribel","You stole it from me in the first place."]],b:"Continue"}]};
+function doReopen(){
+  const st=S.story;if(st.loan>0||!built("well"))return;
+  const g=starsNow(),L=S.legacy;L.stars+=g;L.total+=g;L.count++;
+  const keep={legacy:L,sound:S.sound,music:S.music,sold:S.sold,earned:S.earned,crafted:S.crafted,story:st,
+    crew:S.crew,staffs:S.staffs,keep:S.keep,theme:S.theme,day:S.day+1,trend:S.trend};
+  S=Object.assign(fresh(),keep);
+  S.inv=[];S.lifeStart=S.earned;S.gold=STARTUP_LOAN+250*pk("fortune");
+  st.loan=STARTUP_LOAN;st.loanFrom=loanLender();st.reopens++;
+  migrate();
+  jrnl(`Grand Reopening No. ${st.reopens}. The shelves are bare again, and the doors are open. Keep the lamp lit.`,"note");
+  tab="journal";queue("reopen");if(st.ended)queue("reopenEnd");
+  toast(`Grand Reopening! <b>+${g} Reputation star${g===1?"":"s"}</b>`);
+}
+function payLoan(all){
+  const st=S.story;
+  const want=all?st.loan:+(document.getElementById("loanAmt")?.value||0);
+  const amt=Math.min(Math.floor(want),st.loan,S.gold);
+  if(!(amt>0))return;
+  S.gold-=amt;st.loan-=amt;sfx.coin();
+  if(st.loan<=0){st.loan=0;jrnl(`Startup loan repaid in full to ${st.loanFrom||loanLender()}.`,"note");toast("Startup loan repaid. <b>One debt at a time</b> is down to none.")}
+  else toast(`Paid ${fmt(amt)}G. ${fmt(st.loan)}G left on the startup loan.`);
+  save();render();
+}
+function loanRow(){
+  const st=S.story;if(!(st.loan>0))return "";
+  return `<div class="row"><span><b>Startup loan: ${fmt(st.loan)}G</b> <span class="sub">${st.loanFrom||loanLender()}</span></span>
+    <span class="sub loanpay"><label for="loanAmt" class="sub">Amount</label><input id="loanAmt" type="number" inputmode="numeric" min="1" max="${Math.min(st.loan,S.gold)}" value="${Math.min(st.loan,S.gold)}">
+      <button class="btn alt sm" data-act="payLoan" ${S.gold>0?"":"disabled"}>Pay</button></span>
+    <span class="right"><button class="btn gold sm" data-act="payLoanAll" ${S.gold>=st.loan?"":"disabled"}>Pay all</button></span></div>`;
+}
+function reopenSection(){
+  if(!built("well"))return "";
+  const st=S.story,L=S.legacy,g=starsNow(),nextGold=Math.pow(starsFromGold()+1,2)*1500,loan=st.loan>0;
+  return `<section><h2>Grand Reopening <small>${st.reopens?`${st.reopens} so far`:"available"}</small></h2>
+    <div class="card">
+      <div class="pline"><div><span class="lbl">Reputation</span><b class="starnum">★ ${fmt(L.stars)}</b></div>
+        <button class="btn gold" data-act="reopen" ${loan||S.run||S.shop?"disabled":""}>Reopen${g?` +${g}★`:""}</button></div>
+      ${loan?`<p class="hint"><b class="who">Wren</b> “Clear the last loan first. One debt at a time.”</p>`:""}
+      <p class="hint">Resets gold, stock, gear upgrades, level, skills, materials and supplies, and takes a new ${fmt(STARTUP_LOAN)}G startup loan. Keeps the Journal, the town, your staff, Maribel's debt payments and story items.</p>
+      <div class="chips"><span class="chip">${Object.keys(S.bosses).length} boss star${Object.keys(S.bosses).length===1?"":"s"}</span><span class="chip">${starsFromGold()} sales star${starsFromGold()===1?"":"s"}</span><span class="chip">Next sales star at ${fmt(nextGold)}G sold (${fmt(lifeEarned())}G so far)</span></div>
+    </div>
+    <div class="list" style="margin-top:10px">${PERKS.map(p=>{const r=pk(p.k),max=r>=p.max,c=perkCost(p);return `<button class="row" data-act="perk" data-k="${p.k}" ${max||L.stars<c?"disabled":""}>
+      <span><b>${p.n}</b> <span class="pips">${"◆".repeat(r)}${"◇".repeat(p.max-r)}</span></span>
+      <span class="sub">${max?"Fully upgraded":p.d(r)}</span><span class="right coin">${max?"Max":`${c}★`}</span></button>`}).join("")}</div>
+    <p class="hint" style="margin-top:8px">Reputation perks are permanent. Earn stars for each boss beaten and for sales made since your last reopening.</p>
+  </section>`;
+}
+
 /*STORYDATA*/
 
 /* ================= State ================= */
@@ -909,6 +984,7 @@ function migrate(){
   S.staffs=S.staffs||{};S.keep=S.keep||{};S.report=S.report||null;
   migrateStory();
   S.legacy=S.legacy||{stars:0,perks:{},count:0,total:0};S.legacy.perks=S.legacy.perks||{};S.lifeStart=S.lifeStart||0;
+  for(const [k,base] of [["conn",3],["loyal",3]]){const r=S.legacy.perks[k]||0;if(r){for(let i=1;i<=r;i++)S.legacy.stars+=base*i;delete S.legacy.perks[k]}}
   delete S.skills?.showman;
   S.over=null;S.belt=S.belt||[];S.mats=S.mats||{};S.skills=S.skills||{};S.bosses=S.bosses||{};
   if(S.run){const R=S.run;R.got=R.got||{};R.atkB=R.atkB||1;R.ev=R.ev||null;if(R.fight){R.fight.turn=R.fight.turn||0;if(!R.fight.kind)R.fight.kind=R.fight.boss?"boss":"mob"}}
@@ -1465,39 +1541,26 @@ function craft(i){
   addXp(xp);SE("craft",{k:r.out});save();render();
 }
 
-/* ================= Legacy (prestige) ================= */
+/* ================= Reputation (earned at each Grand Reopening) ================= */
 const PERKS=[
- {k:"fortune",n:"Family Fortune",max:5,base:1,d:r=>`Start each new shop with ${150+250*r}G → ${150+250*(r+1)}G`},
+ {k:"fortune",n:"Family Fortune",max:5,base:1,d:r=>`Reopen with +${250*r}G → +${250*(r+1)}G on top of the startup loan`},
  {k:"xp",n:"Seasoned",max:5,base:1,d:r=>`+${10*r}% → +${10*(r+1)}% XP from everything`},
  {k:"heir",n:"Heirloom Gear",max:5,base:2,d:r=>`+${10*r}% → +${10*(r+1)}% attack and max HP`},
  {k:"name",n:"Renowned Name",max:5,base:2,d:r=>`+${5*r}% → +${5*(r+1)}% customer budgets`},
  {k:"pack",n:"Packrat",max:3,base:2,d:r=>`+${2*r} → +${2*(r+1)} pack space`},
  {k:"luck",n:"Lucky Finds",max:3,base:2,d:r=>`Rarer loot in every dungeon (rank ${r} → ${r+1})`},
- {k:"loyal",n:"Loyal Staff",max:1,base:3,d:()=>"Your shopkeeper and their experience stay when you retire"},
  {k:"head",n:"Head Start",max:3,base:3,d:r=>`+${2*r} → +${2*(r+1)} bonus skill points`}
 ];
 const pk=k=>S.legacy?.perks?.[k]||0;
 const xpm=n=>Math.round(n*(1+.1*pk("xp")));
-const RETIRE_LVL=5;
 const lifeEarned=()=>Math.max(0,S.earned-(S.lifeStart||0));
 const starsFromGold=()=>Math.floor(Math.sqrt(lifeEarned()/1500));
 const starsNow=()=>starsFromGold()+Object.keys(S.bosses).length;
 const perkCost=p=>p.base*(pk(p.k)+1);
-let confirmRetire=false;
 function buyPerk(k){
   const p=PERKS.find(x=>x.k===k),L=S.legacy;if(!p||pk(k)>=p.max||L.stars<perkCost(p))return;
   L.stars-=perkCost(p);L.perks[k]=pk(k)+1;sfx.lvl();save();render();
 }
-function retire(){
-  const g=starsNow();if(g<1||lvl()<RETIRE_LVL)return;
-  const L=S.legacy;L.stars+=g;L.total+=g;L.count++;
-  const keep={legacy:L,sound:S.sound,music:S.music,sold:S.sold,earned:S.earned,crafted:S.crafted,story:S.story,crew:S.crew,staffs:S.staffs,keep:S.keep};
-  S=Object.assign(fresh(),keep);S.lifeStart=S.earned;S.gold=150+250*pk("fortune");migrate();
-  confirmRetire=false;tab="legacy";sfx.win();
-  toast(`A new shop opens its doors. <b>+${g} Legacy star${g===1?"":"s"}</b>`);
-  save();render();
-}
-
 /* ================= Skills ================= */
 function learn(k){
   const s=SK.find(x=>x.k===k);
@@ -1564,13 +1627,12 @@ function groupInv(arr){const g={};arr.forEach(k=>g[k]=(g[k]||0)+1);return Object
 const unlockedTier=()=>Math.max(...DUN.filter((d,i)=>dunOpen(i)).map(d=>d.t));
 
 function tabs(){
-  const p=pts(),c=RECIPES.filter(canCraft).length,u=UPG.filter(x=>S.gear[x.k]<10&&S.gold>=upCost(x)).length,lg=PERKS.filter(x=>pk(x.k)<x.max&&S.legacy.stars>=perkCost(x)).length;
+  const p=pts(),c=RECIPES.filter(canCraft).length,u=UPG.filter(x=>S.gear[x.k]<10&&S.gold>=upCost(x)).length;
   const t=(k,n,badge)=>`<button role="tab" aria-selected="${tab===k}" data-act="tab" data-t="${k}">${n}${badge?`<span class="dot">${badge}</span>`:""}</button>`;
   const jn=chGoals(S.story.ch).filter(g=>!goalDone(g.id)&&(!g.show||g.show())).length;
   const list=[t("town","Town"),t("work","Workshop",c),t("upg","Upgrades",u)];
   if(fl("skills"))list.push(t("skills","Skills",p));
   if(seen("1.1"))list.push(t("journal","Journal"));
-  list.push(t("legacy","Legacy",lg));
   return `<div class="tabs" role="tablist" style="grid-template-columns:repeat(${list.length},minmax(0,1fr))">${list.join("")}</div>`;
 }
 function topStats(){
@@ -1674,31 +1736,6 @@ function vUpg(){
       <span><b>${u.n}</b> <span class="sub">Lv ${l}</span></span><span class="sub">${max?"Fully upgraded":capped?"Needs the Smithy for higher levels":u.d(l)}</span>
       <span class="right coin">${max?"Max":capped?"Locked":fmt(c)+"G"}</span></button>`}).join("")}
   </div></section>`;
-}
-
-function vLegacy(){
-  const L=S.legacy,g=starsNow(),ok=lvl()>=RETIRE_LVL&&g>=1;
-  const nextGold=Math.pow(starsFromGold()+1,2)*1500;
-  const why=lvl()<RETIRE_LVL?`Reach level ${RETIRE_LVL} to retire (you're level ${lvl()}).`:g<1?"Earn more gold or beat a boss to earn your first star.":`Retiring now earns ${g} star${g===1?"":"s"}.`;
-  return `
-  <div class="card">
-    <div class="pline">
-      <div><span class="lbl">Legacy stars</span><b class="starnum">\u2605 ${fmt(L.stars)}</b></div>
-      <button class="btn gold" data-act="retireAsk" ${ok?"":"disabled"}>Retire${ok?` +${g}\u2605`:""}</button>
-    </div>
-    <p class="hint">${why}</p>
-    <div class="chips"><span class="chip">${Object.keys(S.bosses).length} boss star${Object.keys(S.bosses).length===1?"":"s"}</span><span class="chip">${starsFromGold()} gold star${starsFromGold()===1?"":"s"}</span><span class="chip">Next gold star at ${fmt(nextGold)}G sold (${fmt(lifeEarned())}G so far)</span></div>
-    ${confirmRetire?`<div class="confirm">Retire and open a new shop? Your day, gold, level, stock, materials, upgrades, skills, and bosses reset. You keep Legacy stars and perks.
-      <div class="btns"><button class="btn gold" data-act="retireDo">Retire +${g}\u2605</button><button class="btn alt" data-act="retireNo">Not yet</button></div></div>`:""}
-  </div>
-  <p class="hint" style="margin:0">Retiring starts you over from day 1. Each boss you beat this life is worth a star, and so is selling enough goods. Spend stars on perks that carry into every future shop.</p>
-  <section><h2>Legacy perks <small>permanent</small></h2><div class="list">
-    ${PERKS.map(p=>{const r=pk(p.k),max=r>=p.max,c=perkCost(p);return `<button class="row" data-act="perk" data-k="${p.k}" ${max||L.stars<c?"disabled":""}>
-      <span><b>${p.n}</b> <span class="pips">${"\u25c6".repeat(r)}${"\u25c7".repeat(p.max-r)}</span></span>
-      <span class="sub">${max?"Fully upgraded":p.d(r)}</span>
-      <span class="right coin">${max?"Max":`${c}\u2605`}</span></button>`}).join("")}
-  </div></section>
-  ${L.count?`<p class="hint">Retired ${L.count} time${L.count===1?"":"s"} · ${L.total} stars earned in all.</p>`:""}`;
 }
 
 function vSkills(){
@@ -1850,8 +1887,8 @@ function render(){
   else if(S.run)app.innerHTML=vDelve();
   else if(S.shop)app.innerHTML=vShop();
   else{
-    if(tab==="skills"&&!fl("skills"))tab="town";
-    app.innerHTML=`<header><h1>Dungeon Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():tab==="legacy"?vLegacy():tab==="journal"?vJournal():vTown());
+    if((tab==="skills"&&!fl("skills"))||tab==="legacy")tab=tab==="legacy"?"journal":"town";
+    app.innerHTML=`<header><h1>Dungeon Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():tab==="journal"?vJournal():vTown());
   }
   const hd=app.querySelector("header");if(hd)hd.insertAdjacentHTML("afterend",tipBar());
   const r=document.getElementById("price");
@@ -1884,7 +1921,7 @@ app.addEventListener("click",e=>{
     raiseYes:()=>{const k=S.report.raise,rec=staffRec(k);rec.wageB+=.2;rec.rateB+=.05;toast(`${ST(k).n} beams. <b>+5% prices</b>, wage now ${fmt(staffWage(k))}G.`);sfx.coin();S.report=null;save();render()},
     raiseNo:()=>{toast(`${ST(S.report.raise).n} sighs and gets back to work.`);S.report=null;save();render()},
     perk:()=>buyPerk(b.dataset.k),
-    retireAsk:()=>{confirmRetire=true;render()}, retireNo:()=>{confirmRetire=false;render()}, retireDo:retire,
+    reopen:askReopen, payLoan:()=>payLoan(false), payLoanAll:()=>payLoan(true),
     quick:()=>{const k=b.dataset.k;if(!sk("quick")||!S.inv.includes(k))return;const p=quickPrice(k);
       S.inv.splice(S.inv.indexOf(k),1);S.gold+=p;S.earned+=p;S.sold++;sfx.coin();toast(`Sold ${an(IT[k].n)} for <b>${fmt(p)}G</b>.`);save();render()},
     explore, attack, guard, flee, descend, boss:challengeBoss, leave:leaveDungeon,
