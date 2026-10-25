@@ -140,6 +140,12 @@ html[data-shop="starlight"]{--bg:#0f1530;--panel:#18204a;--line:#2a3468;--copper
 .who{font-family:var(--display);font-weight:400;color:var(--copper);font-size:.85rem;margin-right:4px}
 .aside{color:var(--muted)}
 body.ovopen{overflow:hidden}
+.tutcall{position:relative;background:var(--coin);color:#2a2008;font-weight:700;border-radius:8px;padding:10px 12px;margin:10px 0 8px;font-size:.92rem}
+.tutcall::after{content:"";position:absolute;left:24px;bottom:-7px;border:7px solid transparent;border-bottom:0;border-top-color:var(--coin)}
+.row.tut{outline:2px solid var(--coin);outline-offset:-2px;border-radius:6px;animation:tutpulse 1.6s ease-in-out infinite}
+@keyframes tutpulse{50%{background:rgba(242,201,76,.12)}}
+@media (prefers-reduced-motion:reduce){.row.tut{animation:none}}
+.tipcard{max-width:420px}
 .tipbar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--panel);border:1px solid var(--copper);border-radius:8px;padding:10px 12px}
 .tipbar p{margin:0;font-size:.92rem;line-height:1.45}
 .tipbar .ghost{flex-shrink:0}
@@ -327,10 +333,16 @@ function SE(type,d={}){
 function tipHooks(type,d){} // filled in by chapter data
 
 /* ---------- Scene player ---------- */
-let scn=null;
+let scn=null, tipOpen=null;
+/* Scenes play first; queued tips, intros and idle lines then pop up one at a time until dismissed. */
 function playNext(){
-  const st=S.story;if(scn||!st.queue.length)return;
-  const id=st.queue.find(x=>SCN[x]);if(!id)return; // scenes from a newer version wait in the queue
+  const st=S.story;if(scn||tipOpen)return;
+  const id=st.queue.find(x=>SCN[x]);
+  if(!id){ // scenes from a newer version wait in the queue
+    while(st.tipQ.length&&!TIPS[st.tipQ[0]])st.tipQ.shift();
+    if(st.tipQ.length){tipOpen=st.tipQ[0];drawOv()}
+    return;
+  }
   const sc=SCN[id];
   if(sc.log){ // log-only scene: lines go into the delve log
     const lines=R_(sc.log);
@@ -374,6 +386,12 @@ function cardHTML(c){
 }
 function drawOv(){
   const ov=document.getElementById("ov");if(!ov)return;
+  if(!scn&&tipOpen){
+    const T=TIPS[tipOpen],more=S.story.tipQ.length-1;
+    ov.hidden=false;document.body.classList.add("ovopen");
+    ov.innerHTML=`<div class="ovcard tipcard" role="dialog" aria-modal="true" aria-label="${T.w}"><p class="sline"><b class="who">${T.w}</b> ${T.n?md(T.t):`\u201c${md(T.t)}\u201d`}</p><div class="btns"><button class="btn gold" data-act="tipOk">${more>0?`Got it (${more} more)`:"Got it"}</button></div></div>`;
+    ov.querySelector("button")?.focus({preventScroll:true});return;
+  }
   if(!scn){ov.hidden=true;ov.innerHTML="";document.body.classList.remove("ovopen");return}
   const sc=SCN[scn.id],c=cardAt(scn.id,scn.i);
   ov.hidden=false;document.body.classList.add("ovopen");
@@ -386,6 +404,12 @@ function tipBar(){
   return `<div class="tipbar"><p><b class="who">${T.w}</b> ${T.n?md(T.t):`“${md(T.t)}”`}</p><button class="ghost" data-act="tipOk">${q.length>1?`Next (${q.length-1})`:"Got it"}</button></div>`;
 }
 
+let tutScrolled=false;
+function tutCellarFocus(){
+  if(!S.story||!fl("tutCellar")||S.run||S.shop||tab!=="town"||scn||tipOpen){tutScrolled=false;return}
+  if(tutScrolled)return;tutScrolled=true;
+  const el=app.querySelector(".row.tut");if(el)setTimeout(()=>el.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"center"}),60);
+}
 /* ---------- Journal view ---------- */
 function goalRows(c){
   return chGoals(c).filter(g=>!g.show||g.show()||goalDone(g.id)).map(g=>{
@@ -470,7 +494,7 @@ function payDebt(){
 }
 /* A one-off line that isn't a story beat (shown in the tip bar, not stored as seen). */
 let tipSeq=0;
-function tipNow(w,t){const id="_now"+(++tipSeq);TIPS[id]={w,t};S.story.tipQ.push(id)}
+function tipNow(w,t){const id="_now"+(++tipSeq);TIPS[id]={w,t};S.story.tipQ.push(id);playNext()}
 
 /* ---------- Log flavor ---------- */
 const LOGF={
@@ -502,7 +526,7 @@ SCN["1.1"]={title:"Arrival",cards:[
  {s:[["note","\"If you're reading this, the shop is yours. Keep the doors open. Keep the lamp lit. And whatever anyone offers, don't sell the cellar.\""]],b:"Continue"},
  {s:["The door creaks. A woman with one hand and no patience looks you over."],b:"Continue"},
  {s:[["Wren","You're Maribel's kin. Good. I'm Wren. I adventured with her for twenty years."],["Wren","The shop's got no stock, and the cellar's got rats the size of goats. Let's fix one of those problems."]],b:"Let's go"}],
- done:()=>{jrnl(CH[1].open,"open");tab="town"}};
+ done:()=>{jrnl(CH[1].open,"open");tab="town";S.story.flags.tutCellar=true}};
 SCN["1.2"]={title:"First delve",on:"enter",when:d=>d.d===0,cards:[
  {s:[["Wren","Delving takes the whole day. Go deep for better loot, but every floor bites harder."],["Wren","Faint down there and you lose everything you found, plus some of your coin. The deeper you fall, the more it costs."]],b:"Into the cellar"}]};
 SCN["1.3"]={title:"Back from the cellar",on:"day",when:d=>d.fromDelve,cards:[
@@ -1302,6 +1326,7 @@ function startDelve(i){
   S.run={d:i,floor:1,hp:maxHp(),bag:[],got:{},fight:null,stairs:false,lair:false,bossDone:false,steps:0,
     mod:null,atkB:1,ev:null,elite:false,miniDone:false,secret:false,secretFloor:false,
     event:`You step into the ${DUN[i].n}. Torchlight flickers on damp stone.`,log:[]};
+  if(i===0)delete S.story.flags.tutCellar;
   S.report=null;S.run.shift=staffShift();
   save();render();SE("enter",{d:i});
 }
@@ -1697,7 +1722,7 @@ function vTown(){
   <section><h2>Market today</h2><div class="chips">${chips}</div>${dayNews()?`<p class="hint" style="margin-top:8px;color:var(--coin)">${dayNews()}</p>`:""}${S.news?`<p class="hint" style="margin-top:8px">${S.news}</p>`:""}</section>
   <button class="big" data-act="shop" ${S.inv.length?"":"disabled"}>Open the shop<small>${S.inv.length?`Up to ${custN()} customers · ${S.inv.length} item${S.inv.length===1?"":"s"} in stock · uses the day`:"Your shelves are empty. Go delving first."}</small></button>
   <section><h2>Go delving <small>${S.crew.length?`${nameList(S.crew.map(k=>ST(k).n))} mind${S.crew.length>1?"":"s"} the shop`:"uses the day"}</small></h2><div class="list">
-    ${DUN.map((d,i)=>{const open=dunOpen(i);if(d.hidden&&!open)return "";return `<button class="row" data-act="delve" data-i="${i}" ${open?"":"disabled"}>
+    ${DUN.map((d,i)=>{const open=dunOpen(i);if(d.hidden&&!open)return "";const tut=i===0&&fl("tutCellar");return `${tut?`<div class="tutcall" role="status">Tap <b>Mossy Cellar</b> to enter the dungeon.</div>`:""}<button class="row${tut?" tut":""}" data-act="delve" data-i="${i}" ${open?"":"disabled"}>
       <span><b>${d.n}</b>${S.bosses[i]?`<span class="crown">Boss beaten</span>`:""}</span><span class="sub">${open?`${d.floors} floors · boss: ${d.boss}`:DUN_LOCK[i]}</span>
       <span class="right">${open?"Enter":"Locked"}</span></button>`}).join("")}
   </div></section>
@@ -1936,7 +1961,7 @@ function render(){
     if((tab==="skills"&&!fl("skills"))||tab==="legacy")tab=tab==="legacy"?"journal":"town";
     app.innerHTML=`<header><h1>Dungeon Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():tab==="journal"?vJournal():vTown());
   }
-  const hd=app.querySelector("header");if(hd)hd.insertAdjacentHTML("afterend",tipBar());
+  tutCellarFocus();
   const r=document.getElementById("price");
   if(r)r.addEventListener("input",()=>{S.shop.pct=+r.value;const p=Math.max(1,Math.round(val(S.shop.cur.k)*S.shop.pct/100));
     document.getElementById("pv").textContent=fmt(p)+"G";document.getElementById("pp").textContent=S.shop.pct+"% of market"});
@@ -1951,7 +1976,6 @@ app.addEventListener("click",e=>{
     sound:()=>{S.sound=!S.sound;save();render();sfx.coin()},
     music:()=>{S.music=!S.music;save();render()},
     tab:()=>{tab=b.dataset.t;confirmReset=false;SE("tab",{t:tab});render();window.scrollTo(0,0)},
-    tipOk:()=>{S.story.tipQ.shift();save();render()},
     shop:openShop,
     delve:()=>startDelve(+b.dataset.i),
     up:()=>{const u=UPG.find(x=>x.k===b.dataset.k),c=upCost(u);if(S.gold>=c&&S.gear[u.k]<gearCap(u.k)){S.gold-=c;S.gear[u.k]++;sfx.loot();save();render()}},
@@ -1995,9 +2019,10 @@ app.addEventListener("click",e=>{
   })[a]?.();
 });
 document.getElementById("ov").addEventListener("click",e=>{
-  const b=e.target.closest("[data-act=scn]");if(!b)return;
+  const b=e.target.closest("[data-act]");if(!b)return;
   if(S.sound||S.music)audioCtx();
-  scnGo(b.dataset.go);
+  if(b.dataset.act==="tipOk"){S.story.tipQ.shift();tipOpen=null;drawOv();save();render();playNext();return}
+  if(b.dataset.act==="scn")scnGo(b.dataset.go);
 });
 document.addEventListener("pointerdown",()=>{if(S.music&&!ac){audioCtx();musicUpdate()}},{once:true});
 document.addEventListener("visibilitychange",()=>{
