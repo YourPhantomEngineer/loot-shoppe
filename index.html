@@ -206,6 +206,14 @@ body.ovopen{overflow:hidden}
 #toast.show{transform:translate(-50%,0);opacity:1;visibility:visible;transition:transform .3s ease,opacity .3s ease}
 #toast b{color:var(--coin)}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
+#hagglePop{position:fixed;left:50%;top:42%;z-index:40;pointer-events:none;visibility:hidden;max-width:calc(100% - 48px);box-sizing:border-box;
+  background:var(--panel);border:2px solid var(--coin);border-radius:999px;padding:8px 14px;color:var(--coin);font:700 .8rem var(--display);text-align:center;
+  box-shadow:0 6px 24px rgba(0,0,0,.45)}
+#hagglePop.good{border-color:var(--good);color:var(--good)}#hagglePop.bad{border-color:var(--bad);color:var(--bad)}
+#hagglePop.show{visibility:visible;animation:hagglefloat 2s ease-out both}
+@keyframes hagglefloat{0%{opacity:1;transform:translate(-50%,12px) scale(.85)}12%{opacity:1;transform:translate(-50%,0) scale(1.06)}78%{opacity:1;transform:translate(-50%,-14px) scale(1)}100%{opacity:0;transform:translate(-50%,-30px) scale(.96)}}
+@keyframes hagglefade{0%,82%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,0)}}
+@media (prefers-reduced-motion:reduce){#hagglePop.show{animation:hagglefade 2s linear both}}
 @media (max-width:350px){
   header{align-items:flex-start;flex-wrap:wrap}
   header h1{flex:1 0 100%;font-size:1rem}
@@ -216,6 +224,7 @@ body.ovopen{overflow:hidden}
 <div id="app" class="wrap"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="xpPop" aria-live="polite"></div>
+<div id="hagglePop" role="status" aria-live="polite"></div>
 <div id="ov" class="ov" hidden></div>
 
 <script>
@@ -1353,6 +1362,12 @@ function musicUpdate(){
 /* ================= Helpers ================= */
 let toastT;
 function toast(h){const t=document.getElementById("toast");t.innerHTML=h;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2800)}
+let hagglePopT;
+function hagglePop(msg,tone=""){
+  const el=document.getElementById("hagglePop");if(!el)return;
+  el.textContent=msg;el.className=tone;void el.offsetWidth;el.classList.add("show");
+  clearTimeout(hagglePopT);hagglePopT=setTimeout(()=>el.classList.remove("show"),2000);
+}
 let xpAcc=0,xpT;
 function showXp(n){
   const el=document.getElementById("xpPop");if(!el)return;
@@ -1855,6 +1870,7 @@ function nextCust(){
 }
 function sell(price){
   const P=S.shop,c=P.cur,v=val(c.k);
+  const haggled=c.phase==="haggle";
   S.inv.splice(S.inv.indexOf(c.k),1);S.gold+=price;P.today+=price;S.earned+=price;S.sold++;
   const perfect=price/c.max>=.92;P.combo=perfect?P.combo+1:0;
   const x=xpm(Math.ceil(v/8*(1+.25*P.combo)));
@@ -1865,9 +1881,10 @@ function sell(price){
   endVisit(c);
   slog(`Sold ${IT[c.k].n} for ${fmt(price)}G · +${x} XP${perfect?` · great price! combo ×${P.combo}`:""}${note}`);
   sfx.coin();if(perfect&&P.combo>1)toast(`Haggle combo <b>×${P.combo}</b> · bonus XP`);
-  addXp(x);SE("sale",{above:price>v,haggled:c.phase==="haggle"});nextCust();save();render();
+  addXp(x);SE("sale",{above:price>v,haggled});nextCust();save();render();
+  if(haggled)hagglePop(`Deal! +${fmt(price)}G`,"good");
 }
-function custLeaves(c,msg){const P=S.shop;slog(msg);endVisit(c);P.combo=0;sfx.fail();SE("walk");nextCust();save();render()}
+function custLeaves(c,msg){const P=S.shop;slog(msg);endVisit(c);P.combo=0;sfx.fail();SE("walk");nextCust();save();render();hagglePop("No deal — they walked away","bad")}
 function offer(){
   const P=S.shop,c=P.cur,v=val(c.k),price=Math.max(1,Math.round(v*P.pct/100));
   if(price<=c.max)return sell(price);
@@ -1883,6 +1900,7 @@ function offer(){
   if(c.per==="straight"){c.counter=c.offer;c.fb+=" \u201cI said my price.\u201d"}
   else if(!(c.sus&&c.counter))c.counter=Math.max(c.counter||1,Math.round(Math.min(price-1,c.max*rnd(...(PERSONA[c.per].ctr||[.85,.97])))));
   sfx.hurt();save();render();
+  hagglePop(insult?"Too high!":`Counteroffer: ${fmt(c.counter)}G`,insult?"bad":"");
 }
 function startHaggle(){
   const P=S.shop,c=P.cur;if(!c)return;const v=val(c.k);
@@ -1900,15 +1918,16 @@ function pitchTalk(){
   const c=S.shop.cur;if(!c||c.pitched||c.phase!=="haggle")return;
   c.pitched=true;c.pat--;SE("pitch");
   if(c.pat<=0)return custLeaves(c,`${cName(c)} got bored of the sales pitch and left.`);
-  if(Math.random()<.6){c.max=Math.round(c.max*rnd(1.05,1.1));c.fb="They lean in. You can see them warming to it."}
+  const worked=Math.random()<.6;
+  if(worked){c.max=Math.round(c.max*rnd(1.05,1.1));c.fb="They lean in. You can see them warming to it."}
   else c.fb="They don't look convinced.";
-  save();render();
+  save();render();hagglePop(worked?"Pitch worked!":"Pitch failed",worked?"good":"bad");
 }
 function pitchSweet(){
   const c=S.shop.cur;if(!c||c.pitched||c.phase!=="haggle")return;const x=sweetPick(c);if(!x)return;
   c.pitched=true;S.inv.splice(S.inv.indexOf(x),1);
   c.max+=Math.round(Math.min(val(x)*1.5,c.max*.15));c.fb=`You throw in ${an(IT[x].n)}. They look pleased.`;
-  SE("pitch");sfx.coin();save();render();
+  SE("pitch");sfx.coin();save();render();hagglePop("Sweetener worked!","good");
 }
 
 /* ---------- NPC and enemy sprites: pixel art, outlined automatically, drawn as SVG ---------- */
