@@ -9,7 +9,8 @@ const r=await p.evaluate(()=>{while(document.querySelector('#ov button'))documen
     const doubledCols=Array.from({length:16},(_,y)=>Array.from({length:8},(_,x)=>g[y*16+x*2]===g[y*16+x*2+1]).every(Boolean)).every(Boolean);
     return doubledRows&&doubledCols;
   });
+  const unclearLowerBody=[['miner',12],['sentinel',12],['enforcer',13]].filter(([k,from])=>Array.from({length:16-from},(_,i)=>SPR[k].g.slice((from+i)*16,(from+i+1)*16).slice(7,9)==='..').some(clear=>!clear)).map(([k])=>k);
   startDelve(0);makeFight('Elite Cellar Rat','elite');render();
-  return {count:names.length,missing,badGrid,lowDetail,elite:sprKey('Elite Cellar Rat'),shown:!!document.querySelector('.monster .spr.foe svg')};});
-if(errs.length||r.missing.length||r.badGrid.length||r.lowDetail.length||r.elite!=='rat'||!r.shown)throw new Error(JSON.stringify({r,errs}));
+  return {count:names.length,missing,badGrid,lowDetail,unclearLowerBody,elite:sprKey('Elite Cellar Rat'),shown:!!document.querySelector('.monster .spr.foe svg')};});
+if(errs.length||r.missing.length||r.badGrid.length||r.lowDetail.length||r.unclearLowerBody.length||r.elite!=='rat'||!r.shown)throw new Error(JSON.stringify({r,errs}));
 console.log(JSON.stringify(r));await b.close()})();
