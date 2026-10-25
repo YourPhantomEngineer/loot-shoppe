@@ -125,6 +125,8 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 .rlog li{color:var(--fg)}
 .staffcard{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
 .row.locked{opacity:.55}
+html[data-shop="festival"]{--bg:#2a1418;--panel:#3a1d22;--line:#58303a;--copper:#ee6f5a;--coin:#f7c95a;--muted:#c49ea0}
+html[data-shop="starlight"]{--bg:#0f1530;--panel:#18204a;--line:#2a3468;--copper:#9fb7f0;--coin:#e4e9f7;--muted:#9aa6cf}
 .ov[hidden]{display:none}
 .ov{position:fixed;inset:0;z-index:30;background:rgba(5,14,16,.72);display:flex;align-items:flex-end;justify-content:center;
   padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
@@ -312,7 +314,7 @@ function SE(type,d={}){
   checkGoals();
   for(const id in SCN){
     const sc=SCN[id];if(sc.repeat||st.seen[id]||st.queue.includes(id))continue;
-    if([].concat(sc.on||[]).includes(type)&&(!sc.when||sc.when(d)))queue(id);
+    if([].concat(sc.on||[]).includes(type)&&(!sc.when||sc.when(Object.assign({_t:type},d))))queue(id);
   }
   tipHooks(type,d);
   checkChapter();
@@ -448,7 +450,7 @@ const custBonus=()=>0;
 const dayBonus=()=>typeof dayBonusFn==="function"?dayBonusFn():0;
 
 /* ---------- Dungeon gates (story flags, never level) ---------- */
-const DUN_GATE=[()=>true,()=>fl("mine"),()=>fl("vault"),()=>fl("spire"),()=>fl("hollow")];
+const DUN_GATE=[()=>true,()=>fl("mine"),()=>fl("vault"),()=>goalDone("c5lv10"),()=>fl("hollow")];
 const DUN_LOCK=["","Opens at the end of Chapter 2","Opens at the end of Chapter 3","Opens when you reach Level 10 in Chapter 5","Opens in Chapter 6"];
 
 /* ---------- Maribel's debt ---------- */
@@ -751,6 +753,147 @@ function tipHooks2(type,d){
   if(typeof tipHooks3==="function")tipHooks3(type,d);
 }
 
+/* ---------- Hollow Heart, sealed floors, Observatory ---------- */
+DUN.push({n:"Hollow Heart",t:4,f:17,lvl:99,floors:6,hidden:true,
+  mon:["Moss Beetle","Kobold Miner","Ash Wraith","Star Wisp","Celestial Enforcer"],mats:["ore","ember","dust"],
+  get boss(){return S.story&&S.story.flags.vossDone?"Echo of Voss":"Voss"},heart:"h5"});
+MATS.h5="Cold Starstone";
+const tfOf=D=>D.f||TF[D.t-1];
+function floorSealed(d,floor){
+  if(d===3&&floor===DUN[3].floors)return ["c5obs","c5lv10","c5golem","c5pay"].every(goalDone)?"":"The summit is sealed by a wall of light. Finish the Observatory, Level 10, the Prism Golem and the final payment first.";
+  if(d===4&&floor===DUN[4].floors)return S.story.items.weapon?"":"A ward of starfire seals the way down. You'll need Bram's star-forged weapon.";
+  return "";
+}
+const secretBonus=()=>built("obs")?.1:0;
+const LORE={
+ idol:"Carved from moss-glass that grew where the first star-glass fell. Maribel kept one on her counter for luck.",
+ gpick:"A miner's pick plated in star-gold. The Consortium paid well for these, then stopped asking where the gold came from.",
+ feather:"Found in the Vault's deepest ash and warm forever. Scholars say it fell with the star.",
+ star:"A sliver of the first star, the one missing from the old charts. It hums a note no one can quite hear."
+};
+LOGF[3]=["The air tastes like snow and lightning.","Your shadow points the wrong way.","Footprints in the crystal dust. A woman's boots, ten years old.","A faded red scarf, tied to a ledge like a trail marker.","The light above pulses slowly, like breathing."];
+LOGF[4]=["Every dungeon you've known, layered like rings in a tree: moss, then mine, then ember, then glass.","A trail of starlight scorched into the rock. Above it, the child's drawing of the falling star, signed \"PIP\" in big wobbly letters.","The heartbeat in the floor is fast now. Frantic.","Celestial banners, brand new. His crews have been digging toward this door for years.","Wren hums one of Maribel's old marching songs, off key.","The heat bends the air until the walls ripple."];
+
+/* ---------- Bram's star-forged weapon ---------- */
+const WEAPON_MATS={ember:6,ore:6,dust:4};
+const WEAPON_BONUS=.5;
+const canForge=()=>S.story.ch>=6&&seen("6.1")&&!S.story.items.weapon&&S.story.items.shard1&&S.story.items.shard2&&Object.entries(WEAPON_MATS).every(([m,n])=>(S.mats[m]||0)>=n);
+function forge(){
+  if(!canForge())return;
+  for(const [m,n] of Object.entries(WEAPON_MATS))S.mats[m]-=n;
+  const it=S.story.items;delete it.shard1;delete it.shard2;it.weapon=S.day;
+  sfx.win();toast("You collect Bram's <b>star-forged blade</b>: +50% attack.");
+  SE("weapon");save();render();
+}
+
+/* ---------- Chapter 5: Starfall ---------- */
+CH[5]={t:"Starfall",
+ open:"\"If it holds, the town holds.\" Whatever \"it\" is, it's at the top of the Spire. So is the light.",
+ done:"Maribel is home. Voss has the star's heart. He isn't a man. He never was. Maribel can barely stand, but she keeps saying the same thing: \"The heat. He needs the heat.\"",
+ goals:[
+  {id:"c5obs",t:"Repair the Observatory",ok:()=>built("obs")},
+  {id:"c5lv10",t:"Reach Level 10",ok:()=>lvl()>=10},
+  {id:"c5golem",t:"Defeat the Prism Golem",ev:(ty,d)=>ty==="defeat"&&d.n==="Prism Golem"},
+  {id:"c5pay",t:()=>`Make your final payment (${fmt(DEBT_PAYMENT)}G, clears Maribel's debt)`,ok:()=>S.story.debtPaid>=4},
+  {id:"c5wyrm",t:"Defeat the Astral Wyrm",ev:(ty,d)=>ty==="defeat"&&d.n==="Astral Wyrm",lock:()=>floorSealed(3,DUN[3].floors)?"The summit is sealed until the other four goals are done":""}
+ ]};
+SCN["5.1"]={title:"The Observatory",on:"repair",when:d=>d.k==="obs",cards:[
+ {s:["Brass telescopes, cracked lenses, and star charts pinned to every wall. Maribel's handwriting covers half of them."],b:"Look closer"},
+ {s:[["Wren","She spent nights up here. Said the star didn't fall. It was _pulled_."],"One very old chart, older than the town, shows a gap in a constellation. A star went missing long, long ago. Beside it, in Maribel's hand: _\"Two stars fell. Where is the first?\"_"],b:"Continue"},
+ {s:[["Old Greta","Odd. Says here the Celestial Consortium was founded the year Hollowmere was.","peering at a town record"],["Old Greta","No. Before. That can't be right."]],b:"Continue"}],
+ done:()=>toast("Secret floor clues and relic lore unlocked. Scholars are coming.")};
+TIPS.i_schol={w:"Scholar",t:"A relic from a secret floor? Name your price. No, truly, I have a grant."};
+SCN["5.2"]={title:"Sable's confession",on:["level","day","repair","pay"],when:d=>S.story.ch===5&&goalDone("c5lv10")&&(onStaff("sable")||d._t==="day"),cards:[
+ {s:[["Sable","The Spire's open now. Before you climb, you should know what I am."],["Sable","The Celestials take orphans. They put us in a room with star-glass until our eyes change. Then we can feel shards through solid rock."]],b:"Continue"},
+ ()=>({s:[["Sable","They call us Starlings. Voss calls us 'instruments.' I ran. The safest place to hide was his blind spot: the town around a shop he was about to repossess."],["Wren","...You could've told us."],["Sable",S.story.hiredEver.sable?"You'd have thrown me out. You nearly did.":"You did turn me away. I don't blame you."]],b:"Continue"}),
+ {s:[["Sable","One more thing. Voss isn't a man. I've felt him the way I feel shards. He's _old_. Older than the mountain's monsters. He hums the same as the star."]],b:"What does he want?"},
+ {s:[["Sable","I don't know yet. But he doesn't want your coin. Never did."]],b:"Continue"}]};
+SCN["5.3"]={title:"Into the Starfall Spire",on:"enter",when:d=>d.d===3,cards:[
+ {s:[["Wren","I'll get you halfway. That's where I lost my hand last time."],["Wren","Bring her home."],["Sable","I'll climb with you. I can feel the shards up there, and whatever's holding the light."]],b:"Continue"}]};
+SCN["5.4"]={on:"encounter",when:d=>d.n==="Prism Golem"&&S.story.ch===5,log:["<i>A figure of living crystal turns toward you. Every facet shows a different you.</i>"]};
+SCN["5.4b"]={on:"defeat",when:d=>d.n==="Prism Golem"&&S.story.ch===5,log:["<i>The Golem shatters. In the shards of its body, the light above grows brighter, as if relieved.</i>"]};
+SCN["5.5"]={title:"Paid in full",on:"pay",when:d=>d.n===DEBT_PAYMENTS,cards:[
+ {s:["Voss comes himself to collect. He counts every coin. Slowly. Then he slides the cancelled contract across the counter."],b:"Continue"},
+ {s:[["Voss","Paid in full. How quaint."],["Voss","Keep the paperwork. I suspect I won't need your cellar's permission much longer."]],b:"Continue"},
+ ()=>({s:[["Sable","He was happy. I've never felt him happy.",onStaff("sable")?"after he leaves, pale":"slipping in from the street after he leaves, pale"]],b:"Continue"})],
+ done:()=>jrnl("The debt is paid. The deed is clear. So why does it feel like we lost?","note")};
+SCN["5.6"]={title:"The summit",on:"encounter",when:d=>d.n==="Astral Wyrm"&&S.story.ch===5,cards:[
+ {s:["At the summit, the star rests in a crater of glass: a sphere of light, cracked and stitched together. Coiled around it is a serpent of starlight."],b:"Continue"},
+ {s:["It doesn't attack. It raises its head between you and the star, and waits."],b:"Fight"}]};
+SCN["5.7"]={title:"Maribel",on:"defeat",when:d=>d.n==="Astral Wyrm"&&S.story.ch===5,cards:[
+ {s:["The Wyrm dissolves into light. The star's shell splits. Someone stumbles out of it and falls into the glass dust."],b:"Run to her"},
+ {s:["Her hair is silver now. Her red scarf is gone. But you know her face from every page of the journal.",["Maribel","...You've got my nose. Who—"],["Maribel","Oh. Oh, you inherited the shop. I'm so sorry about the debt."]],b:"Continue"},
+ {s:[["Maribel","The star had been cracking since the night it fell. By the time I reached it, it was coming apart. I went inside to hold it together. If it shattered, the whole valley would've burned."],["Maribel","The Wyrm guarded me. It was the star's guardian, keeping me safe while I kept it whole."],["Maribel","It's whole enough now to hold without me. Barely."]],b:"Continue"},
+ {s:[["Maribel","Wait. If the Wyrm is gone… then nothing's guarding it.","looking at the dissolving light, horror dawning"]],b:"Continue"}],
+ done:()=>{S.story.flags.maribel=S.day}};
+SCN["5.8"]={title:"The theft",on:"defeat",when:d=>d.n==="Astral Wyrm"&&S.story.ch===5,cards:[
+ {s:["Applause. Slow and polite. Voss steps out of the light as if he has always been standing there.",["Voss","Ten years I waited for someone foolish enough to kill that guardian. Thank you, shopkeeper."]],b:"Continue"},
+ {s:["His skin splits along hairline cracks. Starlight leaks through. He reaches into the star and pulls out its burning heart.",["Voss","Your aunt held this together for a decade. Admirable. She was simply keeping it warm for me."]],b:"Continue"},
+ {s:["The summit shakes. Voss drops through the crater floor like a falling star, straight down into the mountain.",["Maribel","He's going down. All the way down. To the core."],["Sable","And the fastest way into the deep is…"]],b:"…our cellar."}]};
+
+/* ---------- Chapter 6: The Long Way Home ---------- */
+CH[6]={t:"The Long Way Home",wait:true,
+ open:"Voss is under our feet. Somewhere below the cellar, below the mines, below everything. Maribel says we have days, not weeks.",
+ goals:[
+  {id:"c6council",t:"Hold the war council",ok:()=>seen("6.1")},
+  {id:"c6weapon",t:()=>`Collect Bram's star-forged weapon (2 shards + ${Object.entries(WEAPON_MATS).map(([m,n])=>n+" "+MATS[m]).join(", ")})`,ok:()=>!!S.story.items.weapon},
+  {id:"c6exec",t:"Defeat the Celestial Executor",ev:(ty,d)=>ty==="defeat"&&d.n==="Celestial Executor"},
+  {id:"c6bottom",t:"Reach the bottom of the Hollow Heart",ev:(ty,d)=>ty==="floor"&&d.d===4&&d.floor===DUN[4].floors,lock:()=>S.story.items.weapon?"":"Sealed until Bram's weapon is collected"},
+  {id:"c6voss",t:"Defeat Voss",ev:(ty,d)=>ty==="defeat"&&d.n==="Voss"}
+ ]};
+SCN["6.1"]={title:"The war council",on:"day",when:()=>S.story.ch===6,cards:[
+ {s:["The shop is crowded for the first time in ten years. Not with customers. With friends."],b:"Continue"},
+ {s:[["Maribel","I saw his thoughts while he took the heart. He fell here, long before the town. His own kind cast him down.","wrapped in a blanket by the counter"],["Maribel","And the second star didn't fall on its own. He pulled it down. Fuel."],["Maribel","He burns worlds to travel. The star's power and the heat of the core, together, are enough to launch him home."],["Maribel","Before, he couldn't pass my ward or burn through the rock. With the heart, he can do both. That's how he went straight down."]],b:"And us?"},
+ {s:[["Maribel","The blast would scorch the whole world. Every field, every forest, every living thing."],["Pip","...Even the spoon man?","quietly"],["Maribel","Even the spoon man."]],b:"Continue"},
+ {s:[["Bram","Then we stop him. Give me those two shards. I'll forge something that can cut starlight."],["Marlo","The Consortium's vault key is still in my coat. Take whatever supplies you need."],["Old Greta","I'll keep the shop open. If the world ends, it ends with the lamp lit."],["Sable","I can feel him. I'll guide you down."],["Wren","And I'm coming. All the way, this time."]],b:"Continue"}],
+ done:()=>{S.story.flags.hollow=S.day;toast("The cellar's deepest door opens. <b>The Hollow Heart</b> is unlocked.")}};
+SCN["6.2"]={title:"The star-forged weapon",on:"weapon",cards:[
+ {s:[["Bram","Two shards, folded into steel. It's warm. Like holding a hand."],["Maribel","That's the star. It remembers us. It wants him stopped too."],["Maribel","There's a little of its light left in me. Not much. I'm saving it for the end."]],b:"Continue"}],
+ done:()=>tip("t_ready")};
+TIPS.t_ready={w:"Wren",t:"Nobody's ready for this. Go anyway."};
+SCN["6.3"]={title:"Into the Hollow Heart",on:"enter",when:d=>d.d===4,cards:[
+ {s:["Past the Mossy Cellar. Past where the rats nested. Past a door you never noticed. Maribel's ward on it has gone dark, its starlight stolen with the heart.",["Sable","He's straight below us. He isn't even hiding anymore."],["Wren","Maribel's note. 'Someone has been knocking.' That was his crews, at this door, for years."]],b:"Continue"}]};
+SCN["6.4"]={title:"The Celestial Executor",on:"encounter",when:d=>d.n==="Celestial Executor"&&S.story.ch===6,cards:[
+ {s:["A towering figure in gold armor, a Celestial seal for a face, blocks a bridge over a river of magma.",["Celestial Executor","The Guildmaster's departure is scheduled. Your attendance is not."]],b:"Fight"}]};
+SCN["6.4b"]={title:"Hollow armor",on:"defeat",when:d=>d.n==="Celestial Executor"&&S.story.ch===6,cards:[
+ {s:[["Sable","Its armor's hollow. No one was ever inside. Just his will."]],b:"Continue"}]};
+SCN["6.5"]={title:"The core",on:"floor",when:d=>d.d===4&&d.floor===DUN[4].floors&&!fl("vossDone"),cards:[
+ {s:["A cavern of white-hot stone. At its center, the star's heart floats above a well of molten light that reaches down forever. Voss stands before it in his blue coat, hands folded."],b:"Continue"},
+ {s:[["Voss","Ah. The shopkeeper. Did you come to collect?"],["Voss","You think I _hid_ among you? I _farmed_ you. Ten thousand years, and every one of your kind has been a candle waiting to be lit."]],c:[["You're not going home.","3a"],["What are you?","3b"]]},
+ {id:"3a",s:[["Voss","I have been told that by better than you. They are ash now."]],b:"Continue",next:"4"},
+ {id:"3b",s:[["Voss","A star, child. One that learned it could feed. My kind called it a crime. I called it travel."]],b:"Continue",next:"4"},
+ {id:"4",s:[["Voss","Enough. The heart is ready. The core is hot. And you are standing in my doorway."]],b:"Fight"}],
+ done:()=>{if(S.run&&!S.run.fight)challengeBoss()}};
+SCN["6.7"]={title:"Victory",on:"defeat",when:d=>d.n==="Voss",cards:[
+ {s:["The star-forged blade strikes true. Voss screams in a voice like a kettle the size of a mountain.",["Voss","I have burned brighter worlds than this—"],["Wren","Not this one."]],b:"Continue"},
+ {s:["Far above, Maribel opens her hand. The last starlight in her drifts down through stone and dirt and roots, and settles over Voss like a blanket of snow.","When it lifts, there is only a small, dark, cold stone where he stood."],b:"Continue"},
+ {s:["The star's heart dims to a gentle glow, then slowly sinks into the core. The heartbeat in the floor slows. Then calms.",["Sable","He's gone. I can't feel him anywhere."],["Wren","Good. Let's go home. The long way. I want to enjoy it."]],b:"Continue"}],
+ done:()=>{S.story.flags.vossDone=S.day}};
+SCN["epi"]={title:"The Festival of Lights",on:"day",when:()=>fl("vossDone"),cards:[
+ {s:["Hollowmere throws its first festival since the star fell. Lanterns line every street. The spoon man brought a spoon for everyone."],b:"Continue"},
+ {s:["The Celestial Consortium's office stands empty. The gold star on its door has gone dull and gray. Marlo hangs a sign on it: **FOR RENT. NO GUILDS.**"],b:"Continue"},
+ {s:[["Maribel","I can't climb anymore. Can barely walk to the well. Turns out holding a star together for ten years takes it out of you.","on the shop step, silver hair in the lantern light"],["Maribel","But the lamp's lit. The doors are open. You did that."]],b:"Continue"},
+ {s:[["Wren","So. What now, shopkeeper?"]],b:"Open the shop."}],
+ done:()=>{const st=S.story;st.built.festival=S.day;st.ended=S.day;st.flags.ch6ended=S.day;
+  jrnl("The debt is paid. The star is sleeping. The man in the blue coat is a cold stone in the deepest dark, and Sable checks on him once a month just to be sure.\nMaribel sits by the counter most days now, haggling with customers and winning. Pip still sweeps. Wren still says \"don't get used to it.\"\nWhoever reads this next: keep the doors open. Keep the lamp lit. And don't sell the cellar.","done");
+  toast("Customers: 9 → 10. <b>Festival Grounds</b> open. The Hollow Heart stays open.")}};
+
+/* ---------- Shop themes (Festival Grounds cosmetics) ---------- */
+const THEMES=[{k:"",n:"Lantern",d:"Teal stone and copper. Maribel's original."},{k:"festival",n:"Festival",d:"Crimson bunting and lantern gold."},{k:"starlight",n:"Starlight",d:"Midnight blue and silver, like the summit."}];
+function applyTheme(){document.documentElement.dataset.shop=(S.story&&built("festival")&&S.theme)||""}
+function tipHooks3(type,d){}
+
+function journalExtras2(){
+  const st=S.story;let h="";
+  if(st.ch>=6&&seen("6.1")&&!st.items.weapon){
+    const parts=[`<span class="${st.items.shard1&&st.items.shard2?"have":"need"}">2 star-glass shards</span>`,...Object.entries(WEAPON_MATS).map(([m,n])=>`<span class="${(S.mats[m]||0)>=n?"have":"need"}">${n} ${MATS[m]}</span> (${S.mats[m]||0})`)];
+    h+=`<section><h2>Bram's forge</h2><div class="list"><button class="row" data-act="forge" ${canForge()?"":"disabled"}>
+      <span><b>Star-forged blade</b></span><span class="sub">${parts.join(" + ")}<br>+50% attack. Needed to reach the bottom of the Hollow Heart.</span><span class="right">Collect</span></button></div></section>`;
+  }
+  if(typeof reopenSection==="function")h+=reopenSection();
+  if(built("festival"))h+=`<section><h2>Shop colors <small>Festival Grounds</small></h2><div class="list">${THEMES.map(t=>`<button class="row" data-act="theme" data-k="${t.k}" ${(S.theme||"")===t.k?"disabled":""}><span><b>${t.n}</b></span><span class="sub">${t.d}</span><span class="right">${(S.theme||"")===t.k?"In use":"Use"}</span></button>`).join("")}</div></section>`;
+  return h;
+}
 /*STORYDATA*/
 
 /* ================= State ================= */
@@ -783,7 +926,7 @@ const xpFor=l=>(l-1)*(l-1)*25;
 const spent=()=>Object.values(S.skills).reduce((a,b)=>a+b,0);
 const pts=()=>lvl()-1+Object.keys(S.bosses).length+2*pk("head")-spent();
 const brSpent=b=>SK.filter(s=>s.b===b).reduce((a,s)=>a+sk(s.k),0);
-const dmg=()=>Math.round(dmgAt(S.gear.blade)*(1+.15*sk("power"))*(1+.1*pk("heir")));
+const dmg=()=>Math.round(dmgAt(S.gear.blade)*(1+.15*sk("power"))*(1+.1*pk("heir"))*(S.story&&S.story.items.weapon?1+WEAPON_BONUS:1));
 const maxHp=()=>Math.round(hpAt(S.gear.armor)*(1+.1*sk("skin"))*(1+.1*pk("heir")));
 const cap=()=>capAt(S.gear.pack)+2*sk("pockets")+2*pk("pack");
 const crit=()=>.1+.08*sk("exec");
@@ -1034,7 +1177,7 @@ const MODS={
  dark:{n:"Pitch Dark",d:"Stairs are hard to find, but ore veins are rich."},
  blessed:{n:"Blessed",d:"Springs and strange encounters are common."}
 };
-const MINI=["Rat Matriarch","Tunnel Wurm","Ember Knight","Prism Golem"];
+const MINI=["Rat Matriarch","Tunnel Wurm","Ember Knight","Prism Golem","Celestial Executor"];
 const HEAL={herb:.2,tonic:.4,draught:.65,elixir:1};
 const BELT=4;
 const runDmg=()=>Math.round(dmg()*(S.run?.atkB||1));
@@ -1072,14 +1215,14 @@ function dropMats(n){
   return got;
 }
 function makeFight(n,kind){
-  const R=S.run,D=DUN[R.d],f=TF[D.t-1];
+  const R=S.run,D=DUN[R.d],f=tfOf(D);
   const hm={mob:1,elite:2.2,mini:2.4,boss:3.5}[kind],am={mob:1,elite:1.35,mini:1.2,boss:1.3}[kind];
   const hp=Math.round((10+R.floor*3)*f*hm);
   R.fight={n,hp,max:hp,atk:Math.round((2+R.floor*.8)*f*am),turn:0,kind,boss:kind==="mini"||kind==="boss",wind:false};
   SE("combat",{kind});
 }
 function explore(){
-  const R=S.run,D=DUN[R.d],f=TF[D.t-1];R.steps++;R.left=null;R.dropSel=null;sfx.step();
+  const R=S.run,D=DUN[R.d],f=tfOf(D);R.steps++;R.left=null;R.dropSel=null;sfx.step();
   const last=R.floor===D.floors,mod=R.mod;
   if(!R.secretFloor&&!last&&!R.stairs&&R.steps>=2&&Math.random()<(mod==="dark"?.1:.22)){R.stairs=true;R.nextMod=rollMod(R.floor+1);R.event="You spot a staircase leading down.";rlog(R.event);SE("stairs",{d:R.d,floor:R.floor});return save(),render()}
   if(last&&!R.lair&&!R.bossDone&&R.steps>=2&&Math.random()<.25){R.lair=true;R.event=`Heavy footsteps echo ahead. The lair of the ${D.boss} is close.`;sfx.boss();rlog(R.event);return save(),render()}
@@ -1124,7 +1267,7 @@ const sneakCh=()=>Math.min(.95,.65+.1*sk("escape"));
 function openChest(pre){
   const R=S.run,D=DUN[R.d];
   const k=R.secretFloor&&Math.random()<.5?secretItem():rollItem(Math.random()<.5);
-  const g=Math.round(rnd(10,25)*TF[D.t-1]*R.floor);S.gold+=g;
+  const g=Math.round(rnd(10,25)*tfOf(D)*R.floor);S.gold+=g;
   R.ev=null;R.event=`${pre} Inside: ${g}G`+(bagAdd(k)?` and ${an(IT[k].n)}!`:`, and ${an(IT[k].n)} you have no room for.`);sfx.loot();
 }
 function giveSupply(k){
@@ -1203,7 +1346,7 @@ function guard(){
 }
 function winFight(pre){({mob:mobWin,elite:eliteWin,mini:miniWin,boss:bossWin})[S.run.fight.kind||"mob"](pre||"")}
 function mobWin(pre){
-  const R=S.run,F=R.fight,D=DUN[R.d],f=TF[D.t-1];
+  const R=S.run,F=R.fight,D=DUN[R.d],f=tfOf(D);
   const g=Math.round(rnd(2,6)*f*R.floor),x=xpm(5*D.t*R.floor);
   S.gold+=g;R.fight=null;R.event=`${pre}You defeat the ${F.n}! +${g}G.`;
   if(Math.random()<.7){let n=1;if(Math.random()<.5*sk("salvage"))n++;R.event+=` Got ${dropMats(n).join(", ")}.`}
@@ -1211,14 +1354,14 @@ function mobWin(pre){
   R.event+=` +${x} XP.`;rlog(R.event);addXp(x);save();render();
 }
 function eliteWin(pre){
-  const R=S.run,F=R.fight,D=DUN[R.d],f=TF[D.t-1];
+  const R=S.run,F=R.fight,D=DUN[R.d],f=tfOf(D);
   const g=Math.round(rnd(8,16)*f*R.floor),x=xpm(15*D.t*R.floor),k=rollItem(true);
   S.gold+=g;R.fight=null;
   R.event=`${pre}The ${F.n} falls! +${g}G, ${dropMats(3).join(", ")}`+(bagAdd(k)?`, and its treasure: ${an(IT[k].n)}!`:`. Its treasure, ${an(IT[k].n)}, won't fit in your pack.`);
   R.event+=` +${x} XP.`;sfx.win();rlog(R.event);addXp(x);save();render();
 }
 function miniWin(pre){
-  const R=S.run,D=DUN[R.d],f=TF[D.t-1];
+  const R=S.run,D=DUN[R.d],f=tfOf(D);
   const g=Math.round(rnd(20,40)*f*D.t),k=rollItem(true),sup=pick(["bomb","rope","whet","pick"]);
   S.gold+=g;R.fight=null;R.miniDone=true;SE("defeat",{n:MINI[R.d],kind:"mini",d:R.d});
   const where=giveSupply(sup);
@@ -1226,14 +1369,14 @@ function miniWin(pre){
   {const x=xpm(25*D.t);R.event+=` +${x} XP.`;sfx.win();rlog(R.event);addXp(x)}save();render();
 }
 function bossWin(pre){
-  const R=S.run,D=DUN[R.d],f=TF[D.t-1];
+  const R=S.run,D=DUN[R.d],f=tfOf(D);
   const first=!S.bosses[R.d];S.bosses[R.d]=(S.bosses[R.d]||0)+1;
   const g=Math.round(rnd(40,80)*f*D.t),x=xpm(40*D.t);
   S.gold+=g;addMat(D.heart,1);R.got[D.heart]=(R.got[D.heart]||0)+1;
   const k=rollItem(true);const fit=bagAdd(k);
   R.fight=null;R.bossDone=true;SE("defeat",{n:D.boss,kind:"boss",d:R.d});
   R.event=`${pre}The ${D.boss} falls! +${g}G, ${MATS[D.heart]}${fit?`, and ${an(IT[k].n)}`:""}.`+(first?" First victory: +1 skill point!":"");
-  if(Math.random()<.35+.05*sk("keen")){R.secret=true;R.event+=" Behind the lair, a hidden stairway grinds open...";}
+  if(Math.random()<.35+.05*sk("keen")+secretBonus()){R.secret=true;R.event+=" Behind the lair, a hidden stairway grinds open...";}
   R.event+=` +${x} XP.`;rlog(R.event);sfx.win();addXp(x);
   if(first)toast(`<b>${D.boss}</b> defeated! +1 skill point.`);
   save();render();
@@ -1260,7 +1403,7 @@ function useItem(src,i){
   else if(k==="whet"){R.atkB+=.3;m="You hone your blade: +30% attack for this delve.";sfx.craft()}
   else if(k==="rope"){m=`You yank the Escape Rope and vanish from the ${F.n}'s reach.`;if(F.kind==="boss")R.lair=true;R.fight=null;R.event=m;rlog(m);return save(),render()}
   else if(k==="bomb"){
-    const d=Math.round((10+R.floor*3)*TF[DUN[R.d].t-1]*.8);F.hp-=d;sfx.hit();m=`The Fire Bomb explodes for ${d} damage!`;
+    const d=Math.round((10+R.floor*3)*tfOf(DUN[R.d])*.8);F.hp-=d;sfx.hit();m=`The Fire Bomb explodes for ${d} damage!`;
     if(F.hp<=0)return winFight(m+" ");
   }
   if(F){m+=" "+monsterTurn(false);R.event=m;rlog(m);if(R.hp<=0)return faint()}
@@ -1272,6 +1415,7 @@ function unequip(i){if(S.belt[i]){S.inv.push(S.belt.splice(i,1)[0]);save();rende
 
 /* ---------- Movement ---------- */
 function descend(){
+  if(floorSealed(S.run.d,S.run.floor+1))return;
   const R=S.run;R.floor++;R.stairs=false;R.steps=0;R.ev=null;R.left=null;R.dropSel=null;R.mod=R.nextMod!==undefined?R.nextMod:rollMod(R.floor);delete R.nextMod;
   let m=`You descend to floor ${R.floor}.`;
   if(sk("wind")){const h=Math.round(maxHp()*.15*sk("wind"));R.hp=Math.min(maxHp(),R.hp+h);m+=` Second Wind restores ${h} HP.`}
@@ -1458,7 +1602,7 @@ function vTown(){
     ${eq.length?`<div class="chips" style="margin-top:8px">${eq.map(([k,n])=>`<button class="chip usebtn" data-act="equip" data-k="${k}" ${S.belt.length>=BELT?"disabled":""}>+ ${IT[k].n}${n>1?` ×${n}`:""}</button>`).join("")}</div>`:`<p class="hint" style="margin-top:8px">Craft bombs, ropes, whetstones, and lockpicks in the Workshop. Potions in stock can go on your belt too.</p>`}
   </section>
   <section><h2>Stock <small>${S.inv.length} item${S.inv.length===1?"":"s"}</small></h2>
-    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">Market value ${val(k)}G${H?` · <button class="tag${S.keep[k]?" keep":""}" data-act="keep" data-k="${k}">${S.keep[k]?"Keep":"For sale"}</button>`:""}</span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
+    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">${built("obs")&&LORE[k]?`<i>${LORE[k]}</i><br>`:""}Market value ${val(k)}G${H?` · <button class="tag${S.keep[k]?" keep":""}" data-act="keep" data-k="${k}">${S.keep[k]?"Keep":"For sale"}</button>`:""}</span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
     ${H&&inv.length?`<p class="hint" style="margin-top:8px">Your staff only sell items marked For sale. Tap a tag to switch it.</p>`:""}
     ${sk("quick")&&inv.length?`<p class="hint" style="margin-top:8px">Quick Sale pays ${Math.round(quickPct()*100)}% of base value instantly and doesn't use the day.</p>`:""}
   </section>
@@ -1609,9 +1753,12 @@ function vDelve(){
       ${R.lair?`<button class="btn danger" data-act="boss">Fight the ${D.boss}</button>`:""}
       ${R.secret?`<button class="btn gold" data-act="secret">Take the hidden stairway</button>`:""}
       <button class="btn" data-act="explore">Explore</button>
-      ${R.stairs?`<button class="btn gold" data-act="descend">Descend to floor ${R.floor+1}${built("watch")&&R.nextMod!==undefined?` · ${R.nextMod?MODS[R.nextMod].n:"calm"}`:""}</button>`:""}
+      ${R.stairs&&floorSealed(R.d,R.floor+1)?`<button class="btn" disabled>The way is sealed</button>`:""}
+      ${R.stairs&&!floorSealed(R.d,R.floor+1)?`<button class="btn gold" data-act="descend">Descend to floor ${R.floor+1}${built("watch")&&R.nextMod!==undefined?` · ${R.nextMod?MODS[R.nextMod].n:"calm"}`:""}</button>`:""}
       <button class="btn alt" data-act="leave">Return to town</button></div>`;
-  const hint=R.secretFloor?"A secret floor: exclusive relics can be found here."
+  const seal=R.stairs&&floorSealed(R.d,R.floor+1);
+  const hint=seal?seal:R.secretFloor?"A secret floor: exclusive relics can be found here."
+    :R.floor===D.floors&&built("obs")&&!R.bossDone?`The ${D.boss} lurks somewhere on this floor. Maribel's star charts mark a hidden stair beyond the lair (${Math.round((.35+.05*sk("keen")+secretBonus())*100)}% chance).`
     :R.floor===D.floors&&!R.bossDone?`The ${D.boss} lurks somewhere on this floor.`
     :R.floor===Math.ceil(D.floors/2)&&!R.miniDone?`The ${MINI[R.d]} prowls this floor.`
     :"Deeper floors hold better loot and tougher monsters.";
@@ -1710,7 +1857,7 @@ function render(){
   const r=document.getElementById("price");
   if(r)r.addEventListener("input",()=>{S.shop.pct=+r.value;const p=Math.max(1,Math.round(val(S.shop.cur.k)*S.shop.pct/100));
     document.getElementById("pv").textContent=fmt(p)+"G";document.getElementById("pp").textContent=S.shop.pct+"% of market"});
-  musicUpdate();
+  musicUpdate();applyTheme();
 }
 
 app.addEventListener("click",e=>{
@@ -1730,7 +1877,7 @@ app.addEventListener("click",e=>{
     drop:()=>dropPick(+b.dataset.i), pickup:pickUp,
     equip:()=>equip(b.dataset.k), unequip:()=>unequip(+b.dataset.i), secret:secretStairs,
     learn:()=>learn(b.dataset.k),
-    payDebt, repair:()=>repair(b.dataset.k),
+    payDebt, repair:()=>repair(b.dataset.k), forge, theme:()=>{S.theme=b.dataset.k;applyTheme();save();render()},
     hire:()=>hire(b.dataset.k), fireAsk:()=>{confirmFire=b.dataset.k;render()}, fireNo:()=>{confirmFire=null;render()}, fireDo:()=>fire(b.dataset.k),
     keep:()=>{const k=b.dataset.k;if(S.keep[k])delete S.keep[k];else S.keep[k]=true;save();render()},
     reportOk:()=>{S.report=null;save();render()},
