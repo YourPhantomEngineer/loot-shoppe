@@ -479,7 +479,7 @@ Opening entry:
 
 **Trigger:** after the Kobold Foreman, with the Tavern repaired.
 
-> **Old Greta:** "We've met. I'm the one who hollered about your lamp. I ran the counter at the general store before you were born. Before your aunt was, near enough."
+> **Old Greta:** "We've met. I'm the one who hollered when I saw your lamp was lit back up. I ran the counter at the general store before you were born. Before your aunt was, near enough."
 >
 > **Old Greta:** "Hire me. I know every haggler in this valley and every lie they tell."
 >
