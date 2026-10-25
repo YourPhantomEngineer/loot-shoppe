@@ -293,6 +293,7 @@ const UPG=[
  {k:"blade",n:"Sharpen Blade",d:l=>`Base attack ${dmgAt(l)} → ${dmgAt(l+1)}`,base:120},
  {k:"armor",n:"Reinforce Armor",d:l=>`Base HP ${hpAt(l)} → ${hpAt(l+1)}`,base:120},
  {k:"pack",n:"Bigger Pack",d:l=>`Carry ${capAt(l)} → ${capAt(l+1)} items`,base:90},
+ {k:"belt",n:"Expand Supply Belt",d:l=>`Supply slots ${beltCapAt(l)} → ${beltCapAt(l+1)}`,base:150,max:4},
  {k:"sign",n:"Painted Sign",d:l=>`Customer budgets +${l*8}% → +${(l+1)*8}%`,base:200}
 ];
 const BR=[{k:"war",n:"Warrior"},{k:"scav",n:"Scavenger"},{k:"merc",n:"Merchant"}];
@@ -652,7 +653,7 @@ SCN["1.4"]={title:"First shop day",on:"shopOpen",cards:[
 SCN["1.5"]={title:"The Workshop",on:"tab",when:d=>d.t==="work",cards:[
  {s:[["Wren","Maribel's workbench. She could make a rope out of rumors."],["Wren","Materials from the cellar can be used to craft new items to sell and the supplies you craft can be equipped on your supply belt (in Town Tab) to carry with you when you go delving."]],b:"Continue"}]};
 SCN["1.6"]={title:"Upgrades",on:"tab",when:d=>d.t==="upg",cards:[
- {s:[["Wren","Gear and Shop upgrades can be purchased here. Sharpen your blades, buy bigger packs. Fix the town to unlock new upgrades."]],b:"Continue"}]};
+ {s:[["Wren","Gear and Shop upgrades can be purchased here. Sharpen your blades, buy bigger packs, add loops to your supply belt. Fix the town to unlock new upgrades."]],b:"Continue"}]};
 SCN["1.7"]={title:"The letter",on:"day",when:()=>S.story.ch===1&&fl("ch1done")&&S.day>S.story.flags.ch1done,cards:[
  {s:["A letter is slipped under the door. Heavy paper. A small gold star pressed into the wax seal."],b:"Open it"},
  {s:[["note","\"To the new proprietor. Now that your aunt has been declared dead, the Celestial Consortium extends its condolences. Her outstanding balance transfers to you. We look forward to a long and orderly relationship. — G. Voss, Guildmaster\""]],b:"Continue"},
@@ -782,6 +783,7 @@ function recipeLock(r){
   return "";
 }
 const gearCap=k=>["blade","armor","pack"].includes(k)&&!built("smithy")?3:10;
+const upLimit=u=>Math.min(u.max||10,gearCap(u.k));
 
 /* ---------- Special customer days ---------- */
 const collectorDay=()=>built("market")&&S.day%7===3;
@@ -1193,7 +1195,7 @@ function vossTurn(guard){
 
 /* ================= State ================= */
 const KEY="dungeon-loot-shoppe-v1",OLD_KEYS=["haggle-hollow-v1"];
-const fresh=()=>({day:1,gold:150,xp:0,inv:["herb","herb","dagger","quartz"],gear:{blade:0,armor:0,pack:0,shelf:0,sign:0},
+const fresh=()=>({day:1,gold:150,xp:0,inv:["herb","herb","dagger","quartz"],gear:{blade:0,armor:0,pack:0,belt:0,shelf:0,sign:0},
   trend:{weapon:1,armor:1,potion:1,trinket:1,gem:1},run:null,shop:null,over:null,sold:0,earned:0,sound:true,news:"",
   mats:{},skills:{},bosses:{},crafted:0,music:true,belt:[],legacy:{stars:0,perks:{},count:0,total:0},lifeStart:0,crew:[],staffs:{},keep:{},report:null,regs:{},story:Object.assign(newStory(),{queue:["1.1"]})});
 /* Merge a saved game over fresh defaults; story and crew are left out when the save predates them so migration can infer them. */
@@ -1202,6 +1204,7 @@ let S=fresh();
 try{let raw=localStorage.getItem(KEY);if(!raw)for(const k of OLD_KEYS){raw=localStorage.getItem(k);if(raw){localStorage.setItem(KEY,raw);break}}const s=JSON.parse(raw);if(s)S=loadState(s)}catch(e){}
 function migrate(){
   S.staffs=S.staffs||{};S.keep=S.keep||{};S.report=S.report||null;S.regs=S.regs||{};
+  S.gear=S.gear||{};if(S.gear.belt===undefined)S.gear.belt=2; // old saves keep the former four-slot belt
   if(S.shop&&S.shop.cur&&!S.shop.cur.per){const c=S.shop.cur;c.per="bluffer";c.line="";c.mood=moodOf(c).k}
   migrateStory();
   S.legacy=S.legacy||{stars:0,perks:{},count:0,total:0};S.legacy.perks=S.legacy.perks||{};S.lifeStart=S.lifeStart||0;
@@ -1235,7 +1238,9 @@ const quickPct=()=>sk("quick")?.05+.1*sk("quick"):0;
 const quickPrice=k=>Math.max(1,Math.round(IT[k].b*quickPct()));
 const val=k=>Math.max(1,Math.round(IT[k].b*(S.trend[IT[k].c]||1)));
 const upCost=u=>Math.round(u.base*Math.pow(1.9,S.gear[u.k]));
-const canBuyUpgrade=u=>S.gear[u.k]<10&&S.gear[u.k]<gearCap(u.k)&&S.gold>=upCost(u);
+const beltCapAt=l=>2+l;
+const beltCap=()=>beltCapAt(S.gear.belt||0);
+const canBuyUpgrade=u=>S.gear[u.k]<upLimit(u)&&S.gold>=upCost(u);
 const week=()=>Math.ceil(S.day/7);
 const rentFor=w=>Math.round(250*Math.pow(w,1.8)/10)*10;
 const count=(arr,k)=>arr.filter(x=>x===k).length;
@@ -1490,7 +1495,6 @@ const MODS={
 };
 const MINI=["Rat Matriarch","Tunnel Wurm","Ember Knight","Prism Golem","Celestial Executor"];
 const HEAL={herb:.2,tonic:.4,draught:.65,elixir:1};
-const BELT=4;
 const runDmg=()=>Math.round(dmg()*(S.run?.atkB||1));
 function rollMod(floor){return floor>1&&Math.random()<.45?pick(Object.keys(MODS)):null}
 function startDelve(i){
@@ -1584,7 +1588,7 @@ function openChest(pre){
   R.ev=null;R.event=`${pre} Inside: ${g}G`+(bagAdd(k)?` and ${an(IT[k].n)}!`:`, and ${an(IT[k].n)} you have no room for.`);sfx.loot();
 }
 function giveSupply(k){
-  if(S.belt.length<BELT){S.belt.push(k);return "on your belt"}
+  if(S.belt.length<beltCap()){S.belt.push(k);return "on your belt"}
   if(bagAdd(k))return "in your pack";
   return null;
 }
@@ -1728,7 +1732,7 @@ function useItem(src,i){
   else{R.event=m;rlog(m)}
   save();render();
 }
-function equip(k){if(S.belt.length>=BELT||!S.inv.includes(k))return;S.inv.splice(S.inv.indexOf(k),1);S.belt.push(k);sfx.loot();save();render()}
+function equip(k){if(S.belt.length>=beltCap()||!S.inv.includes(k))return;S.inv.splice(S.inv.indexOf(k),1);S.belt.push(k);sfx.loot();save();render()}
 function unequip(i){if(S.belt[i]){S.inv.push(S.belt.splice(i,1)[0]);save();render()}}
 
 /* ---------- Movement ---------- */
@@ -2049,9 +2053,9 @@ function vTown(){
       <span class="right">${open?"Enter":"Locked"}</span></button>`}).join("")}
   </div></section>
   ${staffSection()}
-  <section id="belt" class="town-section town-supplies"><h2>Supply belt <small>${S.belt.length}/${BELT} · tap to unequip</small></h2>
+  <section id="belt" class="town-section town-supplies"><h2>Supply belt <small>${S.belt.length}/${beltCap()} · tap to unequip</small></h2>
     <div class="chips">${S.belt.length?S.belt.map((k,i)=>`<button class="chip usebtn on" data-act="unequip" data-i="${i}">${IT[k].n}</button>`).join(""):`<span class="hint">Empty. Supplies on your belt come with you into every dungeon.</span>`}</div>
-    ${eq.length?`<div class="chips" style="margin-top:8px">${eq.map(([k,n])=>`<button class="chip usebtn" data-act="equip" data-k="${k}" ${S.belt.length>=BELT?"disabled":""}>+ ${IT[k].n}${n>1?` ×${n}`:""}</button>`).join("")}</div>`:`<p class="hint" style="margin-top:8px">Craft bombs, ropes, ladders, whetstones, and lockpicks in the Workshop. Potions in stock can go on your belt too.</p>`}
+    ${eq.length?`<div class="chips" style="margin-top:8px">${eq.map(([k,n])=>`<button class="chip usebtn" data-act="equip" data-k="${k}" ${S.belt.length>=beltCap()?"disabled":""}>+ ${IT[k].n}${n>1?` ×${n}`:""}</button>`).join("")}</div>`:`<p class="hint" style="margin-top:8px">Craft bombs, ropes, ladders, whetstones, and lockpicks in the Workshop. Potions in stock can go on your belt too.</p>`}
   </section>
   <section class="town-section town-stock"><h2>Stock <small>${S.inv.length} item${S.inv.length===1?"":"s"}</small></h2>
     ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">${built("obs")&&LORE[k]?`<i class="lore">${LORE[k]}</i><br>`:""}Market value ${val(k)}G · <button class="tag${isKept(k)?" keep":""}" data-act="keep" data-k="${k}">${isKept(k)?"Keep":"For sale"}</button></span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
@@ -2125,10 +2129,10 @@ function vWork(){
 
 function vUpg(){
   return `
-  <div class="chips"><span class="chip">Attack ${dmg()}</span><span class="chip">Max HP ${maxHp()}</span><span class="chip">Pack ${cap()}</span><span class="chip">${custN()} customers a day</span></div>
+  <div class="chips"><span class="chip">Attack ${dmg()}</span><span class="chip">Max HP ${maxHp()}</span><span class="chip">Pack ${cap()}</span><span class="chip">Belt ${beltCap()} slots</span><span class="chip">${custN()} customers a day</span></div>
   ${!built("smithy")?`<div class="card"><p class="hint"><b>Higher gear levels need the Smithy.</b> Defeat the Kobold Foreman in Chapter 3 to unlock the Smithy, then repair it to continue upgrading Sharpen Blade, Reinforce Armor, and Bigger Pack past level 3.</p></div>`:""}
   <section><h2>Gear &amp; shop upgrades</h2><div class="list">
-    ${UPG.map(u=>{const l=S.gear[u.k],c=upCost(u),cap=gearCap(u.k),max=l>=10,capped=!max&&l>=cap;return `<button class="row" data-act="up" data-k="${u.k}" ${canBuyUpgrade(u)?"":"disabled"}>
+    ${UPG.map(u=>{const l=S.gear[u.k],c=upCost(u),limit=upLimit(u),max=l>=limit,capped=!max&&l>=gearCap(u.k);return `<button class="row" data-act="up" data-k="${u.k}" ${canBuyUpgrade(u)?"":"disabled"}>
       <span><b>${u.n}</b> <span class="sub">Lv ${l}</span></span><span class="sub">${max?"Fully upgraded":capped?"Needs the Smithy for higher levels":u.d(l)}</span>
       <span class="right coin">${max?"Max":capped?"Locked":fmt(c)+"G"}</span></button>`}).join("")}
   </div></section>`;
@@ -2166,7 +2170,7 @@ function evButtons(){
 function usePanel(){
   const R=S.run;
   const items=[...S.belt.map((k,i)=>({k,s:"belt",i})),...R.bag.map((k,i)=>({k,s:"bag",i})).filter(o=>HEAL[o.k])];
-  return `<section id="usepanel"><h2>Supplies <small>${R.fight?"using one takes your turn":`belt ${S.belt.length}/${BELT}`}</small></h2>
+  return `<section id="usepanel"><h2>Supplies <small>${R.fight?"using one takes your turn":`belt ${S.belt.length}/${beltCap()}`}</small></h2>
     <div class="chips">${items.length?items.map(o=>`<button class="chip usebtn" data-act="use" data-s="${o.s}" data-i="${o.i}" ${canUse(o.k)?"":"disabled"}>${IT[o.k].n}${o.k==="ladder"?R.secretFloor||R.floor>=DUN[R.d].floors?" · deepest floor":floorSealed(R.d,R.floor+1)?" · path sealed":" · skip 1 floor":""}${o.s==="bag"?" (pack)":""}</button>`).join("")
     :`<span class="hint">No supplies. Equip potions, bombs, ropes, ladders, whetstones, or lockpicks on your belt in town.</span>`}</div></section>`;
 }
@@ -2315,7 +2319,7 @@ app.addEventListener("click",e=>{
     tab:()=>{tab=b.dataset.t;confirmReset=false;SE("tab",{t:tab});render();window.scrollTo(0,0)},
     shop:openShop,
     delve:()=>startDelve(+b.dataset.i),
-    up:()=>{const u=UPG.find(x=>x.k===b.dataset.k),c=upCost(u);if(S.gold>=c&&S.gear[u.k]<gearCap(u.k)){S.gold-=c;S.gear[u.k]++;sfx.loot();save();render()}},
+    up:()=>{const u=UPG.find(x=>x.k===b.dataset.k),c=upCost(u);if(S.gold>=c&&S.gear[u.k]<upLimit(u)){S.gold-=c;S.gear[u.k]++;sfx.loot();save();render()}},
     craft:()=>craft(+b.dataset.i),
     ev:()=>evChoice(b.dataset.c), use:()=>useItem(b.dataset.s,+b.dataset.i),
     drop:()=>dropPick(+b.dataset.i), pickup:pickUp,

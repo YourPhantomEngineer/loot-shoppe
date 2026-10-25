@@ -159,7 +159,9 @@ Opening entry:
 
 **Trigger:** first time opening the Upgrades tab.
 
-> **Wren:** "Gear and Shop upgrades can be purchased here. Sharpen your blades, buy bigger packs. Fix the town to unlock new upgrades."
+> **Wren:** "Gear and Shop upgrades can be purchased here. Sharpen your blades, buy bigger packs, add loops to your supply belt. Fix the town to unlock new upgrades."
+
+**Supply belt upgrade (defined):** new games and Grand Reopenings start with 2 supply-belt slots. **Expand Supply Belt** is available immediately in the Upgrades tab, costs 150G for its first rank with normal upgrade cost scaling, and adds 1 slot per rank. It has 4 ranks, for a maximum of 6 slots. Saves created before this upgrade begin at rank 2 so they retain the previous 4-slot capacity; equipped supplies are never removed by migration.
 
 **Locked-state note:** until the Smithy is repaired, the Upgrades page explains that Sharpen Blade, Reinforce Armor and Bigger Pack stop at level 3, and that the Kobold Foreman must be defeated in Chapter 3 before the Smithy can be unlocked and built. The Upgrades tab's purchase count only includes upgrades the player can actually buy now; Smithy-locked levels do not count.
 
