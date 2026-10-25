@@ -123,6 +123,30 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 .rlog li{color:var(--fg)}
 .staffcard{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
 .row.locked{opacity:.55}
+.ov{position:fixed;inset:0;z-index:30;background:rgba(5,14,16,.72);display:flex;align-items:flex-end;justify-content:center;
+  padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.ovcard{width:100%;max-width:480px;background:var(--panel);border:1px solid var(--copper);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px;
+  max-height:80vh;overflow-y:auto;animation:ovin .25s ease}
+@keyframes ovin{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+.ovtitle{font-family:var(--display);font-size:.8rem;color:var(--copper);letter-spacing:.04em}
+.narr{margin:0;font-size:1.02rem;line-height:1.5}
+.letter{margin:0;font-style:italic;font-family:Georgia,serif;font-size:1.02rem;line-height:1.5;border-left:3px solid var(--coin);padding-left:12px}
+.sline{margin:0;line-height:1.5}
+.who{font-family:var(--display);font-weight:400;color:var(--copper);font-size:.85rem;margin-right:4px}
+.aside{color:var(--muted)}
+body.ovopen{overflow:hidden}
+.tipbar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--panel);border:1px solid var(--copper);border-radius:8px;padding:10px 12px}
+.tipbar p{margin:0;font-size:.92rem;line-height:1.45}
+.tipbar .ghost{flex-shrink:0}
+.jcard{gap:8px}
+.jtitle{font-family:var(--display);font-size:1.05rem;color:var(--fg);margin:0}
+.goals{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.goal{display:flex;gap:8px;align-items:baseline;font-size:.93rem}
+.goal .gk{width:1.1em;color:var(--muted);flex-shrink:0;text-align:center}
+.goal.done{color:var(--muted)}.goal.done .gk{color:var(--good)}
+.entries{display:flex;flex-direction:column;gap:10px}
+.entry{margin:0;font-family:Georgia,serif;font-style:italic;line-height:1.5;border-left:2px solid var(--line);padding-left:10px}
+.entry.done{border-color:var(--coin)}.entry.open{border-color:var(--copper)}.entry.note{border-color:var(--arcane)}
 .confirm{border:1px solid var(--bad);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:10px;font-size:.88rem;text-align:center}
 .over{text-align:center;gap:14px}
 .over .big-num{font-family:var(--display);font-size:2.4rem;color:var(--coin)}
@@ -141,6 +165,7 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 <div id="app" class="wrap"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="xpPop" aria-live="polite"></div>
+<div id="ov" class="ov" hidden></div>
 
 <script>
 /* ================= Data ================= */
@@ -223,21 +248,196 @@ const SK=[
 ];
 const dmgAt=l=>4+3*l, hpAt=l=>30+15*l, capAt=l=>6+2*l;
 
+/* ================= Story engine ================= */
+/* Scenes are data: an ID, a trigger (on + when), cards, and effects (done).
+   A card is {s:[...], b:"Button"} or {s:[...], c:[["Label","nextCardId"],...]}.
+   s items: "narration" | ["note","letter text"] | ["Speaker","line","stage direction"].
+   Every scene, tip and intro plays once; seen flags live in S.story. */
+const DEBT_PAYMENT=600, DEBT_PAYMENTS=4, STARTUP_LOAN=300;
+const newStory=()=>({ch:1,chDay:1,goals:{},seen:{},tips:{},flags:{},choices:{},built:{},items:{},hiredEver:{},
+  debtPaid:0,loan:0,reopens:0,journal:[],queue:[],tipQ:[]});
+const SCN={}, TIPS={}, CH=[null];
+const fl=k=>!!S.story.flags[k];
+const seen=id=>!!S.story.seen[id];
+const goalDone=id=>!!S.story.goals[id];
+const built=k=>!!S.story.built[k];
+const onStaff=k=>S.crew.includes(k);
+const R_=v=>typeof v==="function"?v():v;
+function jrnl(text,kind="entry"){S.story.journal.push({ch:S.story.ch,day:S.day,text,kind})}
+function tip(id){const T=TIPS[id];if(!T||S.story.tips[id])return;S.story.tips[id]=S.day;S.story.tipQ.push(id)}
+function queue(id){const st=S.story,sc=SCN[id];if(!sc||(!sc.repeat&&st.seen[id])||st.queue.includes(id))return;st.queue.push(id)}
+
+/* ---------- Chapters and goals ---------- */
+const chGoals=c=>(CH[c]&&CH[c].goals)||[];
+function goalEvent(type,d){
+  const st=S.story;
+  for(const g of chGoals(st.ch))if(!st.goals[g.id]&&g.ev&&(!g.can||g.can())&&g.ev(type,d))st.goals[g.id]=S.day;
+}
+function checkGoals(){
+  const st=S.story;
+  for(const g of chGoals(st.ch))if(!st.goals[g.id]&&g.ok&&g.ok())st.goals[g.id]=S.day;
+}
+const chComplete=c=>chGoals(c).length>0&&chGoals(c).every(g=>S.story.goals[g.id]);
+function checkChapter(){
+  const st=S.story;if(scn||st.queue.length)return;
+  if(!chComplete(st.ch)||st.flags["ch"+st.ch+"done"])return;
+  st.flags["ch"+st.ch+"done"]=S.day;
+  const C=CH[st.ch];
+  if(C.wait)return; // chapters whose ending is played by a later scene (Ch1 letter, Ch6 epilogue)
+  endChapter();
+}
+function startChapter(n){
+  const st=S.story;st.ch=n;st.chDay=S.day;const C=CH[n];
+  if(C&&C.open)jrnl(C.open,"open");
+  if(C&&C.start)C.start();
+  checkGoals();
+}
+function endChapter(){
+  const st=S.story,C=CH[st.ch];
+  if(C.done)jrnl(R_(C.done),"done");
+  if(C.unlock)C.unlock();
+  st.flags["ch"+st.ch+"ended"]=S.day;
+  toast(`<b>Chapter ${st.ch} complete:</b> ${C.t}`);
+  if(CH[st.ch+1])startChapter(st.ch+1);
+}
+
+/* ---------- Events ---------- */
+function SE(type,d={}){
+  const st=S.story;if(!st)return;
+  goalEvent(type,d);
+  checkGoals();
+  for(const id in SCN){
+    const sc=SCN[id];if(sc.repeat||st.seen[id]||st.queue.includes(id))continue;
+    if([].concat(sc.on||[]).includes(type)&&(!sc.when||sc.when(d)))queue(id);
+  }
+  tipHooks(type,d);
+  checkChapter();
+  playNext();
+}
+function tipHooks(type,d){} // filled in by chapter data
+
+/* ---------- Scene player ---------- */
+let scn=null;
+function playNext(){
+  const st=S.story;if(scn||!st.queue.length)return;
+  const id=st.queue.find(x=>SCN[x]);if(!id)return; // scenes from a newer version wait in the queue
+  const sc=SCN[id];
+  if(sc.log){ // log-only scene: lines go into the delve log
+    const lines=R_(sc.log);
+    if(S.run){for(const l of lines)rlog(l);S.run.event=lines[lines.length-1]+(S.run.event?"<br>"+S.run.event:"")}
+    finishScene(id);return;
+  }
+  scn={id,i:0};drawOv();
+}
+const cardAt=(id,i)=>R_(SCN[id].cards[i]);
+function scnGo(go){
+  if(!scn)return;
+  const sc=SCN[scn.id],c=cardAt(scn.id,scn.i);
+  if(c.c)S.story.choices[scn.id]=go;
+  let target=go&&go!=="next"?go:c.next;
+  let ni=target?sc.cards.findIndex((x,k)=>cardAt(scn.id,k).id===target):scn.i+1;
+  if(c.c&&!target)ni=scn.i+1;
+  if(ni<0||ni>=sc.cards.length||c.end)return finishScene(scn.id);
+  scn.i=ni;drawOv();
+}
+function finishScene(id){
+  const st=S.story,sc=SCN[id];
+  st.queue=st.queue.filter(x=>x!==id);
+  if(!sc.repeat)st.seen[id]=S.day;
+  scn=null;drawOv();
+  if(sc.done)sc.done(st.choices[id]);
+  checkGoals();checkChapter();
+  save();render();
+  playNext();
+}
+const md=t=>String(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/_(.+?)_/g,"<em>$1</em>");
+function cardHTML(c){
+  let h="";
+  for(const it of R_(c.s)||[]){
+    if(typeof it==="string")h+=`<p class="narr">${md(it)}</p>`;
+    else if(it[0]==="note")h+=`<p class="letter">${md(it[1])}</p>`;
+    else h+=`<p class="sline"><b class="who">${it[0]}</b>${it[2]?` <i class="aside">(${it[2]})</i>`:""} “${md(it[1])}”</p>`;
+  }
+  const btns=c.c?c.c.map(([l,g])=>`<button class="btn" data-act="scn" data-go="${g}">${l}</button>`).join("")
+    :`<button class="btn gold" data-act="scn" data-go="next">${c.b||"Continue"}</button>`;
+  return h+`<div class="btns">${btns}</div>`;
+}
+function drawOv(){
+  const ov=document.getElementById("ov");if(!ov)return;
+  if(!scn){ov.hidden=true;ov.innerHTML="";document.body.classList.remove("ovopen");return}
+  const sc=SCN[scn.id],c=cardAt(scn.id,scn.i);
+  ov.hidden=false;document.body.classList.add("ovopen");
+  ov.innerHTML=`<div class="ovcard" role="dialog" aria-modal="true" aria-label="${sc.title||"Story"}">${sc.title?`<span class="ovtitle">${sc.title}</span>`:""}${cardHTML(c)}</div>`;
+  ov.querySelector("button")?.focus({preventScroll:true});
+}
+function tipBar(){
+  const q=S.story?.tipQ||[];if(!q.length)return "";
+  const T=TIPS[q[0]];if(!T){q.shift();return tipBar()}
+  return `<div class="tipbar"><p><b class="who">${T.w}</b> ${T.n?md(T.t):`“${md(T.t)}”`}</p><button class="ghost" data-act="tipOk">${q.length>1?`Next (${q.length-1})`:"Got it"}</button></div>`;
+}
+
+/* ---------- Journal view ---------- */
+function goalRows(c){
+  return chGoals(c).filter(g=>!g.show||g.show()||goalDone(g.id)).map(g=>{
+    const done=goalDone(g.id),lock=!done&&g.lock&&g.lock();
+    return `<li class="goal${done?" done":""}"><span class="gk">${done?"✓":lock?"✕":"○"}</span><span>${R_(g.t)}${lock?`<span class="sub"> · ${lock}</span>`:""}</span></li>`}).join("");
+}
+function vJournal(){
+  const st=S.story,C=CH[st.ch];
+  const ents=[...st.journal].reverse();
+  return `
+  ${C?`<div class="card jcard"><span class="lbl">Chapter ${st.ch}</span><h2 class="jtitle">${C.t}</h2>
+    <ul class="goals">${goalRows(st.ch)}</ul></div>`:""}
+  ${typeof journalExtras==="function"?journalExtras():""}
+  <section><h2>Journal</h2><div class="entries">${ents.map(e=>`<p class="entry ${e.kind}">${md(e.text)}</p>`).join("")||`<p class="hint">Nothing written yet.</p>`}</div></section>`;
+}
+
+/* ---------- Save migration ---------- */
+function migrateStory(){
+  if(!S.crew)S.crew=S.hired?[S.hired]:[];
+  delete S.hired;
+  if(S.story){
+    const st=S.story,d=newStory();for(const k in d)if(st[k]===undefined)st[k]=d[k];
+    // Catch up after an update: finished chapters count as complete, and a chapter that ended before its successor existed moves on.
+    for(let c=1;c<st.ch;c++)for(const g of chGoals(c))if(!st.goals[g.id])st.goals[g.id]=S.day;
+    if(st.ch===1&&st.flags.ch1done)for(const g of chGoals(1))if(!st.goals[g.id])st.goals[g.id]=S.day;
+    if(st.flags["ch"+st.ch+"ended"]&&CH[st.ch+1])startChapter(st.ch+1);
+    return;
+  }
+  const st=S.story=newStory();
+  const started=S.day>1||S.xp>0||S.sold>0;
+  if(!started){st.queue.push("1.1");return}
+  // An existing shop: Chapter 1 counts as done, and the story picks up with Voss's letter.
+  st.flags.migrated=S.day;st.flags.skills=true;st.flags.firstDelve=true;
+  for(const g of chGoals(1))st.goals[g.id]=S.day;
+  for(const id in SCN)if(id.startsWith("1.")&&id!=="1.7")st.seen[id]=S.day;
+  for(const id in TIPS)if(TIPS[id].ch===1)st.tips[id]=S.day;
+  st.flags.ch1done=S.day;
+  st.queue.push("1.7");
+  for(const k of S.crew){st.hiredEver[k]=true;st.flags["met_"+k]=true}
+  if(S.crew.includes("pip"))st.flags.pipHired=true;
+}
+
+/* ================= Story data ================= */
+/*STORYDATA*/
+
 /* ================= State ================= */
 const KEY="dungeon-loot-shoppe-v1",OLD_KEYS=["haggle-hollow-v1"];
 const fresh=()=>({day:1,gold:150,xp:0,inv:["herb","herb","dagger","quartz"],gear:{blade:0,armor:0,pack:0,shelf:0,sign:0},
   trend:{weapon:1,armor:1,potion:1,trinket:1,gem:1},run:null,shop:null,over:null,sold:0,earned:0,sound:true,news:"",
-  mats:{},skills:{},bosses:{},crafted:0,music:true,belt:[],legacy:{stars:0,perks:{},count:0,total:0},lifeStart:0,hired:null,staffs:{},keep:{},report:null});
+  mats:{},skills:{},bosses:{},crafted:0,music:true,belt:[],legacy:{stars:0,perks:{},count:0,total:0},lifeStart:0,crew:[],staffs:{},keep:{},report:null,story:Object.assign(newStory(),{queue:["1.1"]})});
+/* Merge a saved game over fresh defaults; story and crew are left out when the save predates them so migration can infer them. */
+function loadState(o){const n=Object.assign(fresh(),o);if(!o.story)delete n.story;if(!o.crew)delete n.crew;return n}
 let S=fresh();
-try{let raw=localStorage.getItem(KEY);if(!raw)for(const k of OLD_KEYS){raw=localStorage.getItem(k);if(raw){localStorage.setItem(KEY,raw);break}}const s=JSON.parse(raw);if(s)S=Object.assign(S,s)}catch(e){}
+try{let raw=localStorage.getItem(KEY);if(!raw)for(const k of OLD_KEYS){raw=localStorage.getItem(k);if(raw){localStorage.setItem(KEY,raw);break}}const s=JSON.parse(raw);if(s)S=loadState(s)}catch(e){}
 function migrate(){
-  S.staffs=S.staffs||{};S.keep=S.keep||{};S.hired=S.hired||null;S.report=S.report||null;
+  S.staffs=S.staffs||{};S.keep=S.keep||{};S.report=S.report||null;
+  migrateStory();
   S.legacy=S.legacy||{stars:0,perks:{},count:0,total:0};S.legacy.perks=S.legacy.perks||{};S.lifeStart=S.lifeStart||0;
   S.over=null;S.belt=S.belt||[];S.mats=S.mats||{};S.skills=S.skills||{};S.bosses=S.bosses||{};
   if(S.run){const R=S.run;R.got=R.got||{};R.atkB=R.atkB||1;R.ev=R.ev||null;if(R.fight){R.fight.turn=R.fight.turn||0;if(!R.fight.kind)R.fight.kind=R.fight.boss?"boss":"mob"}}
 }
 migrate();
-if(S.run){S.run.got=S.run.got||{};if(S.run.fight)S.run.fight.turn=S.run.fight.turn||0}
 function save(){S.savedAt=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 let confirmReset=false, tab="town", saveBox=null, saveMsg="", saveCode="";
 
@@ -265,6 +465,7 @@ const upCost=u=>Math.round(u.base*Math.pow(1.9,S.gear[u.k]));
 const week=()=>Math.ceil(S.day/7);
 const rentFor=w=>Math.round(250*Math.pow(w,1.8)/10)*10;
 const count=(arr,k)=>arr.filter(x=>x===k).length;
+const dunOpen=i=>lvl()>=DUN[i].lvl;
 
 /* ================= Sound ================= */
 let ac=null;
@@ -398,7 +599,7 @@ function showXp(n){
 function addXp(n){
   if(n>0)showXp(n);
   const b=lvl();S.xp+=n;const a=lvl();
-  if(a>b){sfx.lvl();const d=DUN.find(x=>x.lvl===a);toast(`Level <b>${a}</b>! +1 skill point.`+(d?` ${d.n} is open.`:""))}
+  if(a>b){sfx.lvl();toast(`Level <b>${a}</b>! +1 skill point.`);SE("level",{lvl:a})}
 }
 function addMat(k,n){S.mats[k]=(S.mats[k]||0)+n}
 function endDay(){
@@ -408,15 +609,17 @@ function endDay(){
   CATS.forEach(c=>{let t=S.trend[c]*rnd(.88,1.12);t+=(1-t)*.15;S.trend[c]=Math.min(1.6,Math.max(.6,t))});
   S.news="";
   if(Math.random()<.18){const c=pick(CATS);S.trend[c]=Math.min(1.6,S.trend[c]+.3);S.news=`Word around town: ${CATN[c].toLowerCase()} are in demand.`}
-  tab="town";save();render();
+  tab="town";
+  SE("day",{finished});
+  save();render();
 }
 
 /* ================= Shop staff ================= */
 const STAFF=[
- {k:"pip",n:"Pip",title:"Nervous apprentice",wage:15,sells:2,rate:.8,need:()=>true,lock:"",bio:"Cheap and eager, but undersells everything."},
- {k:"marlo",n:"Marlo",title:"Smooth talker",wage:45,sells:3,rate:.95,need:()=>lvl()>=4,lock:"Reach level 4",bio:"Knows how to chat up a customer."},
- {k:"greta",n:"Old Greta",title:"Shrewd veteran",wage:140,sells:4,rate:1.08,need:()=>!!S.bosses[1],lock:"Defeat the Kobold Foreman in the Sunken Mine",bio:"Forty years behind a counter. Nobody fools her."},
- {k:"sable",n:"Sable",title:"Silver-tongued dealer",wage:420,sells:5,rate:1.2,need:()=>!!S.bosses[2],lock:"Defeat the Cinder Colossus in the Ember Vault",bio:"Could sell a rusty dagger to a king, and has."}
+ {k:"pip",n:"Pip",title:"Nervous apprentice",wage:15,sells:2,rate:.8,need:()=>fl("met_pip"),lock:"You'll meet him in Chapter 2.",bio:"Cheap and eager, but undersells everything."},
+ {k:"marlo",n:"Marlo",title:()=>seen("4.4")?"Smooth talker · ex-Celestial":"Smooth talker",wage:45,sells:3,rate:.95,need:()=>fl("met_marlo"),lock:"Repair the Tavern to meet them.",bio:"Knows how to chat up a customer."},
+ {k:"greta",n:"Old Greta",title:"Shrewd veteran",wage:140,sells:4,rate:1.08,need:()=>fl("met_greta"),lock:"Defeat the Kobold Foreman, with the Tavern repaired.",bio:"Ran the general store before your aunt was born. Nobody fools her."},
+ {k:"sable",n:"Sable",title:"Silver-tongued dealer",wage:420,sells:5,rate:1.2,need:()=>fl("met_sable"),lock:"Defeat the Cinder Colossus.",bio:"Can sell anything to anyone. Would rather not say where she learned."}
 ];
 const ST=k=>STAFF.find(x=>x.k===k);
 const staffRec=k=>(S.staffs[k]=S.staffs[k]||{sold:0,wageB:0,rateB:0});
@@ -432,44 +635,53 @@ function pickCust(){
   let w=Math.random()*CUST.reduce((a,c)=>a+c.w,0),ti=0;for(;ti<CUST.length;ti++){w-=CUST[ti].w;if(w<=0)break}
   return CUST[Math.min(ti,CUST.length-1)];
 }
-function hire(k){const s=ST(k);if(!s||!s.need())return;S.hired=k;confirmFire=false;sfx.coin();toast(`<b>${s.n}</b> will mind the shop on days you go delving.`);save();render()}
-let confirmFire=false;
-function fire(){const s=ST(S.hired);S.hired=null;confirmFire=false;toast(`${s?s.n:"Your shopkeeper"} packs up and leaves.`);save();render()}
-/* Runs when you head into a dungeon: the shopkeeper's day is settled now and reported when you return. */
+function hire(k,quiet){const s=ST(k);if(!s||!s.need()||S.crew.includes(k))return;S.crew.push(k);S.story.hiredEver[k]=true;confirmFire=null;
+  if(!quiet){sfx.coin();toast(`<b>${s.n}</b> joins your staff and will mind the shop on days you go delving.`)}SE("hire",{k});save();render()}
+let confirmFire=null;
+function fire(k){const s=ST(k);S.crew=S.crew.filter(x=>x!==k);confirmFire=null;toast(`${s?s.n:"Your shopkeeper"} heads back to the Tavern hire board.`);save();render()}
+const nameList=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
+/* Runs when you head into a dungeon: every shopkeeper on staff shares the day's customers. Settled now, reported on return. */
 function staffShift(){
-  const k=S.hired;if(!k)return null;
-  const st=ST(k),w=staffWage(k);
-  if(!forSale().length)return {who:st.n,lines:[`Nothing was marked For sale, so ${st.n} took the day off.`],gold:0,wage:0};
-  if(S.gold<w)return {who:st.n,lines:[`You couldn't cover ${st.n}'s ${w}G wage, so the shop stayed closed.`],gold:0,wage:0};
-  const rec=staffRec(k),L0=staffLvl(k),rate=staffRate(k),target=staffSells(k);
-  const lines=[];let gold=0,sold=0;
-  let ev=Math.random()<.35?pick(["great","swindle","trade","tip","raise",...(THIEF_TARGETS.includes(k)?["thief"]:[])]):null;
+  const crew=S.crew.map(ST).filter(Boolean);if(!crew.length)return null;
+  const who=nameList(crew.map(c=>c.n)),wage=crew.reduce((a,c)=>a+staffWage(c.k),0);
+  if(!forSale().length)return {who,lines:[`Nothing was marked For sale, so ${who} took the day off.`],gold:0,wage:0};
+  if(S.gold<wage)return {who,lines:[`You couldn't cover ${fmt(wage)}G in wages, so the shop stayed closed.`],gold:0,wage:0};
+  const lines=[];let gold=0,attempts=custN()+2,raise=null;
+  const evSt=pick(crew);
+  let ev=Math.random()<.35?pick(["great","swindle","trade","tip","raise",...(THIEF_TARGETS.includes(evSt.k)?["thief"]:[])]):null;
   const take=key=>S.inv.splice(S.inv.indexOf(key),1);
-  for(let i=0;i<custN()+2&&sold<target;i++){
-    const C=pickCust(),m=forSale().filter(x=>!C.cats||C.cats.includes(IT[x].c));
-    if(!m.length)continue;
-    const key=pick(m),v=val(key);let price=Math.max(1,Math.round(v*rate*rnd(.95,1.05)));
-    const max=Math.round(v*rnd(...C.bud)*signB());
-    if(price>max){lines.push(`A ${C.n.toLowerCase()} balked at ${st.n}'s price for the ${IT[key].n}.`);continue}
-    if(ev==="trade"){
-      const pool=[...new Set(DUN.filter(d=>lvl()>=d.lvl).flatMap(d=>d.mats))],mt=pick(pool);
-      take(key);addMat(mt,2);sold++;ev=null;lines.push(`A traveler traded 2 ${MATS[mt]} for ${an(IT[key].n)}.`);continue;
+  for(const st of crew){
+    const k=st.k,rec=staffRec(k),L0=staffLvl(k),rate=staffRate(k),target=staffSells(k);let sold=0;
+    while(attempts>0&&sold<target){
+      attempts--;
+      const C=pickCust(),m=forSale().filter(x=>!C.cats||C.cats.includes(IT[x].c));
+      if(!m.length)continue;
+      const key=pick(m),v=val(key);let price=Math.max(1,Math.round(v*rate*rnd(.95,1.05)));
+      const max=Math.round(v*rnd(...C.bud)*signB());
+      if(price>max){lines.push(`A ${C.n.toLowerCase()} balked at ${st.n}'s price for the ${IT[key].n}.`);continue}
+      const mine=st===evSt;
+      if(mine&&ev==="trade"){
+        const pool=[...new Set(DUN.filter((d,i)=>dunOpen(i)).flatMap(d=>d.mats))],mt=pick(pool);
+        take(key);addMat(mt,2);sold++;ev=null;lines.push(`A traveler traded ${st.n} 2 ${MATS[mt]} for ${an(IT[key].n)}.`);continue;
+      }
+      let note="";
+      if(mine&&ev==="great"){price=Math.round(price*1.4);note=` ${st.n} charmed them into paying 40% extra!`;ev=null}
+      else if(mine&&ev==="swindle"){price=Math.max(1,Math.round(price*.5));note=` A fast talker haggled ${st.n} down to half price.`;ev=null}
+      take(key);gold+=price;sold++;lines.push(`${st.n} sold ${an(IT[key].n)} for ${fmt(price)}G.${note}`);
+      if(!forSale().length)break;
     }
-    let note="";
-    if(ev==="great"){price=Math.round(price*1.4);note=` ${st.n} charmed them into paying 40% extra!`;ev=null}
-    else if(ev==="swindle"){price=Math.max(1,Math.round(price*.5));note=` A fast talker haggled ${st.n} down to half price.`;ev=null}
-    take(key);gold+=price;sold++;lines.push(`Sold ${an(IT[key].n)} for ${fmt(price)}G.${note}`);
+    rec.sold+=sold;S.sold+=sold;
+    const L1=staffLvl(k);if(L1>L0)lines.push(`${st.n} reached level ${L1}! Better prices from now on.`);
   }
   if(ev==="thief"){const p=forSale();if(p.length){
-    const key=pick(p);lines.push(`While ${st.n} was distracted, a thief made off with ${an(IT[key].n)}!`);
-    if(Math.random()<catchChance(k))lines.push(`${st.n} gave chase and caught them, recovering the ${IT[key].n}.`);
-    else{take(key);lines.push(`${st.n} gave chase, but the thief got away.`)}
+    const key=pick(p);lines.push(`While ${evSt.n} was distracted, a thief made off with ${an(IT[key].n)}!`);
+    if(Math.random()<catchChance(evSt.k))lines.push(`${evSt.n} gave chase and caught them, recovering the ${IT[key].n}.`);
+    else{take(key);lines.push(`${evSt.n} gave chase, but the thief got away.`)}
   }}
-  if(ev==="tip"&&sold){const t=Math.round(rnd(.05,.12)*gold)+5;gold+=t;lines.push(`A regular customer left ${st.n} a ${t}G tip.`)}
-  if(!sold&&!lines.length)lines.push(`No customers wanted anything on the shelves today.`);
-  rec.sold+=sold;S.sold+=sold;
-  const L1=staffLvl(k);if(L1>L0)lines.push(`${st.n} reached level ${L1}! Better prices from now on.`);
-  return {who:st.n,k,lines,gold,wage:w,raise:ev==="raise"};
+  if(ev==="tip"&&gold){const t=Math.round(rnd(.05,.12)*gold)+5;gold+=t;lines.push(`A regular customer left ${evSt.n} a ${t}G tip.`)}
+  if(ev==="raise")raise=evSt.k;
+  if(!lines.length)lines.push(`No customers wanted anything on the shelves today.`);
+  return {who,lines,gold,wage,raise};
 }
 function settleShift(){
   const R=S.run;if(!R||!R.shift)return;const r=R.shift;
@@ -796,7 +1008,7 @@ function buyPerk(k){
 function retire(){
   const g=starsNow();if(g<1||lvl()<RETIRE_LVL)return;
   const L=S.legacy;L.stars+=g;L.total+=g;L.count++;
-  const keep={legacy:L,sound:S.sound,music:S.music,sold:S.sold,earned:S.earned,crafted:S.crafted,...(pk("loyal")?{hired:S.hired,staffs:S.staffs,keep:S.keep}:{})};
+  const keep={legacy:L,sound:S.sound,music:S.music,sold:S.sold,earned:S.earned,crafted:S.crafted,story:S.story,crew:S.crew,staffs:S.staffs,keep:S.keep};
   S=Object.assign(fresh(),keep);S.lifeStart=S.earned;S.gold=150+250*pk("fortune");migrate();
   confirmRetire=false;tab="legacy";sfx.win();
   toast(`A new shop opens its doors. <b>+${g} Legacy star${g===1?"":"s"}</b>`);
@@ -865,12 +1077,17 @@ function refuse(){const P=S.shop;slog(`You turned away a ${CUST[P.cur.t].n.toLow
 const app=document.getElementById("app");
 const soundBtn=()=>`<div class="tools"><button class="ghost" data-act="music" aria-pressed="${S.music}">${S.music?"Music on":"Music off"}</button><button class="ghost" data-act="sound" aria-pressed="${S.sound}">${S.sound?"SFX on":"SFX off"}</button></div>`;
 function groupInv(arr){const g={};arr.forEach(k=>g[k]=(g[k]||0)+1);return Object.entries(g).sort((a,b)=>val(b[0])-val(a[0]))}
-const unlockedTier=()=>Math.max(...DUN.filter(d=>lvl()>=d.lvl).map(d=>d.t));
+const unlockedTier=()=>Math.max(...DUN.filter((d,i)=>dunOpen(i)).map(d=>d.t));
 
 function tabs(){
   const p=pts(),c=RECIPES.filter(canCraft).length,u=UPG.filter(x=>S.gear[x.k]<10&&S.gold>=upCost(x)).length,lg=PERKS.filter(x=>pk(x.k)<x.max&&S.legacy.stars>=perkCost(x)).length;
   const t=(k,n,badge)=>`<button role="tab" aria-selected="${tab===k}" data-act="tab" data-t="${k}">${n}${badge?`<span class="dot">${badge}</span>`:""}</button>`;
-  return `<div class="tabs" role="tablist">${t("town","Town")}${t("work","Workshop",c)}${t("upg","Upgrades",u)}${t("skills","Skills",p)}${t("legacy","Legacy",lg)}</div>`;
+  const jn=chGoals(S.story.ch).filter(g=>!goalDone(g.id)&&(!g.show||g.show())).length;
+  const list=[t("town","Town"),t("work","Workshop",c),t("upg","Upgrades",u)];
+  if(fl("skills"))list.push(t("skills","Skills",p));
+  if(seen("1.1"))list.push(t("journal","Journal"));
+  list.push(t("legacy","Legacy",lg));
+  return `<div class="tabs" role="tablist" style="grid-template-columns:repeat(${list.length},minmax(0,1fr))">${list.join("")}</div>`;
 }
 function topStats(){
   const L=lvl(),pct=Math.round((S.xp-xpFor(L))/(xpFor(L+1)-xpFor(L))*100);
@@ -885,12 +1102,12 @@ function vTown(){
   const L=lvl();
   const chips=CATS.map(c=>{const p=Math.round(S.trend[c]*100);return `<span class="chip ${p>=108?"up":p<=92?"down":""}">${CATN[c]} ${p}%</span>`}).join("");
   const inv=groupInv(S.inv),eq=groupInv(S.inv.filter(k=>HEAL[k]||IT[k].c==="supply"));
-  const H=S.hired?ST(S.hired):null;
+  const H=S.crew.length?ST(S.crew[0]):null;
   return `
   ${reportCard()}
   <section><h2>Market today</h2><div class="chips">${chips}</div>${S.news?`<p class="hint" style="margin-top:8px">${S.news}</p>`:""}</section>
   <button class="big" data-act="shop" ${S.inv.length?"":"disabled"}>Open the shop<small>${S.inv.length?`Up to ${custN()} customers · ${S.inv.length} item${S.inv.length===1?"":"s"} in stock · uses the day`:"Your shelves are empty. Go delving first."}</small></button>
-  <section><h2>Go delving <small>${H?`${H.n} minds the shop · ${staffWage(S.hired)}G wage`:"uses the day"}</small></h2><div class="list">
+  <section><h2>Go delving <small>${S.crew.length?`${nameList(S.crew.map(k=>ST(k).n))} mind${S.crew.length>1?"":"s"} the shop`:"uses the day"}</small></h2><div class="list">
     ${DUN.map((d,i)=>`<button class="row" data-act="delve" data-i="${i}" ${L<d.lvl?"disabled":""}>
       <span><b>${d.n}</b>${S.bosses[i]?`<span class="crown">Boss beaten</span>`:""}</span><span class="sub">${L<d.lvl?`Unlocks at level ${d.lvl}`:`${d.floors} floors · boss: ${d.boss}`}</span>
       <span class="right">${L<d.lvl?"Locked":"Enter"}</span></button>`).join("")}
@@ -902,7 +1119,7 @@ function vTown(){
   </section>
   <section><h2>Stock <small>${S.inv.length} item${S.inv.length===1?"":"s"}</small></h2>
     ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">Market value ${val(k)}G${H?` · <button class="tag${S.keep[k]?" keep":""}" data-act="keep" data-k="${k}">${S.keep[k]?"Keep":"For sale"}</button>`:""}</span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
-    ${H&&inv.length?`<p class="hint" style="margin-top:8px">${H.n} only sells items marked For sale. Tap a tag to switch it.</p>`:""}
+    ${H&&inv.length?`<p class="hint" style="margin-top:8px">Your staff only sell items marked For sale. Tap a tag to switch it.</p>`:""}
     ${sk("quick")&&inv.length?`<p class="hint" style="margin-top:8px">Quick Sale pays ${Math.round(quickPct()*100)}% of base value instantly and doesn't use the day.</p>`:""}
   </section>
   <p class="hint">Sold ${fmt(S.sold)} items for ${fmt(S.earned)}G · crafted ${fmt(S.crafted)}. Progress is saved in this browser.</p>
@@ -920,32 +1137,32 @@ function reportCard(){
   const r=S.report;if(!r)return "";
   const net=r.gold-r.wage;
   return `<div class="card report">
-    <div class="custhead"><span class="who">While you were out</span><span class="sub">${r.who}'s report</span></div>
+    <div class="custhead"><span class="who">While you were out</span><span class="sub">${S.crew.length>1?"Staff":r.who+"'s"} report</span></div>
     <ul class="log rlog">${r.lines.map(l=>`<li>${l}</li>`).join("")}</ul>
     ${r.wage||r.gold?`<div class="chips"><span class="chip up">Sales +${fmt(r.gold)}G</span><span class="chip down">Wage \u2212${fmt(r.wage)}G</span><span class="chip ${net>=0?"up":"down"}">Net ${net>=0?"+":"\u2212"}${fmt(Math.abs(net))}G</span></div>`:""}
-    ${r.raise&&S.hired===r.k?`<div class="confirm" style="border-color:var(--coin)">${r.who} asks for a raise to ${fmt(Math.round(ST(r.k).wage*(1+staffRec(r.k).wageB+.2)))}G a day, promising to work harder.
+    ${r.raise&&onStaff(r.raise)?`<div class="confirm" style="border-color:var(--coin)">${ST(r.raise).n} asks for a raise to ${fmt(Math.round(ST(r.raise).wage*(1+staffRec(r.raise).wageB+.2)))}G a day, promising to work harder.
       <div class="btns"><button class="btn gold" data-act="raiseYes">Give the raise</button><button class="btn alt" data-act="raiseNo">Not now</button></div></div>`
       :`<button class="ghost" data-act="reportOk" style="align-self:flex-start">Got it</button>`}
   </div>`;
 }
 function staffSection(){
-  const H=S.hired?ST(S.hired):null;
+  if(!S.crew.length&&!STAFF.some(x=>x.need()))return "";
   const stats=k=>`Sells ${staffSells(k)} a day · ${Math.round(staffRate(k)*100)}% of market · ${fmt(staffWage(k))}G wage`;
-  let hired="";
-  if(H){const k=H.k,L=staffLvl(k),nx=staffNext(k),rec=staffRec(k);
-    hired=`<div class="staffcard"><div class="custhead"><span><b>${H.n}</b> <span class="sub">${H.title}</span></span><span class="mood keen">Level ${L}</span></div>
+  const cards=S.crew.map(ST).filter(Boolean).map(H=>{const k=H.k,L=staffLvl(k),nx=staffNext(k),rec=staffRec(k);
+    return `<div class="staffcard"><div class="custhead"><span><b>${H.n}</b> <span class="sub">${R_(H.title)}</span></span><span class="mood keen">Level ${L}</span></div>
       <span class="sub">${stats(k)}</span>
       ${nx?`<div class="bar"><i style="width:${Math.round(((rec.sold-(L-1)*12)/12)*100)}%"></i></div><span class="sub">${rec.sold} sold · next level at ${nx}</span>`:`<span class="sub">${rec.sold} sold · max level</span>`}
-      ${confirmFire?`<div class="btns"><button class="btn danger sm" data-act="fireDo">Let ${H.n} go</button><button class="btn alt sm" data-act="fireNo">Keep ${H.n}</button></div>`:`<button class="ghost" data-act="fireAsk" style="align-self:flex-start">Dismiss</button>`}
-    </div>`}
-  const others=STAFF.filter(s=>s.k!==S.hired);
-  return `<section><h2>Shop staff <small>${H?"works on delve days":"hire help for delve days"}</small></h2>
-    ${hired}
-    <div class="list">${others.map(s=>{const open=s.need();return open?`<button class="row" data-act="hire" data-k="${s.k}">
-        <span><b>${s.n}</b> <span class="sub">${s.title}</span>${S.staffs[s.k]?` <span class="sub">· Lv ${staffLvl(s.k)}</span>`:""}</span>
-        <span class="sub">${s.bio} ${stats(s.k)}</span><span class="right">${H?"Swap":"Hire"}</span></button>`
-      :`<div class="row locked"><span><b>???</b> <span class="sub">${s.title}</span></span><span class="sub">${s.lock} to meet them.</span><span class="right sub">Locked</span></div>`}).join("")}
-    </div></section>`;
+      ${confirmFire===k?`<div class="btns"><button class="btn danger sm" data-act="fireDo" data-k="${k}">Let ${H.n} go</button><button class="btn alt sm" data-act="fireNo">Keep ${H.n}</button></div>`:`<button class="ghost" data-act="fireAsk" data-k="${k}" style="align-self:flex-start">Dismiss</button>`}
+    </div>`}).join("");
+  const others=STAFF.filter(s=>!S.crew.includes(s.k));
+  const wage=S.crew.reduce((a,k)=>a+staffWage(k),0);
+  return `<section><h2>Shop staff <small>${S.crew.length?`${fmt(wage)}G a delve day`:"hire help for delve days"}</small></h2>
+    ${cards}
+    ${others.length?`<div class="list">${others.map(s=>{const open=s.need();return open?`<button class="row" data-act="hire" data-k="${s.k}" ${built("tavern")||s.k==="pip"?"":"disabled"}>
+        <span><b>${s.n}</b> <span class="sub">${R_(s.title)}</span>${S.staffs[s.k]?` <span class="sub">· Lv ${staffLvl(s.k)}</span>`:""}</span>
+        <span class="sub">${s.bio} ${stats(s.k)}</span><span class="right">Hire</span></button>`
+      :`<div class="row locked"><span><b>???</b> <span class="sub">${R_(s.title)}</span></span><span class="sub">${s.lock}</span><span class="right sub">Locked</span></div>`}).join("")}</div>`:""}
+  </section>`;
 }
 
 function vWork(){
@@ -1145,7 +1362,11 @@ function render(){
   if(S.over)app.innerHTML=vOver();
   else if(S.run)app.innerHTML=vDelve();
   else if(S.shop)app.innerHTML=vShop();
-  else app.innerHTML=`<header><h1>Dungeon Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():tab==="legacy"?vLegacy():vTown());
+  else{
+    if(tab==="skills"&&!fl("skills"))tab="town";
+    app.innerHTML=`<header><h1>Dungeon Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():tab==="legacy"?vLegacy():tab==="journal"?vJournal():vTown());
+  }
+  const hd=app.querySelector("header");if(hd)hd.insertAdjacentHTML("afterend",tipBar());
   const r=document.getElementById("price");
   if(r)r.addEventListener("input",()=>{S.shop.pct=+r.value;const p=Math.max(1,Math.round(val(S.shop.cur.k)*S.shop.pct/100));
     document.getElementById("pv").textContent=fmt(p)+"G";document.getElementById("pp").textContent=S.shop.pct+"% of market"});
@@ -1159,7 +1380,8 @@ app.addEventListener("click",e=>{
   ({
     sound:()=>{S.sound=!S.sound;save();render();sfx.coin()},
     music:()=>{S.music=!S.music;save();render()},
-    tab:()=>{tab=b.dataset.t;confirmReset=false;render();window.scrollTo(0,0)},
+    tab:()=>{tab=b.dataset.t;confirmReset=false;SE("tab",{t:tab});render();window.scrollTo(0,0)},
+    tipOk:()=>{S.story.tipQ.shift();save();render()},
     shop:openShop,
     delve:()=>startDelve(+b.dataset.i),
     up:()=>{const u=UPG.find(x=>x.k===b.dataset.k),c=upCost(u);if(S.gold>=c&&S.gear[u.k]<10){S.gold-=c;S.gear[u.k]++;sfx.loot();save();render()}},
@@ -1168,11 +1390,11 @@ app.addEventListener("click",e=>{
     drop:()=>dropPick(+b.dataset.i), pickup:pickUp,
     equip:()=>equip(b.dataset.k), unequip:()=>unequip(+b.dataset.i), secret:secretStairs,
     learn:()=>learn(b.dataset.k),
-    hire:()=>hire(b.dataset.k), fireAsk:()=>{confirmFire=true;render()}, fireNo:()=>{confirmFire=false;render()}, fireDo:fire,
+    hire:()=>hire(b.dataset.k), fireAsk:()=>{confirmFire=b.dataset.k;render()}, fireNo:()=>{confirmFire=null;render()}, fireDo:()=>fire(b.dataset.k),
     keep:()=>{const k=b.dataset.k;if(S.keep[k])delete S.keep[k];else S.keep[k]=true;save();render()},
     reportOk:()=>{S.report=null;save();render()},
-    raiseYes:()=>{const r=S.report,rec=staffRec(r.k);rec.wageB+=.2;rec.rateB+=.05;toast(`${r.who} beams. <b>+5% prices</b>, wage now ${fmt(staffWage(r.k))}G.`);sfx.coin();S.report=null;save();render()},
-    raiseNo:()=>{toast(`${S.report.who} sighs and gets back to work.`);S.report=null;save();render()},
+    raiseYes:()=>{const k=S.report.raise,rec=staffRec(k);rec.wageB+=.2;rec.rateB+=.05;toast(`${ST(k).n} beams. <b>+5% prices</b>, wage now ${fmt(staffWage(k))}G.`);sfx.coin();S.report=null;save();render()},
+    raiseNo:()=>{toast(`${ST(S.report.raise).n} sighs and gets back to work.`);S.report=null;save();render()},
     perk:()=>buyPerk(b.dataset.k),
     retireAsk:()=>{confirmRetire=true;render()}, retireNo:()=>{confirmRetire=false;render()}, retireDo:retire,
     quick:()=>{const k=b.dataset.k;if(!sk("quick")||!S.inv.includes(k))return;const p=quickPrice(k);
@@ -1192,7 +1414,7 @@ app.addEventListener("click",e=>{
         if(!raw.startsWith("LS1:"))throw 0;
         const o=JSON.parse(decodeURIComponent(escape(atob(raw.slice(4)))));
         if(!o||typeof o.day!=="number"||!Array.isArray(o.inv))throw 0;
-        const snd=S.sound,mus=S.music;S=Object.assign(fresh(),o);S.sound=snd;S.music=mus;migrate();save();
+        const snd=S.sound,mus=S.music;S=loadState(o);S.sound=snd;S.music=mus;migrate();save();
         saveBox=null;saveMsg=`Save loaded: day ${S.day}, level ${lvl()}, ${fmt(S.gold)}G.`;sfx.lvl();render();
       }catch(e){saveMsg="That isn't a valid Dungeon Loot Shoppe save code. Make sure you copied all of it, starting with LS1:.";render()}
     },
@@ -1201,12 +1423,18 @@ app.addEventListener("click",e=>{
     restart:()=>{const s=S.sound;S=fresh();S.sound=s;save();render()}
   })[a]?.();
 });
+document.getElementById("ov").addEventListener("click",e=>{
+  const b=e.target.closest("[data-act=scn]");if(!b)return;
+  if(S.sound||S.music)audioCtx();
+  scnGo(b.dataset.go);
+});
 document.addEventListener("pointerdown",()=>{if(S.music&&!ac){audioCtx();musicUpdate()}},{once:true});
 document.addEventListener("visibilitychange",()=>{
   if(!ac)return;
   if(document.hidden)ac.suspend();else{ac.resume();M.next=ac.currentTime+.08}
 });
 render();
+playNext();
 </script>
 
 <script>
