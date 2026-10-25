@@ -751,12 +751,11 @@ function journalExtras(){
   if(st.ch>=2||st.debtPaid){
     const due=payDue(),loanLock=st.loan>0;
     h+=`<section><h2>Ledgers</h2><div class="list">
-      <div class="row"><span><b>Maribel's debt</b> <span class="sub">Celestial Consortium</span></span>
-        <span class="sub">${st.debtPaid>=DEBT_PAYMENTS?"Paid in full.":`${st.debtPaid} of ${DEBT_PAYMENTS} payments made · balance ${fmt(debtLeft())}G`}</span>
+      <div class="row" id="debtrow"><span><b>Maribel's debt</b> <span class="sub">Celestial Consortium</span></span>
+        <span class="sub">${st.debtPaid>=DEBT_PAYMENTS?"Paid in full.":`${st.debtPaid} of ${DEBT_PAYMENTS} payments made · balance ${fmt(debtLeft())}G${!due?`<br>Next payment due in Chapter ${st.debtPaid+2}.`:""}`}</span>
         <span class="right">${st.debtPaid<DEBT_PAYMENTS?`<button class="btn gold sm" data-act="payDebt" ${due&&S.gold>=DEBT_PAYMENT&&!loanLock?"":"disabled"}>Pay ${fmt(DEBT_PAYMENT)}G</button>`:"✓"}</span></div>
       ${typeof loanRow==="function"?loanRow():""}
     </div>
-    ${st.debtPaid<DEBT_PAYMENTS&&!due?`<p class="hint" style="margin-top:8px">The next payment comes due in Chapter ${st.debtPaid+2}.</p>`:""}
     ${loanLock&&due?`<p class="hint" style="margin-top:8px"><b class="who">Wren</b> “Clear the last loan first. One debt at a time.”</p>`:""}
     </section>`;
   }
