@@ -99,6 +99,11 @@ button.row:disabled>*{opacity:.5}
 .log{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
 .log li:first-child{color:var(--fg)}
 .quote{font-size:1.02rem;font-style:italic;margin:0}
+.spr{display:inline-block;flex:none;width:40px;height:40px;background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.spr svg{width:100%;height:100%;display:block}
+.spr.lg{width:52px;height:52px}.spr.sm{width:34px;height:34px}
+.sline.wp{display:flex;gap:10px;align-items:flex-start}
+.whorow{display:inline-flex;align-items:center;gap:10px;min-width:0}
 .custhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .mood{font-size:.78rem;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
 .mood.eager{color:var(--coin);border-color:var(--coin)} .mood.keen{color:var(--good);border-color:var(--good)}
@@ -399,7 +404,7 @@ function cardHTML(c){
   for(const it of R_(c.s)||[]){
     if(typeof it==="string")h+=`<p class="narr">${md(it)}</p>`;
     else if(it[0]==="note")h+=`<p class="letter">${md(it[1])}</p>`;
-    else h+=`<p class="sline"><b class="who">${it[0]}</b>${it[2]?` <i class="aside">(${it[2]})</i>`:""} “${md(it[1])}”</p>`;
+    else{const pt=portrait(it[0]);h+=`<p class="sline${pt?" wp":""}">${pt}<span><b class="who">${it[0]}</b>${it[2]?` <i class="aside">(${it[2]})</i>`:""} “${md(it[1])}”</span></p>`}
   }
   const btns=c.c?c.c.map(([l,g])=>`<button class="btn" data-act="scn" data-go="${g}">${l}</button>`).join("")
     :`<button class="btn gold" data-act="scn" data-go="next">${c.b||"Continue"}</button>`;
@@ -410,7 +415,7 @@ function drawOv(){
   if(!scn&&tipOpen){
     const T=TIPS[tipOpen],more=S.story.tipQ.length-1;
     ov.hidden=false;document.body.classList.add("ovopen");
-    ov.innerHTML=`<div class="ovcard tipcard" role="dialog" aria-modal="true" aria-label="${T.w}"><p class="sline"><b class="who">${T.w}</b> ${T.n?md(T.t):`\u201c${md(T.t)}\u201d`}</p><div class="btns"><button class="btn gold" data-act="tipOk">${more>0?`Got it (${more} more)`:"Got it"}</button></div></div>`;
+    ov.innerHTML=`<div class="ovcard tipcard" role="dialog" aria-modal="true" aria-label="${T.w}"><p class="sline${portrait(T.w)?" wp":""}">${portrait(T.w)}<span><b class="who">${T.w}</b> ${T.n?md(T.t):`\u201c${md(T.t)}\u201d`}</span></p><div class="btns"><button class="btn gold" data-act="tipOk">${more>0?`Got it (${more} more)`:"Got it"}</button></div></div>`;
     ov.querySelector("button")?.focus({preventScroll:true});return;
   }
   if(!scn){ov.hidden=true;ov.innerHTML="";document.body.classList.remove("ovopen");return}
@@ -1880,6 +1885,28 @@ function pitchSweet(){
   SE("pitch");sfx.coin();save();render();
 }
 
+/* ---------- NPC portraits: 16x16 pixel art, outlined automatically, drawn as SVG ---------- */
+const SPR={"wren":{"p":{"c":"#3e6b4a","d":"#c58d68","e":"#1d1a22","g":"#aaa69e","h":"#5a3a24","l":"#7a5233","m":"#9b4b45","s":"#d9a37f","x":"#a85a4a"},"g":".....................hhhhhh.........hhhhhhggh......hhhhhhhhggh.....hsssssssshh.....hseesseeshh.....hssessesshh.....hssssssxshh.....hsssmmsssh.......hsssssshhh........dddd.hhh........dddd..hh.....ccllllllcc.....cccllggllccc....cccllllllccc....cccllllllccc.."},"maribel":{"p":{"A":"#a46a9a","a":"#7a4a72","d":"#c58d68","e":"#1d1a22","h":"#d7dbe3","m":"#9b4b45","s":"#e8bf9e"},"g":".....................hhhhhh.........hhhhhhhh.......hhhhhhhhhh......hhsssssshh......hssssssssh......hssessessh......hssssssssh......hsssmmsssh......hhsssssshh......hhhddddhhh.....hhh.dddd.hhh....hhaaaaaaaahh....haaaAaaAaaah....aaaaaaaaaaaa....aaaAaaaaAaaa.."},"pip":{"p":{"a":"#8a5a34","b":"#9a6a3c","c":"#e6d8b5","d":"#c58d68","e":"#1d1a22","f":"#c47a52","h":"#d4682a","m":"#9b4b45","s":"#e8b48e"},"g":"....................h.hh.h.........hhhhhhhhh.......hhhhhhhhhh......hhsssssshh......hssssssssh.......ssessess........sfssssfs........sssmmsss.........ssssss......b....dddd.......b....dddd.......b.cccccccccc....bcccaaaaaaccc...bccaaaaaaaacc...bccaaaaaaaacc.."},"marlo":{"p":{"b":"#2f5aa8","d":"#c58d68","e":"#1d1a22","g":"#f2c94c","h":"#222028","m":"#9b4b45","s":"#e8b48e","w":"#f2ead8"},"g":".....................................hhhhhh.........hhhhhhhhh.......hhhssssh........hsssssss........ssessess........ssssssss........sshhhhss.........smmmms...........dddd..........wwddddww.......bbwwggwwbb.....bbbbwggwbbbb....bbgbbwwbbgbb....bbbbbwwbbbbb.."},"greta":{"p":{"A":"#7d9b6a","a":"#5a7a4a","c":"#8a6a4a","d":"#c69575","e":"#1d1a22","g":"#5e5e5e","h":"#ececec","m":"#9b4b45","s":"#e3b596"},"g":"......................hhhh............hhhh..........hhhhhhhh.......hhsssssshh......hssssssssh......hsgeggegsh......hsddssddsh......hsssmmsssh.......dssssssd..........dddd..........aaddddaa.......aaaaaaaaaa.....aaAaaaaaaAaa....aaaaccccaaaa....aaaaccccaaaa.."},"bram":{"p":{"a":"#6e4a2c","e":"#1d1a22","h":"#1f1a18","m":"#9b4b45","s":"#c98a63","x":"#4a4040"},"g":".....................................ssssss.........ssssssss........ssssssss........hhsssshh........ssessess........ssssssxs........hhhmmhhh........hhhhhhhh........hhhhhhhh......ss.hhhhhh.ss...sssaahhhhaasss..sssaaaaaaaasss..ssxaaaaaaaasss..sssaaaaaaaasss."},"sable":{"p":{"O":"#3d3650","d":"#b9adb6","h":"#15131a","i":"#cfe0f5","m":"#8a5a6a","o":"#2a2533","s":"#dcd2d8"},"g":".....................oooooo.........oooooooo.......oooooooooo......oohhhhhhoo......ohssssssho......ohsissisho......ohssssssho......ohssmmssho......oohsssshoo......ooo.dd.ooo.....oooo.dd.oooo....oooooiiooooo....oooooOOooooo....ooooOooOoooo....ooooOooOoooo.."},"voss":{"p":{"b":"#2f4fa0","d":"#cdb9a4","e":"#1d1a22","g":"#f2c94c","h":"#e6e2d8","m":"#7a3b3b","s":"#ead8c6","w":"#f2ead8","y":"#ffe27a"},"g":".....................hhhhhh.........hhhhhhhh........hhhhhhhh........hssssssh........ssssssss........ssessess........sgssssss........sgsmmmms.........ssssss........bb.dddd.bb......bbgddddgbb.....bbbggwwggbbb....bbbbgwwgbbbb....bbbbbgybbbbb....bbbbbggbbbbb.."},"knight":{"p":{"F":"#f2c94c","N":"#4a443f","f":"#e4572e","n":"#2b2826"},"g":"......f..f...........fFffFf.........nnnnnnnn.......nnnnnnnnnn......nnNNNNNNnn......nnnnnnnnnn......nFFFFFFFFn......nnnnnnnnnn......nnnNnNnNnn.......nnnnnnnn.........nnnnnn........NNnnnnnnNN.....nnnnnfFnnnnn...nnNnnnFfnnnNnn..nnNnnnnfnnnNnn..nnNnnnnnnnnNnn."},"kobold":{"p":{"R":"#8e3d2a","Y":"#ffe27a","o":"#e07b2e","r":"#b8553a","v":"#f2ead8","w":"#f2ead8","y":"#f2c94c"},"g":".....................................yyyyyy.........yyyyyyyy......yyyyyyyyyyyy......rrrrrrrr........rYrrrrYr........rrrrrrrrrr......rrrrrrrrrRr.....rrwrwrwrr........rrrrrr...........RRRR.........ooooooooooo....oovooooovooo....oovooooovooo....ooooooooooooo."},"executor":{"p":{"G":"#a87a1a","P":"#f2dc94","b":"#2f4fa0","g":"#d9a62e","y":"#ffe27a"},"g":".......y..............yyy............gggggg.........gggggggg.......gggGGGGggg......ggPPPPPPgg......ggPPyyPPgg......ggPyyyyPgg......ggPPyyPPgg......ggPyPPyPgg.......ggPPPPgg........gggggggg......bbgggGGgggbb...bbbggggggggbbb..bbbgggyygggbbb..bbbggggggggbbb."},"kid":{"p":{"c":"#4a7ab0","d":"#c58d68","e":"#1d1a22","f":"#c47a52","h":"#6a4028","m":"#9b4b45","r":"#c84040","s":"#e8b48e","w":"#f2ead8"},"g":".....................................................rrrrrr.........rrrrrrrrr.......hssssssh........ssessess........sfssssfs........sssmmsss.........ssssss...........dddd..........cccccccc.......cccccccccc......wwwwwwwwww......cccccccccc......wwwwwwwwww..."},"town":{"p":{"a":"#c84a3a","c":"#8a7a5a","d":"#c58d68","e":"#1d1a22","h":"#6a4a2c","m":"#9b4b45","s":"#e8b48e"},"g":".....................................hhhhhh.........hhhhhhhh........hhsssshh........ssssssss........ssessess........ssssssss........sssmmsss.........ssssss...........dddd..........aaddddaa.......ccaaaaaacc.....ccccaaaacccc....cccccaaccccc....cccccccccccc.."},"adv":{"p":{"C":"#5a626a","b":"#6e4a2c","c":"#7d868f","d":"#c58d68","e":"#1d1a22","m":"#9b4b45","n":"#9aa3ad","p":"#c84040","s":"#e8b48e"},"g":"......pp.............pppp............nnnnnn.........nnnnnnnn.......nnnnnnnnnn......nnnnnnnnnn......nsesnnsesn......nsssnnsssn......nsssmmsssn........ssssss...........dddd..........cccccccc.......cCcCcCcCcCc....cccccbbccccc....cCcCcbbcCcCc....cccccbbccccc.."},"coll":{"p":{"T":"#c8a040","c":"#3e6b4a","d":"#c58d68","e":"#1d1a22","g":"#f2c94c","h":"#3a2a20","m":"#9b4b45","s":"#e8b48e","t":"#4a2e5a","v":"#d0d6dc","w":"#f2ead8"},"g":".....tttttt..........tttttt..........tTTTTt........tttttttttt.......hssssssh........ssssssss........ssesgegs........sssssgss.......hhhsmmshhh........ssssss...........dddd..........cwddddwc.......ccwwwwwwcc.....cccwwwwwwccc....cvccwwwwcccc....cvcccwwccccc.."},"noble":{"p":{"e":"#1d1a22","f":"#f2ead8","g":"#f2c94c","h":"#e8c860","m":"#9b4b45","r":"#9a2a3a","s":"#e8b48e","w":"#f2ead8"},"g":"........ff..........rrrrrrf........rrrrrrrrr.......hhhhhhhhhh......hssssssssh......hssssssssh......hssessessh......hssssssssh......hsssmmsssh.......hssssssh.........wwwwww.........wwwwwwww.......rrwwwwwwrr.....rrrrggggrrrr....rrrgrrrrgrrr....rrrrrggrrrrr.."},"trav":{"p":{"C":"#53575b","a":"#c8783a","c":"#6b6f73","d":"#c58d68","e":"#1d1a22","h":"#5a3a24","m":"#9b4b45","s":"#e8b48e","t":"#6a4a2c","x":"#9a7058"},"g":".....................................tttttt.........tttttttt.....tttttttttttttt.....hssssssh........ssessess........ssssssss........xssmmssx.........xxxxxx...........dddd..........aaaaaaaa.......ccaaaaaacc.....cccccaaccccc....cccccccccccc....ccCcccccccCc.."},"craft":{"p":{"G":"#9fd3e0","a":"#3a8a8a","c":"#c8b088","d":"#c58d68","e":"#1d1a22","g":"#5a4a3a","h":"#3a2a20","l":"#7a5233","m":"#9b4b45","s":"#e8b48e","t":"#5a3a24"},"g":".....................................aaaaaa.........aaaaaaaa........gGGggGGg........hssssssh........ssessess........ssssssss........sssmmsss.........ssssss...........dddd..........cccccccc.......ccllllllcc.....cccllllllccc....cccllttllccc....cccllllllccc.."},"schol":{"p":{"b":"#3a4e8a","e":"#1d1a22","g":"#3a3a3a","h":"#b8b8b8","m":"#9b4b45","s":"#e3b596","w":"#eeeeee","y":"#f2c94c"},"g":".....................................ssssss.........ssssssss.......hssssssssh......hssssssssh......hsgeggegsh......hssssssssh......hswwmmwwsh.......wwwwwwww.........wwwwww.........bbwwwwbb.......bbbbwwbbbb.....bbbbbbbbbbbb....bbybbbbbbybb....bbybbbbbbybb.."}};
+const SPR_OF={"Wren":"wren","Maribel":"maribel","Pip":"pip","Marlo":"marlo","Old Greta":"greta","Bram":"bram","Sable":"sable","Voss":"voss",
+  "Ember Knight":"knight","Kobold Foreman":"kobold","Celestial Executor":"executor","Village Kid":"kid","Townsfolk":"town","Adventurer":"adv",
+  "Collector":"coll","Noble":"noble","Traveler":"trav","Craftsperson":"craft","Scholar":"schol"};
+const sprCache={};
+function sprSVG(k){
+  if(sprCache[k])return sprCache[k];
+  const d=SPR[k],g=d.g,on=(x,y)=>x>=0&&x<16&&y>=0&&y<16&&g[y*16+x]!==".";
+  const colAt=(x,y)=>g[y*16+x]!=="."?d.p[g[y*16+x]]:(on(x+1,y)||on(x-1,y)||on(x,y+1)||on(x,y-1))?"#0e1216":null;
+  let r="";
+  for(let y=0;y<16;y++)for(let x=0;x<16;){const c=colAt(x,y);if(!c){x++;continue}let w=1;while(x+w<16&&colAt(x+w,y)===c)w++;
+    r+=`<rect x="${x}" y="${y}" width="${w}" height="1" fill="${c}"/>`;x+=w}
+  return sprCache[k]=`<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true" focusable="false">${r}</svg>`;
+}
+function sprKey(who){
+  if(SPR[who])return who;if(SPR_OF[who])return SPR_OF[who];
+  if(typeof REGS!=="undefined")for(const t in REGS)if(REGS[t].includes(who))return t; // regulars look like their customer type
+  return null;
+}
+const portrait=(who,cls="")=>{const k=sprKey(who);return k?`<span class="spr ${cls}">${sprSVG(k)}</span>`:""};
+
 /* ================= Views ================= */
 const app=document.getElementById("app");
 const soundBtn=()=>`<div class="tools"><button class="ghost" data-act="music" aria-pressed="${S.music}">${S.music?"Music on":"Music off"}</button><button class="ghost" data-act="sound" aria-pressed="${S.sound}">${S.sound?"SFX on":"SFX off"}</button></div>`;
@@ -1966,7 +1993,7 @@ function staffSection(){
   if(!S.crew.length&&!STAFF.some(x=>x.need()))return "";
   const stats=k=>`Sells ${staffSells(k)} a day · ${Math.round(staffRate(k)*100)}% of market · ${fmt(staffWage(k))}G wage`;
   const cards=S.crew.map(ST).filter(Boolean).map(H=>{const k=H.k,L=staffLvl(k),nx=staffNext(k),rec=staffRec(k);
-    return `<div class="staffcard"><div class="custhead"><span><b>${H.n}</b> <span class="sub">${R_(H.title)}</span></span><span class="mood keen">Level ${L}</span></div>
+    return `<div class="staffcard"><div class="custhead"><span class="whorow">${portrait(k)}<span><b>${H.n}</b> <span class="sub">${R_(H.title)}</span></span></span><span class="mood keen">Level ${L}</span></div>
       <span class="sub">${stats(k)}</span>
       ${nx?`<div class="bar"><i style="width:${Math.round(((rec.sold-(L-1)*12)/12)*100)}%"></i></div><span class="sub">${rec.sold} sold · next level at ${nx}</span>`:`<span class="sub">${rec.sold} sold · max level</span>`}
       ${confirmFire===k?`<div class="btns"><button class="btn danger sm" data-act="fireDo" data-k="${k}">Let ${H.n} go</button><button class="btn alt sm" data-act="fireNo">Keep ${H.n}</button></div>`:`<button class="ghost" data-act="fireAsk" data-k="${k}" style="align-self:flex-start">Dismiss</button>`}
@@ -1976,7 +2003,7 @@ function staffSection(){
   return `<section id="staff"><h2>Shop staff <small>${S.crew.length?`${fmt(wage)}G a delve day`:"hire help for delve days"}</small></h2>
     ${cards}
     ${others.length?`<div class="list">${others.map(s=>{const open=s.need();return open?`<button class="row" data-act="hire" data-k="${s.k}" ${built("tavern")||s.k==="pip"?"":"disabled"}>
-        <span><b>${s.n}</b> <span class="sub">${R_(s.title)}</span>${S.staffs[s.k]?` <span class="sub">· Lv ${staffLvl(s.k)}</span>`:""}</span>
+        <span class="whorow">${portrait(s.k,"sm")}<span><b>${s.n}</b> <span class="sub">${R_(s.title)}</span>${S.staffs[s.k]?` <span class="sub">· Lv ${staffLvl(s.k)}</span>`:""}</span></span>
         <span class="sub">${s.bio} ${stats(s.k)}</span><span class="right">Hire</span></button>`
       :`<div class="row locked"><span><b>???</b> <span class="sub">${R_(s.title)}</span></span><span class="sub">${s.lock}</span><span class="right sub">Locked</span></div>`}).join("")}</div>`:""}
   </section>`;
@@ -2103,7 +2130,7 @@ function vShop(){
     const sMax=Math.max(200,P.pct+40),R=c.reg?S.regs[c.reg]:null;
     const style=c.known?`You know their style: ${PERSONA[c.per].n}`:c.read?`You read them: ${PERSONA[c.per].n}`:"";
     const trust=R&&c.known&&R.trust?(R.trust>0?`Remembers your fair deals (+${R.trust*5}% budget)`:`Still sore about your prices (${R.trust*5}% budget)`):"";
-    const head=`<div class="custhead"><span class="who">${c.reg?`${cName(c)} <span class="sub">${C.n} · Regular</span>`:C.n}${c.back?` <span class="sub">· back with a better offer</span>`:""}</span><span class="mood ${M.k}">${M.ic} ${M.n}</span></div>
+    const head=`<div class="custhead"><span class="who whorow">${portrait(C.k,"lg")}<span>${c.reg?`${cName(c)} <span class="sub">${C.n} · Regular</span>`:C.n}${c.back?` <span class="sub">· back with a better offer</span>`:""}</span></span><span class="mood ${M.k}">${M.ic} ${M.n}</span></div>
       ${style||trust?`<div class="chips">${style?`<span class="chip up">${style}</span>`:""}${trust?`<span class="chip ${R.trust>0?"up":"down"}">${trust}</span>`:""}</div>`:""}
       ${c.tell?`<p class="tell">${c.tell}</p>`:""}
       <p class="quote">\u201c${C.say(IT[c.k].n)}\u201d</p>
