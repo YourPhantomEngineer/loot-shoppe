@@ -247,7 +247,7 @@ const ITEMS=[
  ["halberd","Steel Halberd","weapon",420,3],["helm","Knight's Helm","armor",380,3],["draught","Ember Draught","potion",260,3],["bird","Clockwork Bird","trinket",600,3],["ruby","Ruby","gem",540,3],
  ["rune","Runeblade","weapon",1400,4],["scale","Wyrmscale Mail","armor",1600,4],["elixir","Starlight Elixir","potion",950,4],["orrery","Brass Orrery","trinket",2100,4],["sapphire","Star Sapphire","gem",2400,4],
  ["charm","Mossheart Charm","trinket",320,1,1],["lantern","Foreman's Lantern","trinket",950,2,1],["crown","Cinder Crown","gem",2800,3,1],["aegis","Astral Aegis","armor",7500,4,1],
- ["bomb","Fire Bomb","supply",45,1],["rope","Escape Rope","supply",30,1],["ladder","Ladder","supply",55,1],["whet","Whetstone","supply",40,1],["pick","Lockpick","supply",25,1],
+ ["bomb","Fire Bomb","supply",45,1],["bomb2","Blast Bomb","supply",90,1],["bomb3","Ironshell Bomb","supply",150,1],["bomb4","Ember Bomb","supply",260,1],["bomb5","Star Bomb","supply",450,1],["rope","Escape Rope","supply",30,1],["ladder","Ladder","supply",55,1],["whet","Whetstone","supply",40,1],["pick","Lockpick","supply",25,1],
  ["idol","Mossglass Idol","trinket",900,1,0,1],["gpick","Golden Pickaxe","weapon",2600,2,0,1],["feather","Phoenix Feather","trinket",7000,3,0,1],["star","Fallen Star","gem",20000,4,0,1]
 ].map(([k,n,c,b,t,craft,sec])=>({k,n,c,b,t,craft:!!craft,sec:!!sec}));
 const IT=Object.fromEntries(ITEMS.map(i=>[i.k,i]));
@@ -265,7 +265,11 @@ const TF=[1,2.6,6,14];      // gold and reward scaling by dungeon tier
 const HPF=[.95,1.45,2.15,3.1]; // monster HP scaling by tier (tuned so a fitting build wins each boss)
 const ATF=[.95,1.25,1.75,2.85]; // monster attack scaling by tier
 const RECIPES=[
- {out:"bomb",items:{},get mats(){return BOMB[powder()].mats}},
+ {out:"bomb",items:{},mats:{scrap:1,gel:1}},
+ {out:"bomb2",items:{},mats:{scrap:2,gel:2}},
+ {out:"bomb3",items:{},mats:{scrap:2,gel:2,ore:1}},
+ {out:"bomb4",items:{},mats:{scrap:2,gel:2,ore:1,ember:1}},
+ {out:"bomb5",items:{},mats:{scrap:3,gel:2,ember:2,dust:1}},
  {out:"rope",items:{},mats:{fiber:3}},
  {out:"ladder",items:{},mats:{fiber:2,scrap:1}},
  {out:"pick",items:{},mats:{scrap:2}},
@@ -306,21 +310,18 @@ const UPG=[
  {k:"pack",n:"Bigger Pack",d:l=>`Carry ${capAt(l)} → ${capAt(l+1)} items`,base:90},
  {k:"belt",n:"Expand Supply Belt",d:l=>`Supply slots ${beltCapAt(l)} → ${beltCapAt(l+1)}`,base:150,max:4},
  {k:"sign",n:"Painted Sign",d:l=>`Customer budgets +${l*8}% → +${(l+1)*8}%`,base:200},
- {k:"powder",n:"Blasting Powder",d:l=>`Fire Bombs ${BOMB[l].m}× → ${BOMB[l+1].m}× your attack. Recipe becomes ${matList(BOMB[l+1].mats)}`,base:180,max:4,need:()=>built("apothecary"),needT:"Needs the Apothecary"}
+ {k:"powder",n:"Blasting Powder",d:l=>`Unlocks the ${IT[BOMB[l+1].k].n} recipe: ${BOMB[l+1].m}× your attack (${matList(RECIPES.find(r=>r.out===BOMB[l+1].k).mats)})`,base:180,max:4,need:()=>built("apothecary"),needT:"Needs the Apothecary"}
 ];
-/* Fire Bombs scale with your attack, so they stay worth throwing. Each Blasting Powder rank makes every bomb hit harder
-   and makes new ones cost more to craft. Damage is never below the old floor-based amount. */
-const BOMB=[
- {m:1.2,mats:{scrap:1,gel:1}},
- {m:1.8,mats:{scrap:2,gel:2}},
- {m:2.4,mats:{scrap:2,gel:2,ore:1}},
- {m:3,mats:{scrap:2,gel:2,ore:1,ember:1}},
- {m:3.6,mats:{scrap:3,gel:2,ember:2,dust:1}}];
+/* Bombs hit for a multiple of your attack, so they stay worth throwing. Each kind of bomb has its own fixed strength
+   and recipe; each Blasting Powder rank unlocks the next, costlier recipe. Damage is never below the old floor-based blast. */
+const BOMB=[{k:"bomb",m:1.2},{k:"bomb2",m:1.8},{k:"bomb3",m:2.4},{k:"bomb4",m:3},{k:"bomb5",m:3.6}];
+const isBomb=k=>BOMB.some(b=>b.k===k);
+const bombRank=k=>BOMB.findIndex(b=>b.k===k);
 const powder=()=>Math.min(BOMB.length-1,S.gear.powder||0);
 const matList=m=>Object.entries(m).map(([k,n])=>`${n} ${MATS[k]}`).join(" + ");
-function bombDmg(){
+function bombDmg(k="bomb"){
   const R=S.run,floorDmg=R?Math.round((10+R.floor*3)*hfOf(DUN[R.d])*.8):0;
-  return Math.max(floorDmg,Math.round(BOMB[powder()].m*dmg()));
+  return Math.max(floorDmg,Math.round(BOMB[Math.max(0,bombRank(k))].m*dmg()));
 }
 const BR=[{k:"war",n:"Warrior"},{k:"scav",n:"Scavenger"},{k:"merc",n:"Merchant"}];
 const SK=[
@@ -826,9 +827,10 @@ function journalExtras(){
 }
 
 /* ---------- Building gates on existing features ---------- */
-const APOTH_RECIPES=["bomb","rope","tonic","draught","elixir"];
+const APOTH_RECIPES=["bomb","bomb2","bomb3","bomb4","bomb5","rope","tonic","draught","elixir"];
 function recipeLock(r){
   if(APOTH_RECIPES.includes(r.out)&&!built("apothecary"))return "Needs the Apothecary";
+  if(isBomb(r.out)&&bombRank(r.out)>powder())return `Needs Blasting Powder rank ${bombRank(r.out)} (Upgrades)`;
   if(IT[r.out].t>=3&&!built("smithy"))return "Needs the Smithy";
   return "";
 }
@@ -1762,7 +1764,7 @@ function flee(){
 function canUse(k){
   const R=S.run;if(!R||R.ev)return false;
   if(HEAL[k])return R.hp<maxHp();
-  if(k==="bomb"||k==="rope")return !!R.fight;
+  if(isBomb(k)||k==="rope")return !!R.fight;
   if(k==="ladder")return !R.fight&&!R.secretFloor&&R.floor<DUN[R.d].floors&&!floorSealed(R.d,R.floor+1);
   return k==="whet";
 }
@@ -1774,8 +1776,8 @@ function useItem(src,i){
   if(HEAL[k]){const h=Math.max(1,Math.round(maxHp()*HEAL[k]));R.hp=Math.min(maxHp(),R.hp+h);m=`You drink the ${IT[k].n} and recover ${h} HP.`;sfx.guard()}
   else if(k==="whet"){R.atkB+=.3;m="You hone your blade: +30% attack for this delve.";sfx.craft()}
   else if(k==="rope"){m=`You yank the Escape Rope and vanish from the ${F.n}'s reach.`;if(F.kind==="boss"||F.kind==="voss")R.lair=true;R.fight=null;R.event=m;rlog(m);return save(),render()}
-  else if(k==="bomb"){
-    const d=bombDmg();F.hp-=d;sfx.hit();m=`The Fire Bomb explodes for ${d} damage!`;
+  else if(isBomb(k)){
+    const d=bombDmg(k);F.hp-=d;sfx.hit();m=`The ${IT[k].n} explodes for ${d} damage!`;
     if(F.hp<=0)return winFight(m+" ");
     vossPhaseCheck();
   }
@@ -2061,14 +2063,13 @@ const portrait=(who,cls="")=>{const k=sprKey(who);return k?`<span class="spr ${c
 
 /* ---------- Item info: the (i) next to every item ---------- */
 const ITEM_USE={
- bomb:"",
  rope:"Combat only. Escape any fight at once, bosses included, without taking a hit.",
  whet:"Hone your blade for +30% attack for the rest of this delve. Stacks. In a fight it uses your turn.",
  pick:"Opens a locked chest every time. Without one you have to force it: a 55% chance, with a needle trap if it fails.",
  ladder:"Between fights, climb down one floor without finding the stairs. It doesn't work on the deepest or a secret floor, or past a sealed floor. It's used up only when it works."};
 function itemUse(k){
-  if(k==="bomb"){const pw=powder(),m=BOMB[pw].m;
-    return `Combat only. Deals <b>${fmt(bombDmg())} damage</b> ${S.run?"here":"at your current attack"} (${m}× your attack, never less than a deeper floor's blast). Uses your turn.${pw<BOMB.length-1?` Blasting Powder in the Upgrades tab makes every Fire Bomb hit harder (next rank: ${BOMB[pw+1].m}×), and new ones cost more to craft.`:" Your Blasting Powder is fully upgraded."}`}
+  if(isBomb(k)){const r=bombRank(k),nx=BOMB[r+1];
+    return `Combat only. Deals <b>${fmt(bombDmg(k))} damage</b> ${S.run?"here":"at your current attack"} (${BOMB[r].m}× your attack, never less than a deeper floor's blast). Uses your turn.${nx?` Stronger bombs: each rank of Blasting Powder in the Upgrades tab unlocks the next recipe (next: ${IT[nx.k].n}, ${nx.m}×).`:" The strongest bomb there is."}`}
   if(HEAL[k])return `Restores ${Math.round(HEAL[k]*100)}% of your max HP. Drink it from your belt or your pack whenever you're hurt; in a fight it uses your turn.`;
   return ITEM_USE[k]||"";
 }
@@ -2076,7 +2077,7 @@ function itemWhere(k){
   const it=IT[k],out=[],dn=t=>DUN.map((d,i)=>({d,i})).filter(({d,i})=>d.t===t&&(!d.hidden||dunOpen(i))).map(({d})=>"the "+d.n);
   const list=a=>a.length>1?a.slice(0,-1).join(", ")+" or "+a.at(-1):a[0];
   if(it.sec)out.push(`Found only on the secret floor of ${list(dn(it.t))}, past the boss's lair.`);
-  else if(it.c==="supply"){if(k!=="ladder")out.push("Dropped by bosses and mini-bosses, and sold by peddlers you meet while delving.")}
+  else if(it.c==="supply"){if(k!=="ladder"&&(!isBomb(k)||k==="bomb"))out.push("Dropped by bosses and mini-bosses, and sold by peddlers you meet while delving.")}
   else if(!it.craft){
     const near=[...dn(it.t-1),...dn(it.t+1)];
     out.push(`Found in ${list(dn(it.t))}${near.length?`, and now and then in ${list(near)}`:""}.`);
@@ -2208,7 +2209,7 @@ function staffSection(){
 function vWork(){
   const mats=Object.entries(S.mats).filter(([,n])=>n>0);
   const ut=unlockedTier();
-  const recs=RECIPES.map((r,i)=>({r,i})).filter(({r})=>IT[r.out].t<=ut+1).sort((a,b)=>canCraft(b.r)-canCraft(a.r));
+  const recs=RECIPES.map((r,i)=>({r,i})).filter(({r})=>IT[r.out].t<=ut+1&&!(isBomb(r.out)&&bombRank(r.out)>powder()+1)).sort((a,b)=>canCraft(b.r)-canCraft(a.r));
   const part=(name,need,have)=>`<span class="${have>=need?"have":"need"}">${need} ${name}</span> (${have})`;
   return `
   <section><h2>Materials <small>crafting doesn't use the day</small></h2>
@@ -2266,7 +2267,7 @@ function usePanel(){
   const R=S.run;
   const items=[...S.belt.map((k,i)=>({k,s:"belt",i})),...R.bag.map((k,i)=>({k,s:"bag",i})).filter(o=>HEAL[o.k])];
   return `<section id="usepanel"><h2>Supplies <small>${R.fight?"using one takes your turn":`belt ${S.belt.length}/${beltCap()}`}</small></h2>
-    <div class="chips">${items.length?items.map(o=>`<button class="chip usebtn" data-act="use" data-s="${o.s}" data-i="${o.i}"${dis(!canUse(o.k))}>${IT[o.k].n}${o.k==="bomb"?` · ${fmt(bombDmg())} dmg`:""}${o.k==="ladder"?R.secretFloor||R.floor>=DUN[R.d].floors?" · deepest floor":floorSealed(R.d,R.floor+1)?" · path sealed":" · skip 1 floor":""}${o.s==="bag"?" (pack)":""}${ii(o.k)}</button>`).join("")
+    <div class="chips">${items.length?items.map(o=>`<button class="chip usebtn" data-act="use" data-s="${o.s}" data-i="${o.i}"${dis(!canUse(o.k))}>${IT[o.k].n}${isBomb(o.k)?` · ${fmt(bombDmg(o.k))} dmg`:""}${o.k==="ladder"?R.secretFloor||R.floor>=DUN[R.d].floors?" · deepest floor":floorSealed(R.d,R.floor+1)?" · path sealed":" · skip 1 floor":""}${o.s==="bag"?" (pack)":""}${ii(o.k)}</button>`).join("")
     :`<span class="hint">No supplies. Equip potions, bombs, ropes, ladders, whetstones, or lockpicks on your belt in town.</span>`}</div></section>`;
 }
 function vDelve(){
