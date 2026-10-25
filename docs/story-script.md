@@ -35,7 +35,7 @@ Opening entry:
 **CARD 1** (narration)
 
 > The bell over the door still works. Nothing else does.
->
+
 > Dust everywhere but the floor. An empty stockroom. A journal with your name on the first page, in Aunt Maribel's handwriting.
 >
 > **\[Read it\]**
@@ -49,7 +49,7 @@ Opening entry:
 **CARD 3**
 
 > The door creaks. A woman with one hand and no patience looks you over.
->
+
 > **Wren:** "You're Maribel's kin. Good. I'm Wren. I adventured with her for twenty years."
 >
 > **Wren:** "The shop's got no stock, and the cellar's got rats the size of goats. Let's fix one of those problems."
