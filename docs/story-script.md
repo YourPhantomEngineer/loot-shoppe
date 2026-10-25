@@ -1278,6 +1278,40 @@ Opening entry:
 >
 > *Whoever reads this next: keep the doors open. Keep the lamp lit. And don't sell the cellar.*
 
+# Post-game: Endless Goals
+
+**Trigger:** tapping **\[Open the shop.\]** at the end of the Epilogue.
+
+**Journal quest section:** the chapter card no longer says "Chapter 6: The Long Way Home". Where the chapter title normally sits, it reads **Storyline Complete!**, with "Goals completed: N" underneath. Past chapters and the Journal: The End entry stay readable in the Journal log below.
+
+**How it works:**
+
+- Three goals are active at once, each on its own row with a progress bar (for example "Sell 12 items · 7 / 12") and its reward.
+- Each goal completes on its own: a small pop-up says "Goal complete! +\[reward\]", and a new goal replaces it at once. No two active goals share a type.
+- Every completion raises the **goal tier** by 1. Each tier makes targets about 15% bigger (rounded), so goals never run out and keep pace with the player.
+- Goals, their progress, the tier and the completed count all carry through every Grand Reopening.
+
+**Goal pool** (starting targets at tier 1):
+
+| Type | Goal |
+| --- | --- |
+| Delve | Defeat 15 monsters in any dungeon |
+| Delve | Reach floor 4 of \[a random dungeon\] |
+| Delve | Defeat any boss (Echo of Voss counts) |
+| Delve | Find a hidden stairway |
+| Shop | Sell 10 items |
+| Shop | Haggle 5 sales above market value |
+| Shop | Earn 2,000G from sales in one day |
+| Shop | Sell to 3 collectors (the Spoon Man counts double) |
+| Craft | Craft 5 items in the Workshop |
+| Craft | Craft 3 bombs or whetstones |
+
+**Rewards:** 1,000G at tier 1, plus 250G per tier after that. Every 5th completion also gives a materials bundle (2 Ember Core, 2 Ore Chunk, 1 Stardust). Every 10th completion gives 1 Reputation star, spent like any other.
+
+→ **Tutorial prompt** (highlighting the Journal tab, then the Storyline Complete! card): Wren: "Story's done. The shop isn't. There's always more to do. Check the **Journal**."
+
+**Settled while building:** "type" means the Type column, so one Delve, one Shop and one Craft goal are always active; a finished goal is replaced by a different goal of the same type. Counts and the floor scale with the tier (the floor stops at that dungeon's deepest floor), and gold targets round to the nearest 50G. A goal's reward uses the tier it was given at. Sales by staff and Quick Sale count toward selling and daily earnings; haggling and collector goals count only sales you make at the counter. Saves that finished the game before this update start with three tier-1 goals and see Wren's prompt once.
+
 # Grand Reopening
 
 **Available:** any time after the Town Well is repaired (Ch2).

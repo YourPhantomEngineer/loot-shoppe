@@ -192,6 +192,7 @@ body.ovopen{overflow:hidden}
 .goal{display:flex;gap:8px;align-items:baseline;font-size:.93rem}
 .goal .gk{width:1.1em;color:var(--muted);flex-shrink:0;text-align:center}
 .goal.done{color:var(--muted)}.goal.done .gk{color:var(--good)}
+.egs .eg{display:flex;flex-direction:column;gap:2px;font-size:.93rem}.eg>span{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.eg .egp{white-space:nowrap;font-variant-numeric:tabular-nums}.eg .right{white-space:nowrap;font-family:var(--display);font-size:.8rem}
 .entries{display:flex;flex-direction:column;gap:10px}
 .entry{margin:0;font-family:Georgia,serif;font-style:italic;line-height:1.5;border-left:2px solid var(--line);padding-left:10px}
 .entry.done{border-color:var(--coin)}.entry.open{border-color:var(--copper)}.entry.note{border-color:var(--arcane)}
@@ -371,7 +372,7 @@ const LOAN_CASH={2:500,3:1500,4:4000,5:10000,6:15000};
 const loanRate=()=>seen("4.4")?.25:.5;
 const loanCash=()=>LOAN_CASH[S.story.ended?6:Math.min(6,Math.max(2,S.story.ch))];
 const loanOwed=()=>Math.round(loanCash()*(1+loanRate()));
-const newStory=()=>({ch:1,chDay:1,goals:{},seen:{},tips:{},flags:{tut2:1,tut3:1},hl:null,choices:{},built:{},items:{},hiredEver:{},
+const newStory=()=>({ch:1,chDay:1,goals:{},seen:{},tips:{},flags:{tut2:1,tut3:1,tut4:1},hl:null,choices:{},built:{},items:{},hiredEver:{},
   debtPaid:0,loan:0,reopens:0,journal:[],queue:[],tipQ:[]});
 const SCN={}, TIPS={}, CH=[null];
 const fl=k=>!!S.story.flags[k];
@@ -429,6 +430,7 @@ function endChapter(){
 function SE(type,d={}){
   const st=S.story;if(!st)return;
   goalEvent(type,d);
+  if(st.endless)egEvent(type,d);
   checkGoals();
   for(const id in SCN){
     const sc=SCN[id];if(sc.repeat||st.seen[id]||st.queue.includes(id))continue;
@@ -585,7 +587,7 @@ function vJournal(){
   const st=S.story,C=CH[st.ch];
   const ents=[...st.journal].reverse();
   return `
-  ${C?`<div class="card jcard"><span class="lbl">Chapter ${st.ch}</span><h2 class="jtitle">${C.t}</h2>
+  ${st.ended&&st.endless?endlessCard():C?`<div class="card jcard"><span class="lbl">Chapter ${st.ch}</span><h2 class="jtitle">${C.t}</h2>
     <ul class="goals">${goalRows(st.ch)}</ul>${chEndRow()}</div>`:""}
   ${typeof journalExtras==="function"?journalExtras():""}
   <section><h2>Journal</h2><div class="entries">${ents.map(e=>`<p class="entry ${e.kind}">${md(e.text)}</p>`).join("")||`<p class="hint">Nothing written yet.</p>`}</div></section>`;
@@ -620,6 +622,11 @@ function migrateTut3(st){
   if(st.seen["6.1"]){st.tips.t_council=st.tips.t_council||S.day;st.tips.t_forge=st.tips.t_forge||S.day}
   else if(st.ch===6){st.queue=st.queue.filter(x=>x!=="6.1");tip("t_council")} // 6.1 now waits for its button
 }
+/* Saves that finished the game before Endless Goals: start three tier-1 goals and show Wren's prompt once. */
+function migrateTut4(st){
+  if(!st.flags.tut4){st.flags.tut4=S.day;if(st.ended){egStart();tip("t_endless")}}
+  else if(st.ended&&!st.endless)egStart();
+}
 function migrateStory(){
   if(!S.crew)S.crew=S.hired?[S.hired]:[];
   delete S.hired;
@@ -629,7 +636,7 @@ function migrateStory(){
     for(let c=1;c<st.ch;c++)for(const g of chGoals(c))if(!st.goals[g.id])st.goals[g.id]=S.day;
     if(st.ch===1&&st.flags.ch1done)for(const g of chGoals(1))if(!st.goals[g.id])st.goals[g.id]=S.day;
     if(st.flags["ch"+st.ch+"ended"]&&CH[st.ch+1])startChapter(st.ch+1);
-    migrateTut2(st);migrateTut3(st);
+    migrateTut2(st);migrateTut3(st);migrateTut4(st);
     return;
   }
   const st=S.story=newStory();
@@ -1122,7 +1129,65 @@ SCN["epi"]={title:"The Festival of Lights",on:"day",when:()=>fl("vossDone"),card
  {s:[["Wren","So. What now, shopkeeper?"]],b:"Open the shop."}],
  done:()=>{const st=S.story;st.built.festival=S.day;st.ended=S.day;st.flags.ch6ended=S.day;
   jrnl("The debt is paid. The star is sleeping. The man in the blue coat is a cold stone in the deepest dark, and Sable checks on him once a month just to be sure.\nMaribel sits by the counter most days now, haggling with customers and winning. Pip still sweeps. Wren still says \"don't get used to it.\"\nWhoever reads this next: keep the doors open. Keep the lamp lit. And don't sell the cellar.","done");
-  toast("Customers: 9 → 10. <b>Festival Grounds</b> open. The Hollow Heart stays open.");tip("h_fest")}};
+  toast("Customers: 9 → 10. <b>Festival Grounds</b> open. The Hollow Heart stays open.");tip("h_fest");egStart();tip("t_endless")}};
+
+/* ---------- Post-game: Endless Goals ---------- */
+/* Three goals at once, one of each type (Delve, Shop, Craft). Each completion pays out, raises the tier by 1 and is
+   replaced by a new goal of the same type. Targets grow about 15% per tier. To add a goal, add an entry to EG_POOL:
+   k (id), cat (delve|shop|craft), base (tier 1 target), t(n,g) (text), on(event,data,g) (progress to add, or {set:n}),
+   optional gold (round targets to 50G), setup(g) (extra state), day (progress counts one day only). Lives in S.story,
+   so it carries through every Grand Reopening. */
+const EG_CATS=["delve","shop","craft"];
+const EG_POOL=[
+ {k:"kill",cat:"delve",base:15,t:n=>`Defeat ${n} monsters in any dungeon`,on:e=>e==="kill"?1:0},
+ {k:"floor",cat:"delve",base:4,t:(n,g)=>`Reach floor ${n} of the ${DUN[g.d].n}`,
+  setup:g=>{const open=DUN.map((_,i)=>i).filter(i=>DUN_GATE[i]&&DUN_GATE[i]()),o=open.length?open:[0];g.d=o[Math.floor(Math.random()*o.length)];g.n=Math.min(g.n,DUN[g.d].floors)},
+  on:(e,d,g)=>e==="floor"&&d.d===g.d?{set:d.floor}:0},
+ {k:"boss",cat:"delve",base:1,t:n=>n===1?"Defeat any boss (Echo of Voss counts)":`Defeat ${n} bosses (Echo of Voss counts)`,on:(e,d)=>e==="defeat"&&d.kind==="boss"?1:0},
+ {k:"stair",cat:"delve",base:1,t:n=>n===1?"Find a hidden stairway":`Find ${n} hidden stairways`,on:e=>e==="secretStair"?1:0},
+ {k:"sell",cat:"shop",base:10,t:n=>`Sell ${n} items`,on:(e,d)=>e==="sale"?1:e==="sold"?d.n:0},
+ {k:"haggle",cat:"shop",base:5,t:n=>`Haggle ${n} sales above market value`,on:(e,d)=>e==="sale"&&d.above&&d.haggled?1:0},
+ {k:"earn",cat:"shop",base:2000,gold:true,day:true,t:n=>`Earn ${fmt(n)}G from sales in one day`,on:(e,d)=>e==="sale"?d.price:e==="sold"?d.g:0},
+ {k:"coll",cat:"shop",base:3,t:n=>`Sell to ${n} collectors (the Spoon Man counts double)`,on:(e,d)=>e==="sale"&&d.type==="coll"?(d.reg==="the Spoon Man"?2:1):0},
+ {k:"craft",cat:"craft",base:5,t:n=>`Craft ${n} items in the Workshop`,on:(e,d)=>e==="craft"?d.n:0},
+ {k:"kit",cat:"craft",base:3,t:n=>`Craft ${n} bombs or whetstones`,on:(e,d)=>e==="craft"&&(isBomb(d.k)||isWhet(d.k))?d.n:0}
+];
+const EGP=k=>EG_POOL.find(x=>x.k===k);
+const EG_BUNDLE={ember:2,ore:2,dust:1};
+const egTarget=(def,tier)=>{const v=def.base*Math.pow(1.15,tier-1);return Math.max(1,def.gold?Math.round(v/50)*50:Math.round(v))};
+const egReward=tier=>1000+250*(tier-1);
+function egMake(k,tier){const def=EGP(k),g={k,tier,n:egTarget(def,tier),p:0};if(def.setup)def.setup(g);if(def.day)g.day=S.day;return g}
+function egNew(cat,tier,avoid){const c=EG_POOL.filter(x=>x.cat===cat),o0=c.filter(x=>x.k!==avoid),o=o0.length?o0:c;return egMake(o[Math.floor(Math.random()*o.length)].k,tier)}
+function egStart(){const st=S.story;if(st.endless)return;st.endless={tier:1,done:0,goals:EG_CATS.map(c=>egNew(c,1))}}
+const egProg=g=>EGP(g.k).day&&g.day!==S.day?0:g.p;
+function egEvent(type,d){
+  const E=S.story.endless;if(!E)return;let hit=false;const msgs=[];
+  for(const g of E.goals){
+    const def=EGP(g.k);if(!def)continue;const r=def.on(type,d||{},g);if(!r)continue;
+    if(def.day&&g.day!==S.day){g.day=S.day;g.p=0}
+    if(typeof r==="object")g.p=Math.max(g.p,r.set);else g.p+=r;hit=true;
+  }
+  if(!hit)return;
+  E.goals.forEach((g,i)=>{if(egProg(g)<g.n)return;
+    E.done++;E.tier++;const gold=egReward(g.tier);S.gold+=gold;const parts=[`${fmt(gold)}G`];
+    if(E.done%5===0){for(const [m,n] of Object.entries(EG_BUNDLE))S.mats[m]=(S.mats[m]||0)+n;parts.push(Object.entries(EG_BUNDLE).map(([m,n])=>`${n} ${MATS[m]}`).join(", "))}
+    if(E.done%10===0){S.legacy.stars++;S.legacy.total++;parts.push("1 Reputation star")}
+    msgs.push(`<b>Goal complete!</b> +${parts.join(" + ")}`);E.last=msgs.at(-1);
+    E.goals[i]=egNew(EGP(g.k).cat,E.tier,g.k);
+  });
+  if(msgs.length){sfx.win();const m=msgs.join("<br>"),t=document.getElementById("toast");
+    if(t&&t.classList.contains("show"))setTimeout(()=>toast(m),1400);else toast(m)}
+  save();
+}
+TIPS.t_endless={w:"Wren",t:"Story's done. The shop isn't. There's always more to do. Check the **Journal**.",hl:{sel:"#endless",tab:"journal",town:true}};
+function endlessCard(){
+  const E=S.story.endless;
+  const rows=E.goals.map(g=>{const p=Math.min(egProg(g),g.n),def=EGP(g.k);
+    return `<li class="eg"><span><span><b>${def.t(g.n,g)}</b> · <span class="egp">${def.gold?`${fmt(p)}G / ${fmt(g.n)}G`:`${fmt(p)} / ${fmt(g.n)}`}</span></span><span class="right coin">+${fmt(egReward(g.tier))}G</span></span>
+      <div class="bar" role="progressbar" aria-label="${def.t(g.n,g)}" aria-valuemin="0" aria-valuemax="${g.n}" aria-valuenow="${p}"><i style="width:${Math.round(p/g.n*100)}%"></i></div></li>`}).join("");
+  return `<div class="card jcard" id="endless"><h2 class="jtitle">Storyline Complete!</h2><span class="sub">Goals completed: ${fmt(E.done)}</span>
+    <ul class="goals egs">${rows}</ul><p class="hint">Every 5th goal also brings ${Object.entries(EG_BUNDLE).map(([m,n])=>`${n} ${MATS[m]}`).join(", ")}. Every 10th brings a Reputation star.</p></div>`;
+}
 
 /* ---------- Shop themes (Festival Grounds cosmetics) ---------- */
 const THEMES=[{k:"",n:"Lantern",d:"Teal stone and copper. Maribel's original."},{k:"festival",n:"Festival",d:"Crimson bunting and lantern gold."},{k:"starlight",n:"Starlight",d:"Midnight blue and silver, like the summit."}];
@@ -1595,12 +1660,12 @@ function staffShift(){
   if(ev==="tip"&&gold){const t=Math.round(rnd(.05,.12)*gold)+5;gold+=t;lines.push(`A regular customer left ${evSt.n} a ${t}G tip.`)}
   if(ev==="raise")raise=evSt.k;
   if(!lines.length)lines.push(`No customers wanted anything on the shelves today.`);
-  return {who,lines,gold,wage,raise};
+  return {who,lines,gold,wage,raise,n:Object.values(sold).reduce((a,b)=>a+b,0)};
 }
 function settleShift(){
   const R=S.run;if(!R||!R.shift)return;const r=R.shift;
   S.gold=Math.max(0,S.gold+r.gold-r.wage);S.earned+=r.gold;
-  S.report=r;
+  S.report=r;if(r.n)SE("sold",{n:r.n,g:r.gold});
 }
 
 /* ================= Dungeon ================= */
@@ -1781,7 +1846,7 @@ function guard(){
   const R=S.run;R.event="You raise your guard. "+monsterTurn(true);
   if(R.hp<=0)return faint();save();render();
 }
-function winFight(pre){({mob:mobWin,elite:eliteWin,mini:miniWin,boss:bossWin,voss:bossWin})[S.run.fight.kind||"mob"](pre||"")}
+function winFight(pre){const k=S.run.fight.kind||"mob";({mob:mobWin,elite:eliteWin,mini:miniWin,boss:bossWin,voss:bossWin})[k](pre||"");SE("kill",{kind:k})}
 function mobWin(pre){
   const R=S.run,F=R.fight,D=DUN[R.d],f=tfOf(D);
   const g=Math.round(rnd(2,6)*f*R.floor),x=xpm(5*D.t*R.floor);
@@ -1813,7 +1878,7 @@ function bossWin(pre){
   const k=rollItem(true);const fit=bagAdd(k);
   R.fight=null;R.bossDone=true;SE("defeat",{n:D.boss,kind:"boss",d:R.d});
   R.event=`${pre}The ${D.boss} falls! +${g}G, ${MATS[D.heart]}${fit?`, and ${an(IT[k].n)}`:""}.`+(first?" First victory: +1 skill point!":"");
-  if(Math.random()<.35+.05*sk("keen")+secretBonus()){R.secret=true;R.event+=" Behind the lair, a hidden stairway grinds open...";}
+  if(Math.random()<.35+.05*sk("keen")+secretBonus()){R.secret=true;R.event+=" Behind the lair, a hidden stairway grinds open...";SE("secretStair")}
   R.event+=` +${x} XP.`;rlog(R.event);sfx.win();addXp(x);
   if(first)toast(`<b>${D.boss}</b> defeated! +1 skill point.`);
   save();render();
@@ -1905,7 +1970,7 @@ function craft(i){
   S.inv.push(r.out);if(two)S.inv.push(r.out);S.crafted++;
   const xp=xpm(Math.ceil(val(r.out)/20));
   sfx.craft();toast(`Crafted ${two?"<b>two</b> ":""}<b>${IT[r.out].n}</b> (worth about ${val(r.out)}G each) · +${xp} XP`);
-  addXp(xp);SE("craft",{k:r.out});save();render();
+  addXp(xp);SE("craft",{k:r.out,n:two?2:1});save();render();
 }
 
 /* ================= Reputation (earned at each Grand Reopening) ================= */
@@ -2013,7 +2078,7 @@ function sell(price){
   endVisit(c);
   slog(`Sold ${IT[c.k].n} for ${fmt(price)}G · +${x} XP${perfect?` · great price! combo ×${P.combo}`:""}${note}`);
   sfx.coin();if(perfect&&P.combo>1)toast(`Haggle combo <b>×${P.combo}</b> · bonus XP`);
-  addXp(x);SE("sale",{above:price>v,haggled});nextCust();save();render();
+  addXp(x);SE("sale",{above:price>v,haggled,price,type:CUST[c.t].k,reg:c.reg});nextCust();save();render();
   if(haggled)hagglePop(`Deal! +${fmt(price)}G`,"good");
 }
 function custLeaves(c,msg){const P=S.shop;slog(msg);endVisit(c);P.combo=0;sfx.fail();SE("walk");nextCust();save();render();hagglePop("No deal — they walked away","bad")}
@@ -2512,7 +2577,7 @@ app.addEventListener("click",e=>{
     perk:()=>buyPerk(b.dataset.k),
     reopen:askReopen, payLoan:()=>payLoan(false), payLoanAll:()=>payLoan(true),
     quick:()=>{const k=b.dataset.k;if(!sk("quick")||!S.inv.includes(k))return;const p=quickPrice(k);
-      S.inv.splice(S.inv.indexOf(k),1);S.gold+=p;S.earned+=p;S.sold++;sfx.coin();toast(`Sold ${an(IT[k].n)} for <b>${fmt(p)}G</b>.`);save();render()},
+      S.inv.splice(S.inv.indexOf(k),1);S.gold+=p;S.earned+=p;S.sold++;sfx.coin();toast(`Sold ${an(IT[k].n)} for <b>${fmt(p)}G</b>.`);SE("sold",{n:1,g:p});save();render()},
     explore, attack, guard, flee, descend, boss:challengeBoss, leave:leaveDungeon,
     offer, accept:()=>sell(S.shop.cur.counter), acceptOffer:()=>sell(S.shop.cur.offer), haggle:startHaggle, refuse:letWalk, pitchTalk, pitchSweet, close:endDay,
     updateGame:async()=>{
