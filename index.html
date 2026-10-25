@@ -196,7 +196,9 @@ const DUN=[
  {n:"Ember Vault",t:3,lvl:6,floors:7,mon:["Fire Imp","Ash Wraith","Magma Hound"],mats:["ore","ember"],boss:"Cinder Colossus",heart:"h3"},
  {n:"Starfall Spire",t:4,lvl:10,floors:8,mon:["Star Wisp","Spire Sentinel","Void Drake"],mats:["ember","dust"],boss:"Astral Wyrm",heart:"h4"}
 ];
-const TF=[1,2.6,6,14];
+const TF=[1,2.6,6,14];      // gold and reward scaling by dungeon tier
+const HPF=[.95,1.45,2.15,3.1]; // monster HP scaling by tier (tuned so a fitting build wins each boss)
+const ATF=[.95,1.25,1.75,2.85]; // monster attack scaling by tier
 const RECIPES=[
  {out:"bomb",items:{},mats:{scrap:1,gel:1}},
  {out:"rope",items:{},mats:{fiber:3}},
@@ -756,11 +758,12 @@ function tipHooks2(type,d){
 }
 
 /* ---------- Hollow Heart, sealed floors, Observatory ---------- */
-DUN.push({n:"Hollow Heart",t:4,f:17,lvl:99,floors:6,hidden:true,
+DUN.push({n:"Hollow Heart",t:4,f:17,hf:5.2,af:3.25,lvl:99,floors:6,hidden:true,
   mon:["Moss Beetle","Kobold Miner","Ash Wraith","Star Wisp","Celestial Enforcer"],mats:["ore","ember","dust"],
   get boss(){return S.story&&S.story.flags.vossDone?"Echo of Voss":"Voss"},heart:"h5"});
 MATS.h5="Cold Starstone";
 const tfOf=D=>D.f||TF[D.t-1];
+const hfOf=D=>D.hf||HPF[D.t-1], afOf=D=>D.af||ATF[D.t-1];
 function floorSealed(d,floor){
   if(d===3&&floor===DUN[3].floors)return ["c5obs","c5lv10","c5golem","c5pay"].every(goalDone)?"":"The summit is sealed by a wall of light. Finish the Observatory, Level 10, the Prism Golem and the final payment first.";
   if(d===4&&floor===DUN[4].floors)return S.story.items.weapon?"":"A ward of starfire seals the way down. You'll need Bram's star-forged weapon.";
@@ -967,6 +970,43 @@ function reopenSection(){
       <span class="sub">${max?"Fully upgraded":p.d(r)}</span><span class="right coin">${max?"Max":`${c}★`}</span></button>`}).join("")}</div>
     <p class="hint" style="margin-top:8px">Reputation perks are permanent. Earn stars for each boss beaten and for sales made since your last reopening.</p>
   </section>`;
+}
+
+/* ---------- Voss: three-phase final boss ---------- */
+SCN["6.6a"]={on:"encounter",when:d=>d.n==="Voss",log:["<i>Voss fights like a banker: summoning Celestial enforcers and flinging gold coins that cut like knives.</i>","<b class=\"who\">Voss</b> “Your aunt's interest was compounding. So is mine.”"]};
+SCN["6.6b"]={on:"vossPhase",when:d=>d.p===2&&d.n==="Voss",log:["<i>His skin cracks. Starlight pours through. He draws power from the floating heart.</i>","<b class=\"who\">Voss</b> “Do you feel that? That's your world getting warmer.”","<b class=\"who\">Sable</b> “He's linked to the heart. I can feel the thread. I'll pull!”"]};
+SCN["6.6c"]={on:"vossPhase",when:d=>d.p===3&&d.n==="Voss",log:["<i>The coat burns away. What's left is a shape of white fire and broken light, too bright to look at.</i>","<b class=\"who\">Voss</b> “This world is kindling. Nothing more.”"]};
+const VOSS_PHASE={1:"The Guildmaster",2:"The Unmasking",3:"The Fallen Star"};
+/* Called after the player damages Voss: moves to Phase 2 at 66% HP and Phase 3 at 33%. */
+function vossPhaseCheck(){
+  const F=S.run&&S.run.fight;if(!F||F.kind!=="voss"||F.hp<=0)return;
+  const pct=F.hp/F.max;
+  if(F.phase<2&&pct<=.66){F.phase=2;F.p2t=0;F.wind=false;SE("vossPhase",{p:2,n:F.n})}
+  if(F.phase<3&&pct<=.33){F.phase=3;F.p3t=0;F.wind=false;SE("vossPhase",{p:3,n:F.n})}
+}
+function vossTurn(guard){
+  const R=S.run,F=R.fight;F.turn++;
+  const hitFor=mult=>{const t=Math.max(1,Math.round(F.atk*rnd(.85,1.15)*mult*(guard?.3:1)));R.hp-=t;return t};
+  let m="";
+  if(F.phase===1){
+    if(F.wind){F.wind=false;m=`Voss hurls a storm of gold coins for ${hitFor(2)}!`}
+    else{m=`Voss's coins cut you for ${hitFor(1)}.`;
+      if(F.turn%3===0)m+=` A Celestial enforcer joins in for ${hitFor(.5)}.`;
+      if(F.turn%3===2){F.wind=true;m+=" He gathers a fistful of gold. Heavy attack incoming!"}}
+  }else if(F.phase===2){
+    m=`Voss strikes for ${hitFor(1.1)}.`;
+    const h=Math.max(0,Math.round(F.max*(.07-.015*F.p2t)));F.p2t++;
+    if(h>0){const before=F.hp;F.hp=Math.min(Math.round(F.max*.66),F.hp+h);m+=` He draws on the heart and heals ${F.hp-before}. Sable pulls at the thread; the link weakens.`}
+    else m+=" Sable has torn the thread loose. He can't heal anymore.";
+  }else{
+    m=`Voss burns you for ${hitFor(1.2)}.`;
+    if(F.star){F.star=false;const t=Math.max(1,Math.round(maxHp()*(guard?.04:.15)));R.hp-=t;m+=` Starfire crashes down for ${t}${guard?" (you guard against the worst of it)":""}!`}
+    F.p3t++;
+    if(F.p3t%2===1){const t=Math.max(1,Math.round(maxHp()*.06));R.hp-=t;m+=` Magma vents erupt beneath you for ${t}.`}
+    else{F.star=true;m+=" Starfire gathers overhead. Guard!"}
+  }
+  guard?sfx.guard():sfx.hurt();SE("hit");
+  return m;
 }
 
 /*STORYDATA*/
@@ -1291,10 +1331,10 @@ function dropMats(n){
   return got;
 }
 function makeFight(n,kind){
-  const R=S.run,D=DUN[R.d],f=tfOf(D);
-  const hm={mob:1,elite:2.2,mini:2.4,boss:3.5}[kind],am={mob:1,elite:1.35,mini:1.2,boss:1.3}[kind];
-  const hp=Math.round((10+R.floor*3)*f*hm);
-  R.fight={n,hp,max:hp,atk:Math.round((2+R.floor*.8)*f*am),turn:0,kind,boss:kind==="mini"||kind==="boss",wind:false};
+  const R=S.run,D=DUN[R.d];
+  const hm={mob:1,elite:2.2,mini:2.4,boss:3.5,voss:5}[kind],am={mob:1,elite:1.35,mini:1.2,boss:1.3,voss:1.25}[kind];
+  const hp=Math.round((10+R.floor*3)*hfOf(D)*hm);
+  R.fight={n,hp,max:hp,atk:Math.round((2+R.floor*.8)*afOf(D)*am),turn:0,kind,boss:kind==="mini"||kind==="boss"||kind==="voss",wind:false,phase:kind==="voss"?1:0};
   SE("combat",{kind});
 }
 function explore(){
@@ -1395,9 +1435,10 @@ function evChoice(c){
 /* ---------- Combat ---------- */
 function challengeBoss(){
   const R=S.run,D=DUN[R.d];
-  makeFight(D.boss,"boss");R.lair=false;R.event=`The ${D.boss} rises to face you!`;sfx.boss();rlog(R.event);save();render();SE("encounter",{n:D.boss,d:R.d});
+  makeFight(D.boss,R.d===4?"voss":"boss");R.lair=false;R.event=`The ${D.boss} rises to face you!`;sfx.boss();rlog(R.event);save();render();SE("encounter",{n:D.boss,d:R.d});
 }
 function monsterTurn(guard){
+  if(S.run.fight.kind==="voss")return vossTurn(guard);
   const R=S.run,F=R.fight;F.turn++;
   const heavy=F.boss&&F.wind;if(heavy)F.wind=false;
   const t=Math.max(1,Math.round(F.atk*rnd(.8,1.2)*(heavy?2:1)*(guard?.3:1)));
@@ -1413,6 +1454,7 @@ function attack(){
   F.hp-=d;sfx.hit();
   if(F.hp<=0)return winFight(c?"Critical hit! ":"");
   R.event=`${c?"Critical hit! ":""}You deal ${d}. `+monsterTurn(false);
+  vossPhaseCheck();
   if(R.hp<=0)return faint();
   save();render();
 }
@@ -1420,7 +1462,7 @@ function guard(){
   const R=S.run;R.event="You raise your guard. "+monsterTurn(true);
   if(R.hp<=0)return faint();save();render();
 }
-function winFight(pre){({mob:mobWin,elite:eliteWin,mini:miniWin,boss:bossWin})[S.run.fight.kind||"mob"](pre||"")}
+function winFight(pre){({mob:mobWin,elite:eliteWin,mini:miniWin,boss:bossWin,voss:bossWin})[S.run.fight.kind||"mob"](pre||"")}
 function mobWin(pre){
   const R=S.run,F=R.fight,D=DUN[R.d],f=tfOf(D);
   const g=Math.round(rnd(2,6)*f*R.floor),x=xpm(5*D.t*R.floor);
@@ -1459,7 +1501,7 @@ function bossWin(pre){
 }
 function flee(){
   const R=S.run,F=R.fight;
-  if(Math.random()<fleeCh()){R.event=`You slip away from the ${F.n}.`;if(F.kind==="boss")R.lair=true;R.fight=null}
+  if(Math.random()<fleeCh()){R.event=`You slip away from the ${F.n}.`;if(F.kind==="boss"||F.kind==="voss")R.lair=true;R.fight=null}
   else{R.event=`You couldn't escape! `+monsterTurn(false);if(R.hp<=0)return faint()}
   rlog(R.event);save();render();
 }
@@ -1477,10 +1519,11 @@ function useItem(src,i){
   arr.splice(i,1);let m;SE("belt",{k});
   if(HEAL[k]){const h=Math.max(1,Math.round(maxHp()*HEAL[k]));R.hp=Math.min(maxHp(),R.hp+h);m=`You drink the ${IT[k].n} and recover ${h} HP.`;sfx.guard()}
   else if(k==="whet"){R.atkB+=.3;m="You hone your blade: +30% attack for this delve.";sfx.craft()}
-  else if(k==="rope"){m=`You yank the Escape Rope and vanish from the ${F.n}'s reach.`;if(F.kind==="boss")R.lair=true;R.fight=null;R.event=m;rlog(m);return save(),render()}
+  else if(k==="rope"){m=`You yank the Escape Rope and vanish from the ${F.n}'s reach.`;if(F.kind==="boss"||F.kind==="voss")R.lair=true;R.fight=null;R.event=m;rlog(m);return save(),render()}
   else if(k==="bomb"){
-    const d=Math.round((10+R.floor*3)*tfOf(DUN[R.d])*.8);F.hp-=d;sfx.hit();m=`The Fire Bomb explodes for ${d} damage!`;
+    const d=Math.round((10+R.floor*3)*hfOf(DUN[R.d])*.8);F.hp-=d;sfx.hit();m=`The Fire Bomb explodes for ${d} damage!`;
     if(F.hp<=0)return winFight(m+" ");
+    vossPhaseCheck();
   }
   if(F){m+=" "+monsterTurn(false);R.event=m;rlog(m);if(R.hp<=0)return faint()}
   else{R.event=m;rlog(m)}
@@ -1779,10 +1822,13 @@ function vDelve(){
   const gotMats=Object.entries(R.got).map(([k,n])=>`<span class="chip mat">${MATS[k]} ×${n}</span>`).join("");
   let actions;
   if(F){
-    const tag={elite:"Elite · ",mini:"Mini-boss · ",boss:"Boss · "}[F.kind]||"";
+    const tag={elite:"Elite · ",mini:"Mini-boss · ",boss:"Boss · ",voss:`Phase ${F.phase} · ${VOSS_PHASE[F.phase]} · `}[F.kind]||"";
     actions=`<div class="monster ${F.boss||F.kind==="elite"?"boss":""}"><b>${tag}${F.n}</b> <span class="sub">· hits for ~${F.atk}${F.boss?" · heavy blow every few turns":""}</span>
       <div class="bar hp"><i style="width:${Math.max(0,F.hp)/F.max*100}%"></i></div>
-      ${F.wind?`<p class="warn">Heavy attack incoming! Guard to block most of it.</p>`:""}</div>
+      ${F.wind?`<p class="warn">Heavy attack incoming! Guard to block most of it.</p>`:""}
+      ${F.star?`<p class="warn">Starfire is gathering overhead. Guard!</p>`:""}
+      ${F.kind==="voss"&&F.phase===2?`<p class="hint" style="margin:6px 0 0">He heals from the heart each turn, less every time as Sable pulls the thread.</p>`:""}
+      ${F.kind==="voss"&&F.phase===3?`<p class="hint" style="margin:6px 0 0">Magma vents and falling starfire. Guard when the starfire gathers.</p>`:""}</div>
     <div class="btns"><button class="btn" data-act="attack">Attack</button><button class="btn alt" data-act="guard">Guard</button><button class="btn alt" data-act="flee">Flee (${Math.round(fleeCh()*100)}%)</button></div>`;
   }
   else if(R.ev)actions=`<div class="btns">${evButtons()}</div>`;
