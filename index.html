@@ -169,11 +169,16 @@ body.ovopen{overflow:hidden}
   background:var(--panel);border:1px solid var(--copper);color:var(--copper);font:700 .9rem var(--display);padding:6px 12px;border-radius:999px;
   opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s}
 #xpPop.show{opacity:1;transform:none;animation:xpbump .35s ease}
-.stat.daypop{animation:daypop .9s ease-out var(--dpd,0s) both}
-.stat.daypop b{animation:daynum .9s ease-out var(--dpd,0s);display:inline-block}
-@keyframes daypop{0%{background:rgba(242,201,76,.35);box-shadow:0 0 0 2px var(--coin)}100%{background:var(--panel);box-shadow:0 0 0 0 transparent}}
-@keyframes daynum{0%{transform:scale(1)}30%{transform:scale(1.45);color:var(--coin)}100%{transform:scale(1)}}
-@media (prefers-reduced-motion:reduce){.stat.daypop,.stat.daypop b{animation:none}}
+.stat.daypop{position:relative;z-index:2;animation:daypop 1.8s cubic-bezier(.2,.9,.3,1) var(--dpd,0s) both}
+.stat.daypop b{animation:daynum 1.8s cubic-bezier(.2,.9,.3,1) var(--dpd,0s);display:inline-block;transform-origin:left center}
+.stat.daypop::after{content:"New day!";position:absolute;left:50%;top:-6px;transform:translateX(-50%);white-space:nowrap;background:var(--coin);color:#2a2008;font-weight:800;font-size:.8rem;padding:3px 10px;border-radius:999px;pointer-events:none;animation:daytag 1.8s ease-out var(--dpd,0s) both}
+@keyframes daypop{0%{transform:scale(1);background:var(--coin);box-shadow:0 0 0 0 rgba(242,201,76,.9)}
+ 18%{transform:scale(1.18);background:rgba(242,201,76,.55);box-shadow:0 0 0 10px rgba(242,201,76,.35)}
+ 40%{transform:scale(1.06);box-shadow:0 0 0 18px rgba(242,201,76,0)}
+ 100%{transform:scale(1);background:var(--panel);box-shadow:0 0 0 0 rgba(242,201,76,0)}}
+@keyframes daynum{0%{transform:scale(1)}20%{transform:scale(2.1);color:var(--coin)}45%{transform:scale(1.5);color:var(--coin)}100%{transform:scale(1)}}
+@keyframes daytag{0%{opacity:0;transform:translate(-50%,8px) scale(.6)}15%{opacity:1;transform:translate(-50%,-14px) scale(1.1)}70%{opacity:1;transform:translate(-50%,-18px) scale(1)}100%{opacity:0;transform:translate(-50%,-26px) scale(1)}}
+@media (prefers-reduced-motion:reduce){.stat.daypop,.stat.daypop b,.stat.daypop::after{animation:none}.stat.daypop::after{display:none}}
 @keyframes xpbump{0%{transform:scale(.8)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){#xpPop,#xpPop.show{transition:none;animation:none}}
 #toast.show{transform:translate(-50%,0);opacity:1;visibility:visible;transition:transform .3s ease,opacity .3s ease}
@@ -1895,7 +1900,7 @@ let shownDay=null,dayPopAt=0;
 function dayPop(){
   if(shownDay!==null&&S.day!==shownDay){if(scn||tipOpen)return "";dayPopAt=performance.now()} // wait until story cards close so it's seen
   shownDay=S.day;
-  const t=performance.now()-dayPopAt;return dayPopAt&&t<900?` daypop" style="--dpd:-${Math.round(t)}ms`:"";
+  const t=performance.now()-dayPopAt;return dayPopAt&&t<1800?` daypop" style="--dpd:-${Math.round(t)}ms`:"";
 }
 function topStats(){
   const L=lvl(),pct=Math.round((S.xp-xpFor(L))/(xpFor(L+1)-xpFor(L))*100);
