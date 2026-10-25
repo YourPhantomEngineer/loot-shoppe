@@ -163,14 +163,14 @@ body.ovopen{overflow:hidden}
 .confirm{border:1px solid var(--bad);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:10px;font-size:.88rem;text-align:center}
 .over{text-align:center;gap:14px}
 .over .big-num{font-family:var(--display);font-size:2.4rem;color:var(--coin)}
-#toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translate(-50%,160%);background:var(--panel);border:1px solid var(--coin);border-radius:8px;padding:10px 16px;font-size:.88rem;max-width:calc(100% - 32px);transition:transform .3s ease;z-index:20;text-align:center}
+#toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translate(-50%,calc(100% + 80px));opacity:0;visibility:hidden;background:var(--panel);border:1px solid var(--coin);border-radius:8px;padding:10px 16px;font-size:.88rem;max-width:calc(100% - 32px);transition:transform .3s ease,opacity .3s ease,visibility 0s linear .3s;z-index:20;text-align:center}
 #xpPop{position:fixed;bottom:calc(72px + env(safe-area-inset-bottom,0px));left:50%;margin-left:-60px;width:120px;text-align:center;box-sizing:border-box;z-index:21;pointer-events:none;
   background:var(--panel);border:1px solid var(--copper);color:var(--copper);font:700 .9rem var(--display);padding:6px 12px;border-radius:999px;
   opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s}
 #xpPop.show{opacity:1;transform:none;animation:xpbump .35s ease}
 @keyframes xpbump{0%{transform:scale(.8)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){#xpPop,#xpPop.show{transition:none;animation:none}}
-#toast.show{transform:translate(-50%,0)}
+#toast.show{transform:translate(-50%,0);opacity:1;visibility:visible;transition:transform .3s ease,opacity .3s ease}
 #toast b{color:var(--coin)}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
 </style>
