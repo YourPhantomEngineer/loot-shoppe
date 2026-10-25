@@ -241,7 +241,7 @@ Market values: 45G, 90G, 150G, 260G and 450G. A bomb's damage shows on its suppl
 
 ## Journal: Chapter 1 complete
 
-> *Debt: the Celestial Consortium. Balance: 2,400G.*
+> *Debt: the Celestial Consortium. Balance: 61,000G.*
 >
 > *Wren says we pay it bit by bit. Maribel's journal has a map in the back, all mountain, with the summit circled twice. Above it, she wrote: "It's still warm."*
 
@@ -258,7 +258,7 @@ Market values: 45G, 90G, 150G, 260G and 450G. A bomb's damage shows on its suppl
 1. Hire Pip
 2. Defeat the Rat Matriarch in the Mossy Cellar
 3. Defeat the Slime Monarch in the Mossy Cellar
-4. Make your first payment to the Celestials (600G)
+4. Make your first payment to the Celestials (1,000G)
 5. Repair the Town Well (300G + 3 Moss Fiber + the star-glass, after the Slime Monarch)
 
 Opening entry:
@@ -418,7 +418,7 @@ Opening entry:
 3. Defeat the Kobold Foreman in the Sunken Mine
 4. Repair the Smithy (after the Kobold Foreman)
 5. Repair the Apothecary
-6. Make your second payment (600G)
+6. Make your second payment (5,000G)
 
 Opening entry:
 
@@ -581,7 +581,7 @@ Opening entry:
 2. Defeat the Ember Knight in the Ember Vault
 3. Defeat the Cinder Colossus in the Ember Vault
 4. Repair the Watchtower
-5. Make your third payment (600G)
+5. Make your third payment (15,000G)
 
 Opening entry:
 
@@ -805,7 +805,7 @@ Opening entry:
 1. Repair the Observatory
 2. Reach Level 10
 3. Defeat the Prism Golem in the Starfall Spire
-4. Make your final payment (600G, clears Maribel's debt)
+4. Make your final payment (40,000G, clears Maribel's debt)
 5. Defeat the Astral Wyrm in the Starfall Spire
 
 Opening entry:
@@ -1282,7 +1282,7 @@ Opening entry:
 
 **What persists:** Journal, chapter progress, repaired buildings, recruited staff, Maribel's debt and every payment made on it, and story items (star-glass shards, Bram's star-forged weapon). **What resets:** shop gold, stock, gear upgrades, level, and the startup loan (each reopening takes a new one). Reputation perks are earned as normal.
 
-**Also resets (settled):** skills, materials, belt supplies and boss trophies are lost too. You reopen with the 300G startup loan plus any Family Fortune bonus, an empty stockroom, and the day moves forward by one.
+**Also resets (settled):** skills, materials, belt supplies and boss trophies are lost too. You reopen with the startup loan's cash plus any Family Fortune bonus, an empty stockroom, and the day moves forward by one.
 
 **Reputation (settled): Grand Reopening replaces the old Retire and Legacy system.** Each reopening earns Reputation stars: one per boss beaten since the last reopening, plus sales stars (the first at 1,500G sold, each after that taking more). Stars buy permanent perks that carry through every reopening:
 
@@ -1300,7 +1300,7 @@ Old Connections (customers) and Loyal Staff (staff now always stay) were removed
 
 **Gating note:** story gates check goal flags, not current level. Once "Reach Level 10" is complete, the Starfall Spire stays open after a Reopening.
 
-**Debt note (two ledgers):** Maribel's debt is story-only and never resets. Each payment goal is a fixed amount (600G), payments made stay made, and the Ch5 final payment always clears it. Each Grand Reopening instead takes a small **startup loan** (300G, no interest), not secured against the deed. The player repays it manually, in any amount, from the Journal (Pay → Startup loan), kept separate from Maribel's debt. It has no payment goals and never replays a story scene, but until it's cleared, payments on Maribel's debt and the next Grand Reopening are locked (a chapter's payment goal waits until it's repaid). The Journal shows it on its own line: *Startup loan: 300G.* The lender depends on story progress: the Celestials from Ch2 until Scene 4.4, then Hollowmere Mutual (Marlo, from a Tavern table), then Hollowmere Mutual in the old Consortium office after the ending.
+**Debt note (two ledgers):** Maribel's debt is story-only and never resets. Each payment goal has a fixed amount that grows by chapter (1,000G, 5,000G, 15,000G, 40,000G; 61,000G in all), payments made stay made, and the Ch5 final payment always clears it. Each Grand Reopening instead takes a **startup loan**, not secured against the deed. The cash grows with the story: 500G in Ch2, 1,500G in Ch3, 4,000G in Ch4, 10,000G in Ch5 and 15,000G in Ch6 and after the ending. The lender charges interest on top: the Celestials 50%, Hollowmere Mutual 25% ("low interest"). So a Ch3 loan is 1,500G in hand and 2,250G to repay. The player repays it manually, in any amount, from the Journal (Pay → Startup loan), kept separate from Maribel's debt. It has no payment goals and never replays a story scene, but until it's cleared, payments on Maribel's debt and the next Grand Reopening are locked (a chapter's payment goal waits until it's repaid). The Journal shows it on its own line: *Startup loan: 2,250G left · borrowed 1,500G at 50% interest.* The lender depends on story progress: the Celestials from Ch2 until Scene 4.4, then Hollowmere Mutual (Marlo, from a Tavern table), then Hollowmere Mutual in the old Consortium office after the ending.
 
 ## Reopening confirmation
 
@@ -1482,7 +1482,7 @@ Regulars whose style you already know are shown as known, whatever your skills.
 
 ## Notes for the game chat
 
-- Story debt payments (`[X]G`) are set to 600G each, 2,400G in all. The Grand Reopening startup loan (`[Y]G`) is 300G with no interest. The Chapter 1 journal shows the real balance, 2,400G.
+- Story debt payments (`[X]G`) grow by chapter: 1,000G, 5,000G, 15,000G and 40,000G, 61,000G in all, sized to each chapter's earnings. The Grand Reopening startup loan (`[Y]G`) scales with the story (500G to 15,000G) and carries interest (Celestials 50%, Hollowmere Mutual 25%). The Chapter 1 journal shows the real balance, 61,000G.
 - In Chapter 1, the gold star on the seal and "patient" are the only Celestial hints, intentionally subtle.
 - "It's still warm" foreshadows both Maribel inside the star and Voss's need for heat.
 

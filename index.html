@@ -361,7 +361,16 @@ const dmgAt=l=>4+3*l, hpAt=l=>30+15*l, capAt=l=>6+2*l;
    A card is {s:[...], b:"Button"} or {s:[...], c:[["Label","nextCardId"],...]}.
    s items: "narration" | ["note","letter text"] | ["Speaker","line","stage direction"].
    Every scene, tip and intro plays once; seen flags live in S.story. */
-const DEBT_PAYMENT=600, DEBT_PAYMENTS=4, STARTUP_LOAN=300;
+/* Maribel's debt: one payment per chapter (Ch2-5), each sized to that chapter's earnings. */
+const DEBT_SCHEDULE=[1000,5000,15000,40000], DEBT_PAYMENTS=DEBT_SCHEDULE.length;
+const DEBT_TOTAL=DEBT_SCHEDULE.reduce((a,b)=>a+b,0);
+const payAmt=(n=S.story.debtPaid)=>DEBT_SCHEDULE[Math.min(n,DEBT_PAYMENTS-1)];
+/* Grand Reopening startup loan: the cash you get grows with how far the story is, and the lender charges interest
+   (the Celestials 50%, Hollowmere Mutual 25%). You repay the cash plus interest. */
+const LOAN_CASH={2:500,3:1500,4:4000,5:10000,6:15000};
+const loanRate=()=>seen("4.4")?.25:.5;
+const loanCash=()=>LOAN_CASH[S.story.ended?6:Math.min(6,Math.max(2,S.story.ch))];
+const loanOwed=()=>Math.round(loanCash()*(1+loanRate()));
 const newStory=()=>({ch:1,chDay:1,goals:{},seen:{},tips:{},flags:{tut2:1,tut3:1},hl:null,choices:{},built:{},items:{},hiredEver:{},
   debtPaid:0,loan:0,reopens:0,journal:[],queue:[],tipQ:[]});
 const SCN={}, TIPS={}, CH=[null];
@@ -667,14 +676,14 @@ const DUN_GATE=[()=>true,()=>fl("mine"),()=>fl("vault"),()=>goalDone("c5lv10"),(
 const DUN_LOCK=["","Opens at the end of Chapter 2","Opens at the end of Chapter 3","Opens when you reach Level 10 in Chapter 5","Opens in Chapter 6"];
 
 /* ---------- Maribel's debt ---------- */
-const debtLeft=()=>DEBT_PAYMENT*(DEBT_PAYMENTS-S.story.debtPaid);
+const debtLeft=()=>DEBT_SCHEDULE.slice(S.story.debtPaid).reduce((a,b)=>a+b,0);
 const payDue=()=>S.story.debtPaid<DEBT_PAYMENTS&&S.story.debtPaid<S.story.ch-1; // one payment goal per chapter, Ch2 to Ch5
 function payDebt(){
   const st=S.story;
   if(st.loan>0){tipNow("Wren","Clear the last loan first. One debt at a time.",LOAN_HL);return render()}
-  if(!payDue()||S.gold<DEBT_PAYMENT)return;
-  S.gold-=DEBT_PAYMENT;st.debtPaid++;sfx.coin();
-  jrnl(st.debtPaid>=DEBT_PAYMENTS?"Final payment made. Maribel's debt is cleared.":`Payment ${st.debtPaid} of ${DEBT_PAYMENTS} to the Celestials: ${fmt(DEBT_PAYMENT)}G. Balance: ${fmt(debtLeft())}G.`,"note");
+  const amt=payAmt();if(!payDue()||S.gold<amt)return;
+  S.gold-=amt;st.debtPaid++;sfx.coin();
+  jrnl(st.debtPaid>=DEBT_PAYMENTS?"Final payment made. Maribel's debt is cleared.":`Payment ${st.debtPaid} of ${DEBT_PAYMENTS} to the Celestials: ${fmt(amt)}G. Balance: ${fmt(debtLeft())}G.`,"note");
   SE("pay",{n:st.debtPaid});save();render();
 }
 /* A one-off line that isn't a story beat (shown in the tip bar, not stored as seen). */
@@ -698,7 +707,7 @@ function flavorLine(){
 /* ---------- Chapter 1: Dust and Doorbells ---------- */
 CH[1]={t:"Dust and Doorbells",wait:true,
  open:"Hollowmere. The shop is mine now, along with whatever Aunt Maribel left in it. Wren says start with the cellar.",
- done:()=>`Debt: the Celestial Consortium. Balance: ${fmt(DEBT_PAYMENT*DEBT_PAYMENTS)}G.\nWren says we pay it bit by bit. Maribel's journal has a map in the back, all mountain, with the summit circled twice. Above it, she wrote: "It's still warm."`,
+ done:()=>`Debt: the Celestial Consortium. Balance: ${fmt(DEBT_TOTAL)}G.\nWren says we pay it bit by bit. Maribel's journal has a map in the back, all mountain, with the summit circled twice. Above it, she wrote: "It's still warm."`,
  unlock:()=>{S.story.flags.skills=true},
  goals:[
   {id:"c1f1",t:"Clear Floor 1 of the Mossy Cellar",ev:(ty,d)=>ty==="stairs"&&d.d===0&&d.floor===1},
@@ -766,7 +775,7 @@ CH[2]={t:"The Ledger",
   {id:"c2pip",t:"Hire Pip",ok:()=>fl("pipHired")},
   {id:"c2rat",t:"Defeat the Rat Matriarch in the Mossy Cellar",ev:(ty,d)=>ty==="defeat"&&d.n==="Rat Matriarch"},
   {id:"c2slime",t:"Defeat the Slime Monarch in the Mossy Cellar",ev:(ty,d)=>ty==="defeat"&&d.n==="Slime Monarch"},
-  {id:"c2pay",t:()=>`Make your first payment to the Celestials (${fmt(DEBT_PAYMENT)}G)`,ok:()=>S.story.debtPaid>=1},
+  {id:"c2pay",t:()=>`Make your first payment to the Celestials (${fmt(DEBT_SCHEDULE[0])}G)`,ok:()=>S.story.debtPaid>=1},
   {id:"c2well",t:()=>`Repair the Town Well (${fmt(BLD("well").gold)}G + materials)`,ok:()=>built("well"),lock:()=>S.story.items.glass?"":"Needs the Slime Monarch's star-glass"}
  ]};
 SCN["2.1"]={title:"The Guildmaster calls",cards:[
@@ -826,7 +835,7 @@ function journalExtras(){
     h+=`<section><h2>Ledgers</h2><div class="list">
       <div class="row"><span><b>Maribel's debt</b> <span class="sub">Celestial Consortium</span></span>
         <span class="sub">${st.debtPaid>=DEBT_PAYMENTS?"Paid in full.":`${st.debtPaid} of ${DEBT_PAYMENTS} payments made · balance ${fmt(debtLeft())}G`}</span>
-        <span class="right">${st.debtPaid<DEBT_PAYMENTS?`<button class="btn gold sm" data-act="payDebt" ${due&&S.gold>=DEBT_PAYMENT&&!loanLock?"":"disabled"}>Pay ${fmt(DEBT_PAYMENT)}G</button>`:"✓"}</span></div>
+        <span class="right">${st.debtPaid<DEBT_PAYMENTS?`<button class="btn gold sm" data-act="payDebt" ${due&&S.gold>=payAmt()&&!loanLock?"":"disabled"}>Pay ${fmt(payAmt())}G</button>`:"✓"}</span></div>
       ${typeof loanRow==="function"?loanRow():""}
     </div>
     ${st.debtPaid<DEBT_PAYMENTS&&!due?`<p class="hint" style="margin-top:8px">The next payment comes due in Chapter ${st.debtPaid+2}.</p>`:""}
@@ -886,7 +895,7 @@ CH[3]={t:"Sparks at the Smithy",
   {id:"c3fore",t:"Defeat the Kobold Foreman in the Sunken Mine",ev:(ty,d)=>ty==="defeat"&&d.n==="Kobold Foreman"},
   {id:"c3smith",t:"Repair the Smithy",ok:()=>built("smithy"),lock:()=>goalDone("c3fore")?"":"After the Kobold Foreman"},
   {id:"c3apo",t:"Repair the Apothecary",ok:()=>built("apothecary")},
-  {id:"c3pay",t:()=>`Make your second payment (${fmt(DEBT_PAYMENT)}G)`,ok:()=>S.story.debtPaid>=2}
+  {id:"c3pay",t:()=>`Make your second payment (${fmt(DEBT_SCHEDULE[1])}G)`,ok:()=>S.story.debtPaid>=2}
  ]};
 SCN["3.1"]={title:"The Tavern reopens",on:"repair",when:d=>d.k==="tavern",cards:[
  {s:[["Wren","Finally. A place to sit that isn't your counter."],"Within the hour, a hire board is nailed by the door. One name is already on it."],b:"Continue"},
@@ -930,7 +939,7 @@ CH[4]={t:"What the Celestials Knew",
   {id:"c4knight",t:"Defeat the Ember Knight in the Ember Vault",ev:(ty,d)=>ty==="defeat"&&d.n==="Ember Knight"},
   {id:"c4col",t:"Defeat the Cinder Colossus in the Ember Vault",ev:(ty,d)=>ty==="defeat"&&d.n==="Cinder Colossus"},
   {id:"c4watch",t:"Repair the Watchtower",ok:()=>built("watch")},
-  {id:"c4pay",t:()=>`Make your third payment (${fmt(DEBT_PAYMENT)}G)`,ok:()=>S.story.debtPaid>=3}
+  {id:"c4pay",t:()=>`Make your third payment (${fmt(DEBT_SCHEDULE[2])}G)`,ok:()=>S.story.debtPaid>=3}
  ]};
 SCN["4.1"]={title:"Market day",on:"repair",when:d=>d.k==="market",cards:[
  {s:["Stalls go up overnight. Bunting. A fiddler. Hollowmere smells like bread again.",["Pip","There's a man here who collects _spoons_. He has a spoon _bag_."],["Wren","Collectors. They pay stupid money for shiny things. Be nice to them."]],b:"Continue"}],
@@ -1026,7 +1035,7 @@ CH[5]={t:"Starfall",
   {id:"c5obs",t:"Repair the Observatory",ok:()=>built("obs")},
   {id:"c5lv10",t:"Reach Level 10",ok:()=>lvl()>=10},
   {id:"c5golem",t:"Defeat the Prism Golem in the Starfall Spire",ev:(ty,d)=>ty==="defeat"&&d.n==="Prism Golem"},
-  {id:"c5pay",t:()=>`Make your final payment (${fmt(DEBT_PAYMENT)}G, clears Maribel's debt)`,ok:()=>S.story.debtPaid>=4},
+  {id:"c5pay",t:()=>`Make your final payment (${fmt(DEBT_SCHEDULE[3])}G, clears Maribel's debt)`,ok:()=>S.story.debtPaid>=4},
   {id:"c5wyrm",t:"Defeat the Astral Wyrm in the Starfall Spire",ev:(ty,d)=>ty==="defeat"&&d.n==="Astral Wyrm",lock:()=>floorSealed(3,DUN[3].floors)?"The summit is sealed until the other four goals are done":""}
  ]};
 SCN["5.1"]={title:"The Observatory",on:"repair",when:d=>d.k==="obs",cards:[
@@ -1197,8 +1206,9 @@ function doReopen(){
   const keep={legacy:L,sound:S.sound,music:S.music,sold:S.sold,earned:S.earned,crafted:S.crafted,story:st,
     crew:S.crew,staffs:S.staffs,keep:S.keep,regs:S.regs,theme:S.theme,day:S.day+1,trend:S.trend};
   S=Object.assign(fresh(),keep);
-  S.inv=[];S.lifeStart=S.earned;S.gold=STARTUP_LOAN+250*pk("fortune");
-  st.loan=STARTUP_LOAN;st.loanFrom=loanLender();st.reopens++;
+  const cash=loanCash(),owed=loanOwed();
+  S.inv=[];S.lifeStart=S.earned;S.gold=cash+250*pk("fortune");
+  st.loan=owed;st.loanCash=cash;st.loanRate=loanRate();st.loanFrom=loanLender();st.reopens++;
   migrate();
   jrnl(`Grand Reopening No. ${st.reopens}. The shelves are bare again, and the doors are open. Keep the lamp lit.`,"note");
   tab="journal";queue("reopen");if(st.ended)queue("reopenEnd");tip("t_reopen1");
@@ -1216,7 +1226,7 @@ function payLoan(all){
 }
 function loanRow(){
   const st=S.story;if(!(st.loan>0))return "";
-  return `<div class="row" id="loanrow"><span><b>Startup loan: ${fmt(st.loan)}G</b> <span class="sub">${st.loanFrom||loanLender()}</span></span>
+  return `<div class="row" id="loanrow"><span><b>Startup loan: ${fmt(st.loan)}G left</b> <span class="sub">${st.loanFrom||loanLender()}${st.loanCash?` · borrowed ${fmt(st.loanCash)}G at ${Math.round((st.loanRate||0)*100)}% interest`:""}</span></span>
     <span class="sub loanpay"><label for="loanAmt" class="sub">Amount</label><input id="loanAmt" type="number" inputmode="numeric" min="1" max="${Math.min(st.loan,S.gold)}" value="${Math.min(st.loan,S.gold)}">
       <button class="btn alt sm" data-act="payLoan" ${S.gold>0?"":"disabled"}>Pay</button></span>
     <span class="right"><button class="btn gold sm" data-act="payLoanAll" ${S.gold>=st.loan?"":"disabled"}>Pay all</button></span></div>`;
@@ -1229,7 +1239,7 @@ function reopenSection(){
       <div class="pline" id="rep"><div><span class="lbl">Reputation</span><b class="starnum">★ ${fmt(L.stars)}</b></div>
         <button class="btn gold" data-act="reopen" ${loan||S.run||S.shop?"disabled":""}>Reopen${g?` +${g}★`:""}</button></div>
       ${loan?`<p class="hint"><b class="who">Wren</b> “Clear the last loan first. One debt at a time.”</p>`:""}
-      <p class="hint">Resets gold, stock, gear upgrades, level, skills, materials and supplies, and takes a new ${fmt(STARTUP_LOAN)}G startup loan. Keeps the Journal, the town, your staff, Maribel's debt payments and story items.</p>
+      <p class="hint">Resets gold, stock, gear upgrades, level, skills, materials and supplies, and takes a new startup loan: ${fmt(loanCash())}G now, repaid as ${fmt(loanOwed())}G (${Math.round(loanRate()*100)}% interest from ${loanLender().replace(/,.*/,"")}). Keeps the Journal, the town, your staff, Maribel's debt payments and story items.</p>
       <div class="chips"><span class="chip">${Object.keys(S.bosses).length} boss star${Object.keys(S.bosses).length===1?"":"s"}</span><span class="chip">${starsFromGold()} sales star${starsFromGold()===1?"":"s"}</span><span class="chip">Next sales star at ${fmt(nextGold)}G sold (${fmt(lifeEarned())}G so far)</span></div>
     </div>
     <div class="list" style="margin-top:10px">${PERKS.map(p=>{const r=pk(p.k),max=r>=p.max,c=perkCost(p);return `<button class="row" data-act="perk" data-k="${p.k}" ${max||L.stars<c?"disabled":""}>
