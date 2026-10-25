@@ -1825,6 +1825,10 @@ function vTown(){
       <div class="btns" style="margin-top:8px"><button class="btn" data-act="importDo">Load this save</button><button class="btn alt" data-act="saveClose">Cancel</button></div>`:""}
     ${saveMsg?`<p class="hint" style="margin-top:8px">${saveMsg}</p>`:""}
   </section>
+  <section><h2>Game updates <small>get the newest version</small></h2>
+    <div class="btns"><button class="btn alt" data-act="updateGame">Check for updates</button></div>
+    <p class="hint" style="margin-top:8px">Saves your progress, then reloads the game with the latest version. Use this if you play from your Home Screen.</p>
+  </section>
   ${confirmReset?`<div class="confirm">Start over from day 1? This erases everything.<div class="btns"><button class="btn danger" data-act="resetYes">Erase all</button><button class="btn alt" data-act="resetNo">Keep playing</button></div></div>`:`<button class="ghost" data-act="reset" style="align-self:center">Start over</button>`}`;
 }
 
@@ -2082,6 +2086,12 @@ app.addEventListener("click",e=>{
       S.inv.splice(S.inv.indexOf(k),1);S.gold+=p;S.earned+=p;S.sold++;sfx.coin();toast(`Sold ${an(IT[k].n)} for <b>${fmt(p)}G</b>.`);save();render()},
     explore, attack, guard, flee, descend, boss:challengeBoss, leave:leaveDungeon,
     offer, accept:()=>sell(S.shop.cur.counter), acceptOffer:()=>sell(S.shop.cur.offer), haggle:startHaggle, refuse:letWalk, pitchTalk, pitchSweet, close:endDay,
+    updateGame:async()=>{
+      save();toast("Checking for updates…");
+      try{if(navigator.serviceWorker){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.update().catch(()=>{})))}}catch(e){}
+      try{if(window.caches){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}}catch(e){}
+      location.reload();
+    },
     exportSave:()=>{
       save();saveCode="LS1:"+btoa(unescape(encodeURIComponent(JSON.stringify(S))));saveBox="export";
       const done=ok=>{saveMsg=ok?"Copied to your clipboard. Paste it somewhere safe, like a note.":"Select the code below and copy it.";render();if(!ok){const t=document.getElementById("exportCode");t&&t.select()}};
