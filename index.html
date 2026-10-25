@@ -1463,10 +1463,20 @@ const STAFF=[
 ];
 const ST=k=>STAFF.find(x=>x.k===k);
 const staffRec=k=>(S.staffs[k]=S.staffs[k]||{sold:0,wageB:0,rateB:0});
-const staffLvl=k=>Math.min(5,1+Math.floor(staffRec(k).sold/12));
-const staffNext=k=>staffLvl(k)>=5?null:(staffLvl(k))*12;
-const staffRate=k=>ST(k).rate+.03*(staffLvl(k)-1)+staffRec(k).rateB+.05*sk("boss2");
-const staffSells=k=>ST(k).sells+Math.floor((staffLvl(k)-1)/2);
+/* Staff levels 1-100. Levels 2-5 take 12 sales each, as before. From level 5 on, each level takes 2.5% more sales
+   than the last (12 at level 5, about 36 at level 50, about 120 at level 99): roughly 1,000 lifetime sales for level 50
+   and 4,600 for level 100. STAFF_AT[L] is the lifetime sales needed to reach level L. */
+const STAFF_MAX=100;
+const STAFF_AT=(()=>{const a=[0,0];for(let L=2;L<=STAFF_MAX;L++)a[L]=a[L-1]+(L<=5?12:Math.round(12*Math.pow(1.025,L-6)));return a})();
+const staffLvlAt=sold=>{let L=1;while(L<STAFF_MAX&&sold>=STAFF_AT[L+1])L++;return L};
+const staffLvl=k=>staffLvlAt(staffRec(k).sold);
+const staffNext=k=>staffLvl(k)>=STAFF_MAX?null:STAFF_AT[staffLvl(k)+1];
+const staffLvlPart=k=>{const L=staffLvl(k);return L>=STAFF_MAX?null:{done:staffRec(k).sold-STAFF_AT[L],need:STAFF_AT[L+1]-STAFF_AT[L]}};
+// Prices: +3% a level up to 5, then +0.5% a level (a level 100 Sable asks about 180% of market).
+const staffLvlRate=L=>.03*(Math.min(L,5)-1)+.005*Math.max(0,L-5);
+const staffRate=k=>ST(k).rate+staffLvlRate(staffLvl(k))+staffRec(k).rateB+.05*sk("boss2");
+// Daily sales: +1 at levels 3 and 5 as before, then +1 at every tenth level (10, 20 ... 100).
+const staffSells=k=>{const L=staffLvl(k);return ST(k).sells+Math.floor((Math.min(L,5)-1)/2)+Math.floor(L/10)};
 const staffWage=k=>Math.round(ST(k).wage*(1+staffRec(k).wageB));
 const staffWageMult=n=>Math.pow(1.5,Math.max(0,n-1));
 const staffPayroll=(crew=S.crew)=>Math.round(crew.reduce((a,k)=>a+staffWage(k),0)*staffWageMult(crew.length));
@@ -1477,7 +1487,7 @@ const keepsByDefault=k=>!!HEAL[k]||IT[k].c==="supply";
 const isKept=k=>S.keep[k]!==undefined?!!S.keep[k]:keepsByDefault(k);
 const forSale=()=>S.inv.filter(k=>!isKept(k));
 const THIEF_TARGETS=["pip","marlo"];
-const catchChance=k=>.1+.15*(staffLvl(k)-1);
+const catchChance=k=>{const L=staffLvl(k);return Math.min(.9,.1+.15*(Math.min(L,5)-1)+.002*Math.max(0,L-5))};
 const custW=c=>c.w*(typeof dayWeight==="function"?dayWeight(c):1);
 function pickCust(){
   const pool=CUST.filter(c=>c.need());
@@ -1493,9 +1503,11 @@ const nameList=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.len
 /* Runs when you head into a dungeon: every shopkeeper on staff shares the day's customers. Settled now, reported on return. */
 /* Who makes a sale: later hires start with more pull (Pip 1, Marlo 2, Greta 3, Sable 4, so 10/20/30/40% at equal levels),
    and each level above 1 adds 1. A level 5 Pip (5) outsells a level 1 Sable (4). */
-const staffWeight=k=>STAFF.findIndex(s=>s.k===k)+1+(staffLvl(k)-1);
+const staffWeight=k=>{const L=staffLvl(k);return STAFF.findIndex(s=>s.k===k)+1+(Math.min(L,5)-1)+.1*Math.max(0,L-5)};
 /* Better sellers talk customers into more: their higher prices put fewer people off. */
-const staffSway=k=>1+.06*STAFF.findIndex(s=>s.k===k)+.03*(staffLvl(k)-1);
+// Past level 5 their budget stretch keeps pace with their higher prices, so customers don't start walking away.
+const staffSway=k=>{const L=staffLvl(k),base=ST(k).rate+staffLvlRate(Math.min(L,5));
+  return (1+.06*STAFF.findIndex(s=>s.k===k)+.03*(Math.min(L,5)-1))*(base+staffLvlRate(L)-staffLvlRate(Math.min(L,5)))/base};
 function pickStaff(list){let r=Math.random()*list.reduce((a,st)=>a+staffWeight(st.k),0);for(const st of list){r-=staffWeight(st.k);if(r<0)return st}return list[list.length-1]}
 function staffShift(){
   const crew=S.crew.map(ST).filter(Boolean);if(!crew.length)return null;
@@ -2201,7 +2213,8 @@ function staffSection(){
   const cards=S.crew.map(ST).filter(Boolean).map(H=>{const k=H.k,L=staffLvl(k),nx=staffNext(k),rec=staffRec(k);
     return `<div class="staffcard"><div class="custhead"><span class="whorow">${portrait(k)}<span><b>${H.n}</b> <span class="sub">${R_(H.title)}</span></span></span><span class="mood keen">Level ${L}</span></div>
       <span class="sub">${stats(k)}</span>
-      ${nx?`<div class="bar"><i style="width:${Math.round(((rec.sold-(L-1)*12)/12)*100)}%"></i></div><span class="sub">${rec.sold} sold · next level at ${nx}</span>`:`<span class="sub">${rec.sold} sold · max level</span>`}
+      ${(()=>{const pt=staffLvlPart(k);return pt?`<div class="bar" role="progressbar" aria-label="Sales toward level ${L+1}" aria-valuemin="0" aria-valuemax="${pt.need}" aria-valuenow="${pt.done}"><i style="width:${Math.round(pt.done/pt.need*100)}%"></i></div><span class="sub">${fmt(pt.done)} / ${fmt(pt.need)} sales to level ${L+1}</span>`:`<span class="sub">Max level</span>`})()}
+      <span class="sub">Lifetime: ${fmt(rec.sold)} sold</span>
       ${confirmFire===k?`<div class="btns"><button class="btn danger sm" data-act="fireDo" data-k="${k}">Let ${H.n} go</button><button class="btn alt sm" data-act="fireNo">Keep ${H.n}</button></div>`:`<button class="ghost" data-act="fireAsk" data-k="${k}" style="align-self:flex-start">Dismiss</button>`}
     </div>`}).join("");
   const others=STAFF.filter(s=>!S.crew.includes(s.k));

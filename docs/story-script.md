@@ -1450,6 +1450,18 @@ Regulars whose style you already know are shown as known, whatever your skills.
 
 **Several staff at once (interpretation):** the script has more than one person "on staff", so hired staff work as a team. On each delve day they share that day's customers, each selling up to their own daily limit. Each sale goes to a staff member picked at random from those still under their limit, weighted toward later hires and higher levels: Pip 1, Marlo 2, Old Greta 3, Sable 4, plus 1 for each level above 1 (so at equal levels they sell about 10/20/30/40% of items, and a level 5 Pip outsells a level 1 Sable). Better sellers also talk customers into more: a customer's budget stretches by 6% per hire after Pip and 3% per staff level, so the pricier staff don't lose most of their customers. One shopkeeper costs their normal wage; each shopkeeper after the first multiplies the entire team's payroll by another 1.5× (1× / 1.5× / 2.25× / 3.375× for one through four staff).
 
+**Staff levels (defined):** staff level from 1 to 100 by their lifetime sales.
+
+- **Levels 1–5 are unchanged:** 12 sales each, +3% price a level, and +1 daily sale at levels 3 and 5.
+- **From level 5 on:** each level takes 2.5% more sales than the last. That's 12 for level 6, about 36 a level around 50 and about 120 for level 100: roughly 1,000 lifetime sales for level 50 and 4,600 for level 100.
+- **Rewards per level after 5:** +0.5% of market value. A level 100 Sable asks about 180% of market.
+- **Every tenth level (10, 20 … 100):** +1 sale a day.
+- **Customers keep up:** past level 5, a staff member's budget stretch grows with their price, so higher levels don't make customers walk away more often.
+- **Who gets a sale:** level weight is +1 a level up to 5, then +0.1 a level.
+- **Catching thieves:** the chance keeps rising slowly, up to 90%.
+- **Staff card:** shows progress within the current level ("9 / 19 sales to level 24") with a separate lifetime count ("Lifetime: 326 sold").
+- **Old saves:** staff whose lifetime sales already pass level 5 get their higher level right away.
+
 **New content needed in-game:** Celestial Executor (mini-boss) and Voss (final boss, three phases) in the Hollow Heart, entered through the shop cellar.
 
 ## Notes for the game chat
