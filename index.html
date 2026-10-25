@@ -806,7 +806,7 @@ SCN["3.4b"]={title:"The first shard",on:"defeat",when:d=>d.n==="Kobold Foreman"&
  {s:[["Wren","That's the Celestial seal."],["Wren","Could be nothing. Mining guilds hire anyone. Could be nothing."]],b:"Continue"}],
  done:()=>{S.story.items.shard1=S.day;jrnl("First shard recovered. The kobolds were digging for it on Celestial orders.","note")}};
 SCN["3.5"]={title:"Old Greta",on:["day","repair"],when:()=>S.story.ch>=3&&goalDone("c3fore")&&built("tavern"),cards:[
- {s:[["Old Greta","We've met. I'm the one who hollered about your lamp. I ran the counter at the general store before you were born. Before your aunt was, near enough."],["Old Greta","Hire me. I know every haggler in this valley and every lie they tell."]],c:[["Hire her","hire"],["Not now","no"]]}],
+ {s:[["Old Greta","We've met. I'm the one who hollered when I saw your lamp was lit back up. I ran the counter at the general store before you were born. Before your aunt was, near enough."],["Old Greta","Hire me. I know every haggler in this valley and every lie they tell."]],c:[["Hire her","hire"],["Not now","no"]]}],
  done:ch=>{S.story.flags.met_greta=true;if(ch==="hire")hire("greta",true);else tip("greta_no")}};
 TIPS.greta_no={w:"Old Greta",t:"Suit yourself. I'll be at the Tavern telling everyone your prices."};
 SCN["3.5i"]={title:"At the counter",on:"day",when:()=>seen("3.5")&&S.day>S.story.seen["3.5"],cards:[
