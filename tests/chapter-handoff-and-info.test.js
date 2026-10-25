@@ -34,7 +34,7 @@ const r=await p.evaluate(()=>{const out={},ov=()=>document.querySelector('#ov:no
   out.lockedCraftIgnored=(app.querySelector(`[data-act=craft][data-i="0"]`).click(),S.inv.length===before);
   // --- Attack buff next to HP ---
   startDelve(0);T.through();S.run.atkB=1.25;render();const hpStat=[...app.querySelectorAll('.stat')].find(s=>/HP/.test(s.textContent));
-  out.buffByHp=/Attack \+25%/.test(hpStat.textContent)&&!/attack \+25%/.test(app.querySelector('.dhint').textContent);
+  out.buffByHp=/Attack \+25%/.test(hpStat.textContent)&&!/Other:/.test(hpStat.textContent)&&!/attack \+25%/.test(app.querySelector('.dhint').textContent);
   return out});
 const bad=Object.entries(r).filter(([k,v])=>v!==true).map(([k])=>k);
 console.log(JSON.stringify(r));if(bad.length||errs.length){console.log("FAIL",bad.join(", "),"errors:",errs);process.exit(1)}

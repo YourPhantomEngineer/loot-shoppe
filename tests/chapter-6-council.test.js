@@ -33,7 +33,10 @@ const r=await p.evaluate(()=>{const o={},ov=()=>document.querySelector('#ov:not(
   tab="journal";render();const fs2=document.getElementById("forge");
   o.forgeStays=!!fs2&&/Forged/.test(fs2.textContent)&&/✓/.test(fs2.textContent)&&!fs2.querySelector('[data-act=forge]');
   // the delve screen shows the blade's attack bonus
-  startDelve(0);T.through();o.delveBuff=[...app.querySelectorAll('.buff')].some(e=>/Star-forged blade: attack \+50%/.test(e.textContent));
+  startDelve(0);T.through();o.delveBuff=[...app.querySelectorAll('.buff')].some(e=>e.innerHTML==="Star-forged blade:<br>Attack +50%");
+  // with another attack bonus on top, it's labelled "Other:" under the blade's line
+  S.run.atkB=1.3;render();const bf=[...app.querySelectorAll('.buff')].map(e=>e.innerHTML);
+  o.otherBuff=bf.length===2&&bf[0]==="Star-forged blade:<br>Attack +50%"&&bf[1]==="Other:<br>Attack +30%";
   return o});
 // a save already past the war council
 const after=await p.evaluate(()=>{save();return localStorage.getItem(KEY)});

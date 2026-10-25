@@ -1109,7 +1109,7 @@ Opening entry:
 
 **Wren tip:** "Nobody's ready for this. Go anyway."
 
-**Collecting the weapon:** a "Bram's forge" row appears in the Journal, below Ledgers, after the war council. It lists the materials still needed and shows a Forge button once they're all in hand. It uses up both shards and the materials, and the blade stays through every Grand Reopening. After forging, the row stays in the Journal, marked Forged with a check, the way repaired buildings are. While delving, "Star-forged blade: attack +50%" shows under the HP bar.
+**Collecting the weapon:** a "Bram's forge" row appears in the Journal, below Ledgers, after the war council. It lists the materials still needed and shows a Forge button once they're all in hand. It uses up both shards and the materials, and the blade stays through every Grand Reopening. After forging, the row stays in the Journal, marked Forged with a check, the way repaired buildings are. While delving, "Star-forged blade:" shows under the HP bar with "Attack +50%" on the line below. Any other attack bonus (Whetstone, shrine) shows beneath it as "Other:" with its own "Attack +X%" line; without the blade, that bonus shows as just "Attack +X%".
 
 ## Scene 6.3: Into the Hollow Heart
 

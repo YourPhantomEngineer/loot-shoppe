@@ -2369,7 +2369,7 @@ function vDelve(){
     :R.floor===D.floors&&!R.bossDone?`The ${D.boss} lurks somewhere on this floor.`
     :R.floor===Math.ceil(D.floors/2)&&!R.miniDone?`The ${MINI[R.d]} prowls this floor.`
     :"Deeper floors hold better loot and tougher monsters.";
-  const buff=(S.story.items.weapon?`<span class="buff">Star-forged blade: attack +${Math.round(WEAPON_BONUS*100)}%</span>`:"")+(R.atkB>1?`<span class="buff">Attack +${Math.round((R.atkB-1)*100)}%</span>`:"");
+  const wpn=S.story.items.weapon,buff=(wpn?`<span class="buff">Star-forged blade:<br>Attack +${Math.round(WEAPON_BONUS*100)}%</span>`:"")+(R.atkB>1?`<span class="buff">${wpn?"Other:<br>":""}Attack +${Math.round((R.atkB-1)*100)}%</span>`:"");
   return `
   <header><h1>${D.n}</h1>${soundBtn()}</header>
   <div class="stats">
