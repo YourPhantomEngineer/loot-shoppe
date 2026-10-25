@@ -445,7 +445,7 @@ function repair(k){
 /* Max customers a day comes from the town; custBonus() is the hook for future skills or upgrades. */
 function custBase(){const b=S.story.built;let n=3;if(b.well)n=4;if(b.tavern)n=5;if(b.smithy&&b.apothecary)n=6;if(b.market)n=8;if(b.watch)n=9;if(b.festival)n=10;return n}
 const custBonus=()=>0;
-const dayBonus=()=>0; // special customer days arrive with the Market Square
+const dayBonus=()=>typeof dayBonusFn==="function"?dayBonusFn():0;
 
 /* ---------- Dungeon gates (story flags, never level) ---------- */
 const DUN_GATE=[()=>true,()=>fl("mine"),()=>fl("vault"),()=>fl("spire"),()=>fl("hollow")];
@@ -619,6 +619,138 @@ function journalExtras(){
   return h;
 }
 
+/* ---------- Building gates on existing features ---------- */
+const APOTH_RECIPES=["bomb","rope","tonic","draught","elixir"];
+function recipeLock(r){
+  if(APOTH_RECIPES.includes(r.out)&&!built("apothecary"))return "Needs the Apothecary";
+  if(IT[r.out].t>=3&&!built("smithy"))return "Needs the Smithy";
+  return "";
+}
+const gearCap=k=>["blade","armor","pack"].includes(k)&&!built("smithy")?3:10;
+
+/* ---------- Special customer days ---------- */
+const collectorDay=()=>built("market")&&S.day%7===3;
+const festivalDay=()=>built("festival")&&S.day%7===0;
+function dayBonusFn(){return (collectorDay()?2:0)+(festivalDay()?3:0)}
+function dayWeight(c){return collectorDay()&&(c.k==="coll"||c.k==="noble")?4:1}
+function dayNews(){
+  if(festivalDay())return "Festival day! Lanterns on every street: 3 extra customers, and everyone's feeling generous.";
+  if(collectorDay())return "Collector day at the Market Square: 2 extra customers, and collectors are out in force.";
+  return "";
+}
+
+LOGF[1]=["Mine carts rusted to the rails, still half full of ore.","Fresh pickaxe marks. Too fresh.","A lantern hook stamped with a tiny gold star.","The water hums, faintly, like a struck bell."];
+LOGF[2]=["The stone glows red at the seams, like coals breathing.","Celestial banners, burned to rags, still hang from the walls.","A rhythm in the floor. Slow. Like a heartbeat, far below.","Scorch marks shaped like someone threw up their arms."];
+
+/* ---------- Chapter 3: Sparks at the Smithy ---------- */
+CH[3]={t:"Sparks at the Smithy",
+ open:"Maribel thought someone was paying the kobolds. Wren thinks Maribel was usually right.",
+ done:"One shard in hand. The forge is lit. Maribel's notes for the Ember Vault are shaky, like she wrote them in a hurry: \"The Vault is not a vault. It's a door. Someone has been knocking.\"",
+ unlock:()=>{S.story.flags.vault=true},
+ goals:[
+  {id:"c3tav",t:()=>`Repair the Tavern`,ok:()=>built("tavern")},
+  {id:"c3wurm",t:"Defeat the Tunnel Wurm",ev:(ty,d)=>ty==="defeat"&&d.n==="Tunnel Wurm"},
+  {id:"c3fore",t:"Defeat the Kobold Foreman",ev:(ty,d)=>ty==="defeat"&&d.n==="Kobold Foreman"},
+  {id:"c3smith",t:"Repair the Smithy",ok:()=>built("smithy"),lock:()=>goalDone("c3fore")?"":"After the Kobold Foreman"},
+  {id:"c3apo",t:"Repair the Apothecary",ok:()=>built("apothecary")},
+  {id:"c3pay",t:()=>`Make your second payment (${fmt(DEBT_PAYMENT)}G)`,ok:()=>S.story.debtPaid>=2}
+ ]};
+SCN["3.1"]={title:"The Tavern reopens",on:"repair",when:d=>d.k==="tavern",cards:[
+ {s:[["Wren","Finally. A place to sit that isn't your counter."],"Within the hour, a hire board is nailed by the door. One name is already on it."],b:"Continue"},
+ {s:[["Marlo","Marlo. Clerk, salesman, charmer. The Consortium likes to keep an eye on its… investments. So they loaned me out."],["Marlo","Don't worry. I sell better than I spy."],["Wren","Keep your ledger locked.","under her breath"]],c:[["Hire him","hire"],["Not now","no"]]}],
+ done:ch=>{S.story.flags.met_marlo=true;if(ch==="hire")hire("marlo",true);else tip("marlo_no");toast("Customers: 4 → 5. The hire board is open.")}};
+TIPS.marlo_no={w:"Marlo",t:"Your loss. I'll be at the Tavern, looking trustworthy."};
+TIPS.i_trav={w:"Traveler",t:"Word in the next valley is Hollowmere's waking up. Thought I'd see for myself."};
+SCN["3.2"]={title:"Into the Sunken Mine",on:"enter",when:d=>d.d===1,cards:[
+ {s:[["Wren","The mine flooded the night the star fell. Half the town worked down here."],["Wren","Watch your footing. Watch the water. Watch everything."]],b:"Continue"}]};
+SCN["3.3"]={on:"encounter",when:d=>d.n==="Tunnel Wurm"&&S.story.ch===3,log:["<i>The floor buckles. Something huge is chewing through the rock beneath you.</i>"]};
+SCN["3.3b"]={on:"defeat",when:d=>d.n==="Tunnel Wurm"&&S.story.ch===3,log:["<i>The Wurm's tunnel cuts straight down. Someone mapped it. There are chalk arrows.</i>"]};
+SCN["3.4"]={title:"The Kobold Foreman",on:"encounter",when:d=>d.n==="Kobold Foreman"&&S.story.ch===3,cards:[
+ {s:["A kobold in a hard hat, barking orders at a crew digging toward a glowing seam.",["Kobold Foreman","No visitors! Shift's not done! Quota's not met!"]],b:"Fight"}]};
+SCN["3.4b"]={title:"The first shard",on:"defeat",when:d=>d.n==="Kobold Foreman"&&S.story.ch===3,cards:[
+ {s:["The crew scatters. In the seam, half-dug, is a shard of star-glass the size of your fist."],b:"Take it"},
+ {s:["The Foreman dropped a crumpled work order. Most of it is smudged. The seal is a small gold star."],b:"Continue"},
+ {s:[["Wren","That's the Celestial seal."],["Wren","Could be nothing. Mining guilds hire anyone. Could be nothing."]],b:"Continue"}],
+ done:()=>{S.story.items.shard1=S.day;jrnl("First shard recovered. The kobolds were digging for it on Celestial orders.","note")}};
+SCN["3.5"]={title:"Old Greta",on:["day","repair"],when:()=>S.story.ch>=3&&goalDone("c3fore")&&built("tavern"),cards:[
+ {s:[["Old Greta","We've met. I'm the one who hollered about your lamp. I ran the counter at the general store before you were born. Before your aunt was, near enough."],["Old Greta","Hire me. I know every haggler in this valley and every lie they tell."]],c:[["Hire her","hire"],["Not now","no"]]}],
+ done:ch=>{S.story.flags.met_greta=true;if(ch==="hire")hire("greta",true);else tip("greta_no")}};
+TIPS.greta_no={w:"Old Greta",t:"Suit yourself. I'll be at the Tavern telling everyone your prices."};
+SCN["3.5i"]={title:"At the counter",on:"day",when:()=>seen("3.5")&&S.day>S.story.seen["3.5"],cards:[
+ ()=>({s:[["Old Greta","That Voss fellow came by. Funny thing. My mother did business with a Mister Voss. Same blue coat.",onStaff("greta")?"":"stopping by the counter"],["Old Greta","Must be his grandson. Spitting image."]],b:"Continue"})]};
+SCN["3.6"]={title:"Bram and the Smithy",on:"repair",when:d=>d.k==="smithy",cards:[
+ {s:["A big man with soot-black arms is already inside, kicking the forge like an old friend.",["Bram","Left when the mine flooded. Heard the well came back. Figured the forge might too."]],b:"Continue"},
+ {s:[["Bram","Star-glass. Put a chip of that in the coals and they'll burn for a week.","seeing the shard"],["Bram","Bring me ore and I'll make you something worth fighting with."]],b:"Continue"}],
+ done:()=>{if(built("apothecary"))toast("Customers: 5 → 6.")}};
+TIPS.t_gear={w:"Wren",t:"Good steel means you come home. Spend here before you spend on pride."};
+SCN["3.7"]={title:"The Apothecary",on:"repair",when:d=>d.k==="apothecary",cards:[
+ {s:["The jars are still labeled in Maribel's hand. Someone left a note on the counter: \"Back soon. — M.\"",["Wren","She wrote that ten years ago.","long pause"],["Wren","Bombs, ropes, the good tonics. They're yours to make now."]],b:"Continue"}],
+ done:()=>{if(built("smithy"))toast("Customers: 5 → 6.")}};
+TIPS.i_craft={w:"Craftsperson",t:"Need copper, herbs, anything. Bram's got the whole street working again."};
+
+/* ---------- Chapter 4: What the Celestials Knew ---------- */
+CH[4]={t:"What the Celestials Knew",
+ open:"\"The Vault is a door. Someone has been knocking.\" Maribel, what did you find down there?",
+ done:"Two shards. One trap of a contract. One stranger with silver eyes. And a light at the top of the mountain that never goes out. Maribel's last legible note: \"If it holds, the town holds. If it breaks, run.\"",
+ goals:[
+  {id:"c4market",t:"Repair the Market Square",ok:()=>built("market")},
+  {id:"c4knight",t:"Defeat the Ember Knight",ev:(ty,d)=>ty==="defeat"&&d.n==="Ember Knight"},
+  {id:"c4col",t:"Defeat the Cinder Colossus",ev:(ty,d)=>ty==="defeat"&&d.n==="Cinder Colossus"},
+  {id:"c4watch",t:"Repair the Watchtower",ok:()=>built("watch")},
+  {id:"c4pay",t:()=>`Make your third payment (${fmt(DEBT_PAYMENT)}G)`,ok:()=>S.story.debtPaid>=3}
+ ]};
+SCN["4.1"]={title:"Market day",on:"repair",when:d=>d.k==="market",cards:[
+ {s:["Stalls go up overnight. Bunting. A fiddler. Hollowmere smells like bread again.",["Pip","There's a man here who collects _spoons_. He has a spoon _bag_."],["Wren","Collectors. They pay stupid money for shiny things. Be nice to them."]],b:"Continue"}],
+ done:()=>toast("Customers: 6 → 8. Special customer days begin.")};
+TIPS.i_coll={w:"Collector",t:"Is that a genuine cellar-moss trinket? I'll pay double. Don't tell my wife."};
+SCN["4.2"]={title:"Into the Ember Vault",on:"enter",when:d=>d.d===2,cards:[
+ {s:[["Wren","I was here once. Ten years ago."],["Wren","Bring water. Bring more than you think."]],b:"Continue"}]};
+SCN["4.3"]={title:"The Ember Knight",on:"encounter",when:d=>d.n==="Ember Knight"&&S.story.ch===4,cards:[
+ {s:["A knight in blackened Celestial armor, burning from the inside, guarding a cracked door.",["Ember Knight","Turn back. He sent us. He always sends someone."]],b:"Fight"}]};
+SCN["4.3b"]={title:"Captain Holt",on:"defeat",when:d=>d.n==="Ember Knight"&&S.story.ch===4,cards:[
+ {s:[["Ember Knight","Captain Holt… Celestial expedition. Voss paid us to dig. Not for gold.","fading"],["Ember Knight","He asked about the deep places. The heat. How far down it goes."]],b:"Continue"},
+ {s:[["Ember Knight","Two climbers passed us. One in a red scarf. Heading up, toward the light. They didn't stop…"],"The fire in the armor goes out."],b:"Continue"},
+ {s:[["Wren","That was us. Maribel and me.","quiet"]],b:"Continue"}]};
+SCN["4.4"]={title:"Marlo's choice",on:"day",when:()=>seen("4.3b")&&S.day>S.story.seen["4.3b"],cards:[
+ ()=>({s:[["Marlo","I quit the Consortium this morning. Thought you should see why.",onStaff("marlo")?"closing the door behind him":"in from the Tavern, closing the door behind him"],"He lays a contract on the counter. Maribel's loan."],b:"Read it"}),
+ {s:[["Marlo","See this clause? The interest doubles every season the shop is 'impaired.' They decide what impaired means."],["Marlo","She was never meant to pay it off. They wanted the deed. Specifically the cellar."],["Marlo","Maribel warded the deep door down there. It only opens for whoever holds the deed. With her missing, nobody could sign it over. So they waited for an heir."]],b:"Continue"},
+ ()=>({s:[["Wren","Why tell us?"],["Marlo",S.story.hiredEver.marlo?"Because I've been selling in this shop for weeks, and I like it here. And Voss scares me.":"Because I've watched this shop from the Tavern for weeks, and I like what you've built. And Voss scares me."]],b:"Continue"})],
+ done:()=>{const st=S.story;st.flags.met_marlo=true;st.flags.mutual=S.day;
+  jrnl("The debt was a trap. Voss never wanted the coin. He wants the way down.","note");
+  toast("<b>Hollowmere Mutual</b> opens at a Tavern table.")}};
+SCN["4.5"]={title:"The offer",on:"day",when:()=>seen("4.4")&&S.day>S.story.seen["4.4"],cards:[
+ {s:[["Voss","I hear you've been reading. Such an untidy habit."],["Voss","Let's be civil. Sign over the cellar, and the Consortium forgives every coin."]],c:[["Never.","2a"],["Why do you want it so badly?","2b"]]},
+ {id:"2a",s:[["Voss","Lovely little town. It would be a shame if it were _repossessed_."]],b:"Continue",next:"3"},
+ {id:"2b",s:[["Voss","Sentiment. I'm very old-fashioned.","a pause too long"]],b:"Continue",next:"3"},
+ {id:"3",s:[["Pip","Did anyone else notice his tea? He didn't drink it. He didn't drink it last time either."]],b:"Continue"}]};
+SCN["4.6"]={title:"The Cinder Colossus",on:"encounter",when:d=>d.n==="Cinder Colossus"&&S.story.ch===4,cards:[
+ {s:["Behind the cracked door, a giant of slag and fire rises from a pool of molten rock. In its chest, a second shard burns white."],b:"Fight"}]};
+SCN["4.6b"]={title:"The second shard",on:"defeat",when:d=>d.n==="Cinder Colossus"&&S.story.ch===4,cards:[
+ {s:["The Colossus crumbles. The shard cools in your hand. Far below the pool, the rhythm you felt keeps beating.",["Wren","That's not a monster down there. That's the mountain."]],b:"Continue"}],
+ done:()=>{S.story.items.shard2=S.day;jrnl("Second shard recovered. The Vault sits on something hot and deep. Voss wanted to know how deep.","note")}};
+SCN["4.7"]={title:"Wren's confession",on:"day",when:d=>d.fromDelve&&seen("4.6b"),cards:[
+ {s:[["Wren","I need to tell you something. About the last expedition."],["Wren","We made it past this Vault. Up the Spire. Halfway. Then the light got too bright and I lost my hand to something I couldn't see."]],b:"Continue"},
+ {s:[["Wren","Maribel said go home. So I did. I turned back and she kept climbing."],["Wren","I've told myself for ten years there was nothing I could do. I don't know if that's true."]],c:[["It wasn't your fault.","3"],["Then let's finish the climb.","3"]]},
+ {id:"3",s:[["Wren","...Thank you. When the Spire opens, I'm coming with you. As far as I can."]],b:"Continue"}],
+ done:()=>{if(built("tavern"))queue("4.8")}};
+SCN["4.8"]={title:"Sable arrives",on:["day","repair"],when:()=>seen("4.7")&&built("tavern"),cards:[
+ {s:["A woman sits in the Tavern's darkest corner, hood up. When she looks up, her eyes catch the lamplight like a cat's, faintly silver.",
+   ["Sable","I hear you're hiring. I can sell anything to anyone. I'd rather not talk about where I learned."],["Wren","No.","flatly"],["Sable","Then let your till decide."]],c:[["Hire her","hire"],["Not now","no"]]}],
+ done:ch=>{S.story.flags.met_sable=true;if(ch==="hire")hire("sable",true);else tip("sable_no")}};
+TIPS.sable_no={w:"Sable",t:"Then I'll keep my corner. You'll want me before the end."};
+TIPS.idle_s1={w:"Sable",t:"Your shards hum when the door opens. Did you know that?"};
+TIPS.idle_s2={w:"Sable",t:"Don't stand near the cellar when a Celestial walks by."};
+TIPS.idle_s3={w:"Sable",t:"I like this shop. Nobody here looks at me like a tool."};
+SCN["4.9"]={title:"The Watchtower",on:"repair",when:d=>d.k==="watch",cards:[
+ {s:[["Wren","From up here you can see the whole valley. And the Spire."],"At the mountain's peak, a faint light flickers. Steady. Waiting. Like someone holding a lamp."],b:"Continue"}],
+ done:()=>toast("Customers: 8 → 9. Floor modifier preview unlocked.")};
+
+function tipHooks2(type,d){
+  if(type==="tab"&&d.t==="upg"&&built("smithy"))tip("t_gear");
+  if(type==="shopOpen"&&onStaff("sable")&&Math.random()<.5){const n=["idle_s1","idle_s2","idle_s3"].find(x=>!S.story.tips[x]);if(n)tip(n)}
+  if(typeof tipHooks3==="function")tipHooks3(type,d);
+}
+
 /*STORYDATA*/
 
 /* ================= State ================= */
@@ -657,7 +789,7 @@ const cap=()=>capAt(S.gear.pack)+2*sk("pockets")+2*pk("pack");
 const crit=()=>.1+.08*sk("exec");
 const fleeCh=()=>Math.min(.95,.6+.15*sk("escape"));
 const custN=()=>custBase()+custBonus()+dayBonus();
-const signB=()=>1+.08*S.gear.sign+.05*sk("tongue")+.05*pk("name");
+const signB=()=>1+.08*S.gear.sign+.05*sk("tongue")+.05*pk("name")+(festivalDay()?.1:0);
 const patMax=()=>3+sk("patience");
 const quickPct=()=>sk("quick")?.05+.1*sk("quick"):0;
 const quickPrice=k=>Math.max(1,Math.round(IT[k].b*quickPct()));
@@ -949,7 +1081,7 @@ function makeFight(n,kind){
 function explore(){
   const R=S.run,D=DUN[R.d],f=TF[D.t-1];R.steps++;R.left=null;R.dropSel=null;sfx.step();
   const last=R.floor===D.floors,mod=R.mod;
-  if(!R.secretFloor&&!last&&!R.stairs&&R.steps>=2&&Math.random()<(mod==="dark"?.1:.22)){R.stairs=true;R.event="You spot a staircase leading down.";rlog(R.event);SE("stairs",{d:R.d,floor:R.floor});return save(),render()}
+  if(!R.secretFloor&&!last&&!R.stairs&&R.steps>=2&&Math.random()<(mod==="dark"?.1:.22)){R.stairs=true;R.nextMod=rollMod(R.floor+1);R.event="You spot a staircase leading down.";rlog(R.event);SE("stairs",{d:R.d,floor:R.floor});return save(),render()}
   if(last&&!R.lair&&!R.bossDone&&R.steps>=2&&Math.random()<.25){R.lair=true;R.event=`Heavy footsteps echo ahead. The lair of the ${D.boss} is close.`;sfx.boss();rlog(R.event);return save(),render()}
   if(R.floor===Math.ceil(D.floors/2)&&!R.miniDone&&R.steps>=2&&Math.random()<.3){
     R.ev={type:"mini"};R.event=`A massive shape blocks the corridor: the ${MINI[R.d]}, guardian of this depth.`;sfx.boss();rlog(R.event);return save(),render()}
@@ -1140,7 +1272,7 @@ function unequip(i){if(S.belt[i]){S.inv.push(S.belt.splice(i,1)[0]);save();rende
 
 /* ---------- Movement ---------- */
 function descend(){
-  const R=S.run;R.floor++;R.stairs=false;R.steps=0;R.ev=null;R.left=null;R.dropSel=null;R.mod=rollMod(R.floor);
+  const R=S.run;R.floor++;R.stairs=false;R.steps=0;R.ev=null;R.left=null;R.dropSel=null;R.mod=R.nextMod!==undefined?R.nextMod:rollMod(R.floor);delete R.nextMod;
   let m=`You descend to floor ${R.floor}.`;
   if(sk("wind")){const h=Math.round(maxHp()*.15*sk("wind"));R.hp=Math.min(maxHp(),R.hp+h);m+=` Second Wind restores ${h} HP.`}
   if(R.mod)m+=` This floor is ${MODS[R.mod].n}.`;
@@ -1175,6 +1307,7 @@ function faint(){
 
 /* ================= Crafting ================= */
 function canCraft(r){
+  if(recipeLock(r))return false;
   return Object.entries(r.items).every(([k,n])=>count(S.inv,k)>=n)&&Object.entries(r.mats).every(([k,n])=>(S.mats[k]||0)>=n);
 }
 function craft(i){
@@ -1312,7 +1445,7 @@ function vTown(){
   const H=S.crew.length?ST(S.crew[0]):null;
   return `
   ${reportCard()}
-  <section><h2>Market today</h2><div class="chips">${chips}</div>${S.news?`<p class="hint" style="margin-top:8px">${S.news}</p>`:""}</section>
+  <section><h2>Market today</h2><div class="chips">${chips}</div>${dayNews()?`<p class="hint" style="margin-top:8px;color:var(--coin)">${dayNews()}</p>`:""}${S.news?`<p class="hint" style="margin-top:8px">${S.news}</p>`:""}</section>
   <button class="big" data-act="shop" ${S.inv.length?"":"disabled"}>Open the shop<small>${S.inv.length?`Up to ${custN()} customers · ${S.inv.length} item${S.inv.length===1?"":"s"} in stock · uses the day`:"Your shelves are empty. Go delving first."}</small></button>
   <section><h2>Go delving <small>${S.crew.length?`${nameList(S.crew.map(k=>ST(k).n))} mind${S.crew.length>1?"":"s"} the shop`:"uses the day"}</small></h2><div class="list">
     ${DUN.map((d,i)=>{const open=dunOpen(i);if(d.hidden&&!open)return "";return `<button class="row" data-act="delve" data-i="${i}" ${open?"":"disabled"}>
@@ -1384,7 +1517,7 @@ function vWork(){
     ${recs.map(({r,i})=>{const o=IT[r.out];const parts=[...Object.entries(r.items).map(([k,n])=>part(IT[k].n,n,count(S.inv,k))),...Object.entries(r.mats).map(([k,n])=>part(MATS[k],n,S.mats[k]||0))];
       return `<button class="row" data-act="craft" data-i="${i}" ${canCraft(r)?"":"disabled"}>
         <span><b>${o.n}</b><span class="${o.craft?"crown":"cat"}">${o.craft?"boss craft":o.c}</span></span>
-        <span class="sub">${parts.join(" + ")}</span>
+        <span class="sub">${recipeLock(r)?`<span class="need">${recipeLock(r)}</span> · `:""}${parts.join(" + ")}</span>
         <span class="right coin">${val(r.out)}G</span></button>`}).join("")}
   </div><p class="hint" style="margin-top:8px">More recipes appear as you unlock deeper dungeons.</p></section>`;
 }
@@ -1393,9 +1526,9 @@ function vUpg(){
   return `
   <div class="chips"><span class="chip">Attack ${dmg()}</span><span class="chip">Max HP ${maxHp()}</span><span class="chip">Pack ${cap()}</span><span class="chip">${custN()} customers a day</span></div>
   <section><h2>Gear &amp; shop upgrades</h2><div class="list">
-    ${UPG.map(u=>{const l=S.gear[u.k],c=upCost(u),max=l>=10;return `<button class="row" data-act="up" data-k="${u.k}" ${max||S.gold<c?"disabled":""}>
-      <span><b>${u.n}</b> <span class="sub">Lv ${l}</span></span><span class="sub">${max?"Fully upgraded":u.d(l)}</span>
-      <span class="right coin">${max?"Max":fmt(c)+"G"}</span></button>`}).join("")}
+    ${UPG.map(u=>{const l=S.gear[u.k],c=upCost(u),cap=gearCap(u.k),max=l>=10,capped=!max&&l>=cap;return `<button class="row" data-act="up" data-k="${u.k}" ${max||capped||S.gold<c?"disabled":""}>
+      <span><b>${u.n}</b> <span class="sub">Lv ${l}</span></span><span class="sub">${max?"Fully upgraded":capped?"Needs the Smithy for higher levels":u.d(l)}</span>
+      <span class="right coin">${max?"Max":capped?"Locked":fmt(c)+"G"}</span></button>`}).join("")}
   </div></section>`;
 }
 
@@ -1476,7 +1609,7 @@ function vDelve(){
       ${R.lair?`<button class="btn danger" data-act="boss">Fight the ${D.boss}</button>`:""}
       ${R.secret?`<button class="btn gold" data-act="secret">Take the hidden stairway</button>`:""}
       <button class="btn" data-act="explore">Explore</button>
-      ${R.stairs?`<button class="btn gold" data-act="descend">Descend to floor ${R.floor+1}</button>`:""}
+      ${R.stairs?`<button class="btn gold" data-act="descend">Descend to floor ${R.floor+1}${built("watch")&&R.nextMod!==undefined?` · ${R.nextMod?MODS[R.nextMod].n:"calm"}`:""}</button>`:""}
       <button class="btn alt" data-act="leave">Return to town</button></div>`;
   const hint=R.secretFloor?"A secret floor: exclusive relics can be found here."
     :R.floor===D.floors&&!R.bossDone?`The ${D.boss} lurks somewhere on this floor.`
@@ -1591,7 +1724,7 @@ app.addEventListener("click",e=>{
     tipOk:()=>{S.story.tipQ.shift();save();render()},
     shop:openShop,
     delve:()=>startDelve(+b.dataset.i),
-    up:()=>{const u=UPG.find(x=>x.k===b.dataset.k),c=upCost(u);if(S.gold>=c&&S.gear[u.k]<10){S.gold-=c;S.gear[u.k]++;sfx.loot();save();render()}},
+    up:()=>{const u=UPG.find(x=>x.k===b.dataset.k),c=upCost(u);if(S.gold>=c&&S.gear[u.k]<gearCap(u.k)){S.gold-=c;S.gear[u.k]++;sfx.loot();save();render()}},
     craft:()=>craft(+b.dataset.i),
     ev:()=>evChoice(b.dataset.c), use:()=>useItem(b.dataset.s,+b.dataset.i),
     drop:()=>dropPick(+b.dataset.i), pickup:pickUp,
