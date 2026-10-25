@@ -1,0 +1,14 @@
+const {chromium}=require('playwright');
+(async()=>{const b=await chromium.launch();const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.goto('file://'+require('path').join(__dirname,'..','index.html'));
+const r=await p.evaluate(()=>{while(document.querySelector('#ov button'))document.querySelector('#ov button').click();
+  CUST.forEach(c=>c.cats=null);S.inv=['sword','herb','ruby'];S.keep={sword:true,herb:true,ruby:false};openShop();
+  const first=S.shop.cur?.k,offeredKept=!!S.shop.cur&&isKept(S.shop.cur.k);
+  S.shop={left:0,cur:null,combo:0,today:0,log:[],pct:130,served:1,back:[makeCustomer(CUST[0],'sword')],regsToday:[]};nextCust();
+  const keptReturn=S.shop.cur?.k||null,returnLog=S.shop.log[0]||'';
+  S.shop=null;S.inv=['sword','herb','quartz'];S.keep={sword:false,herb:true,quartz:false};const sweet=sweetPick({k:'sword'});
+  S.keep={sword:true,herb:true,quartz:true};render();const open=app.querySelector('[data-act=shop]');const allKeptDisabled=open.disabled&&/marked Keep/.test(open.textContent),tagVisible=!!app.querySelector('[data-act=keep]');
+  S.shop={left:0,cur:null,combo:0,today:0,log:[],pct:130,served:1,back:[],regsToday:[]};S.shop.cur=makeCustomer(CUST[0],'sword');render();
+  return {first,offeredKept,keptReturn,returnLog,sweet,allKeptDisabled,tagVisible,resumed:S.shop.cur?.k||null,resumeLog:S.shop.log[0]||''};});
+if(errs.length||r.first!=='ruby'||r.offeredKept||r.keptReturn||!/no longer for sale/.test(r.returnLog)||r.sweet!=='quartz'||!r.allKeptDisabled||!r.tagVisible||r.resumed||!/marked Keep/.test(r.resumeLog))throw new Error(JSON.stringify({r,errs}));
+console.log(JSON.stringify(r));await b.close()})();

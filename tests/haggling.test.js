@@ -43,7 +43,7 @@ const out=await p.evaluate(()=>{const L=[];const log=(k,ok,x="")=>L.push((ok?"PA
   S.story.built.well=1;let up=0,n=0;for(let i=0;i<300;i++){shop();const c3=S.shop.cur;if(!c3){S.shop=null;continue}c3.pat=c3.pmax=4;startHaggle();const m0=c3.max;pitchTalk();n++;if(c3.max>m0)up++;
      if(c3.pat!==3)log("talk costs 1 patience",false);pitchTalk();if(c3.max!==c3.max)0;S.shop=null}
   log("talk it up works ~60%",up/n>.5&&up/n<.7,Math.round(up/n*100)+"%");
-  shop();const c4=S.shop.cur;S.inv.push("herb");startHaggle();const m1=c4.max;pitchSweet();log("sweetener raises limit, uses up the item",c4.max>m1&&!S.inv.includes("herb"),m1+" -> "+c4.max);
+  shop();const c4=S.shop.cur;S.inv.push("herb");S.keep.herb=false;startHaggle();const m1=c4.max;pitchSweet();log("sweetener raises limit, uses up the item",c4.max>m1&&!S.inv.includes("herb"),m1+" -> "+c4.max);
   log("one pitch per customer",(pitchTalk(),c4.pat===c4.pmax));S.shop=null;
   // 6. skills
   S.skills={read:3};let readN=0;for(let i=0;i<200;i++){shop();const c5=S.shop.cur;if(c5&&!c5.known&&c5.read)readN++;S.shop=null}

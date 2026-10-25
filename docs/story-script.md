@@ -1328,6 +1328,8 @@ Old Connections (customers) and Loyal Staff (staff now always stay) were removed
 
 Every customer names an opening offer, and the player can **Accept**, **Haggle**, or **Let them walk**. Their mood (Eager, Keen, Fair, Thrifty) and body language hint at their limit. Their haggling style is hidden, so pushing for more is always a gamble.
 
+Customers only choose stock marked **For sale**. Items marked **Keep** never receive an offer, including from returning customers, and are not selected as automatic sweeteners during a haggle.
+
 ## Haggling styles
 
 | Style | Share of customers | Opening offer | Patience | Counter-offers | Comes back after walking |

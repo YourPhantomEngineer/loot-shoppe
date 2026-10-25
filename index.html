@@ -128,7 +128,7 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 .pips{letter-spacing:2px;color:var(--coin)}
 .code{display:block;width:100%;box-sizing:border-box;min-height:84px;margin-top:6px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px;font:12px/1.4 ui-monospace,monospace;word-break:break-all;resize:vertical;-webkit-user-select:text;user-select:text}
 .starnum{font-family:var(--display);font-size:1.6rem;color:var(--coin);display:block}
-.tag{font:600 .7rem var(--body);text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--good);color:var(--good);background:none;border-radius:999px;padding:2px 8px;margin-left:4px;cursor:pointer}
+.tag{font:600 .7rem var(--body);text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--good);color:var(--good);background:none;border-radius:999px;padding:2px 8px;min-height:44px;margin-left:4px;cursor:pointer}
 .tag.keep{border-color:var(--muted);color:var(--muted)}
 .report{border:1px solid var(--coin)}
 .rlog li{color:var(--fg)}
@@ -1820,7 +1820,7 @@ function nextCust(){
   while(P.left>0){
     P.left--;P.served++;
     const C=pickCust();
-    const m=S.inv.filter(k=>!C.cats||C.cats.includes(IT[k].c));
+    const m=forSale().filter(k=>!C.cats||C.cats.includes(IT[k].c));
     if(!m.length){slog(`A ${C.n.toLowerCase()} browsed but found nothing they wanted.`);continue}
     const rel=m.filter(x=>IT[x].sec);
     const k=C.k==="schol"&&rel.length?pick(rel):C.k==="noble"?m.reduce((a,b)=>val(b)>val(a)?b:a):pick(m);
@@ -1831,6 +1831,7 @@ function nextCust(){
   while(P.back.length){ // customers who walked out may come back after the last customer, with a better offer
     const c=P.back.shift();
     if(!S.inv.includes(c.k)){slog(`${cName(c)} came back, but the ${IT[c.k].n} was gone.`);continue}
+    if(isKept(c.k)){slog(`${cName(c)} came back, but the ${IT[c.k].n} was no longer for sale.`);continue}
     Object.assign(c,{phase:"offer",back:true,pat:1,pmax:1,counter:null,fb:"",sus:false,lastAsk:null});
     c.offer=Math.min(c.max,Math.max(c.offer+1,Math.round(c.max*rnd(.9,.98))));
     P.cur=c;slog(`${cName(c)} came back!`);SE("returned");return;
@@ -1878,7 +1879,7 @@ function letWalk(){
   if(!c.back&&Math.random()<PERSONA[c.per].back)P.back.push(c);
   slog(`${cName(c)} walked out.`);nextCust();save();render();
 }
-const sweetPick=c=>{const o=S.inv.filter(x=>x!==c.k&&val(x)<=val(c.k)*.5);return o.length?o.reduce((a,b)=>val(b)<val(a)?b:a):null};
+const sweetPick=c=>{const o=forSale().filter(x=>x!==c.k&&val(x)<=val(c.k)*.5);return o.length?o.reduce((a,b)=>val(b)<val(a)?b:a):null};
 function pitchTalk(){
   const c=S.shop.cur;if(!c||c.pitched||c.phase!=="haggle")return;
   c.pitched=true;c.pat--;SE("pitch");
@@ -1978,11 +1979,11 @@ function vTown(){
   const L=lvl();
   const chips=CATS.map(c=>{const p=Math.round(S.trend[c]*100);return `<span class="chip ${p>=108?"up":p<=92?"down":""}">${CATN[c]} ${p}%</span>`}).join("");
   const inv=groupInv(S.inv),eq=groupInv(S.inv.filter(k=>HEAL[k]||IT[k].c==="supply"));
-  const H=S.crew.length?ST(S.crew[0]):null;
+  const saleN=forSale().length;
   return `
   ${reportCard()}
   <section id="mkt"><h2>Market today</h2><div class="chips">${chips}</div>${dayNews()?`<p class="hint" style="margin-top:8px;color:var(--coin)">${dayNews()}</p>`:""}${S.news?`<p class="hint" style="margin-top:8px">${S.news}</p>`:""}</section>
-  <button class="big" data-act="shop" ${S.inv.length?"":"disabled"}>Open the shop<small>${S.inv.length?`Up to ${custN()} customers · ${S.inv.length} item${S.inv.length===1?"":"s"} in stock · uses the day`:"Your shelves are empty. Go delving first."}</small></button>
+  <button class="big" data-act="shop" ${saleN?"":"disabled"}>Open the shop<small>${saleN?`Up to ${custN()} customers · ${saleN} item${saleN===1?"":"s"} for sale · uses the day`:S.inv.length?"Everything in stock is marked Keep. Mark something For sale first.":"Your shelves are empty. Go delving first."}</small></button>
   <section><h2>Go delving <small>${S.crew.length?`${nameList(S.crew.map(k=>ST(k).n))} mind${S.crew.length>1?"":"s"} the shop`:"uses the day"}</small></h2><div class="list">
     ${DUN.map((d,i)=>{const open=dunOpen(i);if(d.hidden&&!open)return "";return `<button class="row" data-act="delve" data-i="${i}" ${open?"":"disabled"}>
       <span><b>${d.n}</b>${S.bosses[i]?`<span class="crown">Boss beaten</span>`:""}</span><span class="sub">${open?`${d.floors} floors · boss: ${d.boss}`:DUN_LOCK[i]}</span>
@@ -1994,8 +1995,8 @@ function vTown(){
     ${eq.length?`<div class="chips" style="margin-top:8px">${eq.map(([k,n])=>`<button class="chip usebtn" data-act="equip" data-k="${k}" ${S.belt.length>=BELT?"disabled":""}>+ ${IT[k].n}${n>1?` ×${n}`:""}</button>`).join("")}</div>`:`<p class="hint" style="margin-top:8px">Craft bombs, ropes, whetstones, and lockpicks in the Workshop. Potions in stock can go on your belt too.</p>`}
   </section>
   <section><h2>Stock <small>${S.inv.length} item${S.inv.length===1?"":"s"}</small></h2>
-    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">${built("obs")&&LORE[k]?`<i class="lore">${LORE[k]}</i><br>`:""}Market value ${val(k)}G${H?` · <button class="tag${isKept(k)?" keep":""}" data-act="keep" data-k="${k}">${isKept(k)?"Keep":"For sale"}</button>`:""}</span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
-    ${H&&inv.length?`<p class="hint" style="margin-top:8px">Your staff only sell items marked For sale. Tap a tag to switch it.</p>`:""}
+    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">${built("obs")&&LORE[k]?`<i class="lore">${LORE[k]}</i><br>`:""}Market value ${val(k)}G · <button class="tag${isKept(k)?" keep":""}" data-act="keep" data-k="${k}">${isKept(k)?"Keep":"For sale"}</button></span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
+    ${inv.length?`<p class="hint" style="margin-top:8px">Only items marked For sale can be offered to customers or sold by staff. Tap a tag to switch it.</p>`:""}
     ${sk("quick")&&inv.length?`<p class="hint" style="margin-top:8px">Quick Sale pays ${Math.round(quickPct()*100)}% of base value instantly and doesn't use the day.</p>`:""}
   </section>
   <p class="hint">Sold ${fmt(S.sold)} items for ${fmt(S.earned)}G · crafted ${fmt(S.crafted)}. Progress is saved in this browser.</p>
@@ -2159,7 +2160,9 @@ function vDelve(){
 }
 
 function vShop(){
-  const P=S.shop,c=P.cur;
+  const P=S.shop;
+  if(P.cur&&isKept(P.cur.k)){slog(`The ${IT[P.cur.k].n} is marked Keep, so ${cName(P.cur)} moves on.`);nextCust();save()}
+  const c=P.cur;
   let body;
   if(c){
     const C=CUST[c.t],v=val(c.k),price=Math.max(1,Math.round(v*P.pct/100)),pm=c.pmax||3,M=MOODS.find(m=>m.k===moodK(c));
