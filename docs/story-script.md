@@ -2,6 +2,8 @@
 
 Oct 24, 2026 · @Boss
 
+**Copies of this script:** this doc is the master. A copy lives in the game's GitHub repo at `docs/story-script.md` for collaborators who can't open this doc, such as ChatGPT. Script changes made there through pull requests get carried back here, and the copy is refreshed whenever this doc changes. The repo's `AGENTS.md` has the rules every collaborator follows.
+
 **How prompts appear:** every tutorial prompt, Wren tip, new-customer intro, decline line and idle line pops up as a card over the game. Play pauses until the player taps **Got it**, so no prompt can be missed. When several are waiting, they show one after another. Scene cards work the same way, with the buttons written in each scene.
 
 **How highlights work:** when a prompt says "(highlighting the X)", X gets a pulsing gold outline after the player taps **Got it**. Tabs, dungeons and the Open the Shop button keep their outline until the player taps them. Everything else (combat buttons, the mood badge, panels like Market Today) shows its outline until the player's next tap. If X is on another tab, that tab is outlined first. Only one highlight shows at a time, and the next waiting prompt appears once it's done. Prompts about the town wait until the player is back in town. If the player goes delving or opens the shop while a tab or dungeon is still outlined, its outline comes back on returning to town; other town highlights end there.
