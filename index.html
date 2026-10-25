@@ -169,6 +169,11 @@ body.ovopen{overflow:hidden}
   background:var(--panel);border:1px solid var(--copper);color:var(--copper);font:700 .9rem var(--display);padding:6px 12px;border-radius:999px;
   opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s}
 #xpPop.show{opacity:1;transform:none;animation:xpbump .35s ease}
+.stat.daypop{animation:daypop .9s ease-out var(--dpd,0s) both}
+.stat.daypop b{animation:daynum .9s ease-out var(--dpd,0s);display:inline-block}
+@keyframes daypop{0%{background:rgba(242,201,76,.35);box-shadow:0 0 0 2px var(--coin)}100%{background:var(--panel);box-shadow:0 0 0 0 transparent}}
+@keyframes daynum{0%{transform:scale(1)}30%{transform:scale(1.45);color:var(--coin)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.stat.daypop,.stat.daypop b{animation:none}}
 @keyframes xpbump{0%{transform:scale(.8)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){#xpPop,#xpPop.show{transition:none;animation:none}}
 #toast.show{transform:translate(-50%,0);opacity:1;visibility:visible;transition:transform .3s ease,opacity .3s ease}
@@ -1885,11 +1890,18 @@ function tabs(){
   if(seen("1.1"))list.push(t("journal","Journal"));
   return `<div class="tabs" role="tablist" style="grid-template-columns:repeat(${list.length},minmax(0,1fr))">${list.join("")}</div>`;
 }
+let shownDay=null,dayPopAt=0;
+/* When the day changes, the Day box pops. Re-renders during the animation pick it up where it was. */
+function dayPop(){
+  if(shownDay!==null&&S.day!==shownDay){if(scn||tipOpen)return "";dayPopAt=performance.now()} // wait until story cards close so it's seen
+  shownDay=S.day;
+  const t=performance.now()-dayPopAt;return dayPopAt&&t<900?` daypop" style="--dpd:-${Math.round(t)}ms`:"";
+}
 function topStats(){
   const L=lvl(),pct=Math.round((S.xp-xpFor(L))/(xpFor(L+1)-xpFor(L))*100);
   return `<div class="stats">
     <div class="stat"><span class="lbl">Gold</span><b class="coin">${fmt(S.gold)}G</b></div>
-    <div class="stat"><span class="lbl">Day</span><b>${S.day}</b></div>
+    <div class="stat${dayPop()}"><span class="lbl">Day</span><b>${S.day}</b></div>
     <div class="stat"><span class="lbl">Level ${L}</span><b>${fmt(S.xp)} xp</b><div class="bar"><i style="width:${pct}%"></i></div></div>
   </div>`;
 }
@@ -1921,8 +1933,8 @@ function vTown(){
   <p class="hint">Sold ${fmt(S.sold)} items for ${fmt(S.earned)}G · crafted ${fmt(S.crafted)}. Progress is saved in this browser.</p>
   <section><h2>Save code <small>back up or move your progress</small></h2>
     <div class="btns"><button class="btn alt" data-act="exportSave">Copy save code</button><button class="btn alt" data-act="importOpen">Load a save code</button></div>
-    ${saveBox==="export"?`<label class="lbl" for="exportCode" style="margin-top:10px">Your save code</label><textarea id="exportCode" class="code" readonly>${saveCode}</textarea>`:""}
-    ${saveBox==="import"?`<label class="lbl" for="importCode" style="margin-top:10px">Paste a save code. This replaces your current progress.</label><textarea id="importCode" class="code" placeholder="LS1:..."></textarea>
+    ${saveBox==="export"?`<label class="lbl" for="exportCode" style="margin-top:10px">Your save code</label><textarea id="exportCode" class="code" readonly autocapitalize="off" autocorrect="off" spellcheck="false">${saveCode}</textarea>`:""}
+    ${saveBox==="import"?`<label class="lbl" for="importCode" style="margin-top:10px">Paste a save code. This replaces your current progress.</label><textarea id="importCode" class="code" placeholder="LS1:..." autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"></textarea>
       <div class="btns" style="margin-top:8px"><button class="btn" data-act="importDo">Load this save</button><button class="btn alt" data-act="saveClose">Cancel</button></div>`:""}
     ${saveMsg?`<p class="hint" style="margin-top:8px">${saveMsg}</p>`:""}
   </section>
@@ -2203,9 +2215,9 @@ app.addEventListener("click",e=>{
     importOpen:()=>{saveBox="import";saveMsg="";render();document.getElementById("importCode")?.focus()},
     saveClose:()=>{saveBox=null;saveMsg="";render()},
     importDo:()=>{
-      const raw=(document.getElementById("importCode")?.value||"").trim();
+      const raw=(document.getElementById("importCode")?.value||"").replace(/\s+/g,"");
       try{
-        if(!raw.startsWith("LS1:"))throw 0;
+        if(!/^ls1:/i.test(raw))throw 0; // some phones lowercase the start of a pasted line
         const o=JSON.parse(decodeURIComponent(escape(atob(raw.slice(4)))));
         if(!o||typeof o.day!=="number"||!Array.isArray(o.inv))throw 0;
         const snd=S.sound,mus=S.music;S=loadState(o);S.sound=snd;S.music=mus;migrate();save();
