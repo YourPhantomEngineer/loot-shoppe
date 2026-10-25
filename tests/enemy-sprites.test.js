@@ -1,0 +1,10 @@
+const {chromium}=require('playwright');
+(async()=>{const b=await chromium.launch();const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.goto('file://'+require('path').join(__dirname,'..','index.html'));
+const r=await p.evaluate(()=>{while(document.querySelector('#ov button'))document.querySelector('#ov button').click();
+  const names=[...new Set([...DUN.flatMap(d=>[...d.mon,d.boss]),...MINI,'Voss','Echo of Voss'])];
+  const missing=names.filter(n=>!sprKey(n)),badGrid=Object.entries(SPR).filter(([,s])=>s.g.length!==256).map(([k,s])=>`${k}:${s.g.length}`);
+  startDelve(0);makeFight('Elite Cellar Rat','elite');render();
+  return {count:names.length,missing,badGrid,elite:sprKey('Elite Cellar Rat'),shown:!!document.querySelector('.monster .spr.foe svg')};});
+if(errs.length||r.missing.length||r.badGrid.length||r.elite!=='rat'||!r.shown)throw new Error(JSON.stringify({r,errs}));
+console.log(JSON.stringify(r));await b.close()})();
