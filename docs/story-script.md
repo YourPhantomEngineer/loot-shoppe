@@ -1158,6 +1158,8 @@ Opening entry:
 
 > **Voss:** "Ah. The shopkeeper. Did you come to collect?"
 >
+> **Wren:** "We came to stop you. All those years in that blue coat, drinking tea you never touched, smiling at our counters. Hiding among us."
+>
 > **Voss:** "You think I *hid* among you? I *farmed* you. Ten thousand years, and every one of your kind has been a candle waiting to be lit."
 >
 > **\[You're not going home.\]** / **\[What are you?\]**
