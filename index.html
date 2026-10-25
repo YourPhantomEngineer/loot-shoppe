@@ -259,7 +259,7 @@ const SK=[
  {k:"tongue",b:"merc",n:"Silver Tongue",max:3,d:"+5% customer budgets per rank"},
  {k:"patience",b:"merc",n:"Calm Presence",max:2,d:"Customers allow +1 haggle per rank"},
  {k:"bulk",b:"merc",n:"Master Crafter",max:2,req:2,d:"20% chance per rank to craft two"},
- {k:"boss2",b:"merc",n:"Good Employer",max:2,d:"Your shopkeeper sells for +5% more per rank"},
+ {k:"boss2",b:"merc",n:"Good Employer",max:2,d:"Your shopkeeper sells for +5% more per rank",need:()=>Object.keys(S.story.hiredEver).length>0,needT:"Hire your first shopkeeper to unlock"},
  {k:"quick",b:"merc",n:"Quick Sale",max:5,d:"Sell stock instantly from the Town tab for 15% of base value, +10% per extra rank"}
 ];
 const dmgAt=l=>4+3*l, hpAt=l=>30+15*l, capAt=l=>6+2*l;
@@ -1632,7 +1632,7 @@ function buyPerk(k){
 /* ================= Skills ================= */
 function learn(k){
   const s=SK.find(x=>x.k===k);
-  if(pts()<1||sk(k)>=s.max||(s.req&&brSpent(s.b)<s.req))return;
+  if(pts()<1||sk(k)>=s.max||(s.req&&brSpent(s.b)<s.req)||(s.need&&!s.need()))return;
   S.skills[k]=sk(k)+1;sfx.lvl();save();render();
 }
 
@@ -1814,10 +1814,10 @@ function vSkills(){
     <p class="hint" style="max-width:60%;text-align:right">Earn 1 per level and 1 for each boss you beat the first time.</p>
   </div>
   ${BR.map(b=>{const bs=brSpent(b.k);return `<section class="branch"><h3>${b.n}<small>${bs} point${bs===1?"":"s"} spent</small></h3><div class="list" style="border-top:0">
-    ${SK.filter(s=>s.b===b.k).map(s=>{const r=sk(s.k),locked=s.req&&bs<s.req,maxed=r>=s.max,can=!locked&&!maxed&&p>0;
+    ${SK.filter(s=>s.b===b.k).map(s=>{const r=sk(s.k),needLock=s.need&&!s.need(),locked=(s.req&&bs<s.req)||needLock,maxed=r>=s.max,can=!locked&&!maxed&&p>0;
       return `<button class="row" data-act="learn" data-k="${s.k}" ${can?"":"disabled"}>
         <span><b>${s.n}</b> <span class="pips">${"◆".repeat(r)}${"◇".repeat(s.max-r)}</span></span>
-        <span class="sub">${locked?`Spend ${s.req} points in ${b.n} to unlock`:s.d}</span>
+        <span class="sub">${needLock?s.needT:locked?`Spend ${s.req} points in ${b.n} to unlock`:s.d}</span>
         <span class="right">${maxed?"Max":locked?"Locked":"Learn"}</span></button>`}).join("")}
   </div></section>`}).join("")}`;
 }
