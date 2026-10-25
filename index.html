@@ -34,13 +34,13 @@ header{display:flex;justify-content:space-between;align-items:center;gap:8px}
 h1{font-family:var(--display);font-weight:700;font-size:1.15rem;margin:0;color:var(--copper);text-wrap:balance}
 h2{font-family:var(--display);font-weight:400;font-size:.85rem;margin:0 0 8px;color:var(--muted);letter-spacing:.04em;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 h2 small{font:600 .78rem var(--body);color:var(--muted);text-align:right}
-.ghost{background:none;border:1px solid var(--line);color:var(--muted);font:600 .72rem var(--body);text-transform:uppercase;letter-spacing:.08em;padding:6px 10px;border-radius:4px;cursor:pointer}
+.ghost{background:none;border:1px solid var(--line);color:var(--muted);font:600 .72rem var(--body);text-transform:uppercase;letter-spacing:.08em;padding:9px 10px;min-height:44px;border-radius:4px;cursor:pointer}
 .ghost[aria-pressed="true"]{color:var(--coin);border-color:var(--coin)}
 .tools{display:flex;gap:6px;flex-shrink:0}
 button{font-family:inherit}
 button:focus-visible,input:focus-visible{outline:2px solid var(--coin);outline-offset:2px}
 .tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--panel);border-radius:8px;padding:4px;gap:4px}
-.tabs button{border:0;background:none;color:var(--muted);font:700 .78rem var(--body);padding:9px 1px;border-radius:6px;cursor:pointer;position:relative}
+.tabs button{border:0;background:none;color:var(--muted);font:700 .78rem var(--body);padding:9px 1px;min-height:44px;border-radius:6px;cursor:pointer;position:relative}
 .tabs button[aria-selected="true"]{background:var(--line);color:var(--fg)}
 .tabs button{position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.76rem!important}
 .tabs .dot{position:absolute;top:1px;right:1px;margin:0;min-width:15px;line-height:15px;font-size:.62rem;padding:0 4px}
@@ -58,6 +58,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--coin);outline-o
 .rent b{color:var(--coin);font-variant-numeric:tabular-nums;white-space:nowrap}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{font-size:.78rem;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-variant-numeric:tabular-nums}
+button.chip{min-height:44px}
 .chip.up{border-color:var(--good);color:var(--good)} .chip.down{border-color:var(--bad);color:var(--bad)}
 .chip.mat{border-color:var(--arcane);color:var(--arcane)}
 .big{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;background:var(--copper);color:#24130a;border:0;border-radius:8px;padding:14px 16px;font-weight:700;font-size:1.05rem;cursor:pointer}
@@ -81,7 +82,7 @@ button.row:disabled>*{opacity:.5}
 .monster b{color:var(--bad)}
 .warn{color:var(--coin);font-weight:700;font-size:.85rem;margin:6px 0 0}
 .btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
-.btn{border:0;border-radius:6px;padding:12px;font-weight:700;font-size:.95rem;cursor:pointer;background:var(--copper);color:#24130a}
+.btn{border:0;border-radius:6px;padding:12px;min-height:44px;font-weight:700;font-size:.95rem;cursor:pointer;background:var(--copper);color:#24130a}
 .btn:disabled,.btn.gold:disabled,.btn.danger:disabled,.btn.alt:disabled{background:var(--line);color:var(--muted);cursor:default;opacity:.6}
 .usebtn{background:none;color:var(--fg);cursor:pointer;font-family:inherit}
 .usebtn.on{border-color:var(--coin);color:var(--coin)}
@@ -189,6 +190,11 @@ body.ovopen{overflow:hidden}
 #toast.show{transform:translate(-50%,0);opacity:1;visibility:visible;transition:transform .3s ease,opacity .3s ease}
 #toast b{color:var(--coin)}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
+@media (max-width:350px){
+  header{align-items:flex-start;flex-wrap:wrap}
+  header h1{flex:1 0 100%;font-size:1rem}
+  header .tools{margin-left:auto}
+}
 </style>
 
 <div id="app" class="wrap"></div>

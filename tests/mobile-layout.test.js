@@ -1,0 +1,9 @@
+const {chromium}=require('playwright');
+(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:320,height:844},isMobile:true,hasTouch:true});const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.goto('file://'+require('path').join(__dirname,'..','index.html'));
+const r=await p.evaluate(()=>{while(document.querySelector('#ov button'))document.querySelector('#ov button').click();
+  const selectors=['.tools button','.tabs button','button.chip','[data-act=updateGame]','[data-act=reset]'];
+  const small=selectors.flatMap(sel=>[...document.querySelectorAll(sel)]).filter(el=>!el.disabled&&el.offsetParent&&el.getBoundingClientRect().height<44).map(el=>({text:el.textContent.trim(),height:el.getBoundingClientRect().height}));
+  return {small,overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth}});
+if(errs.length||r.small.length||r.overflow>0)throw new Error(JSON.stringify({r,errs}));
+console.log(JSON.stringify(r));await b.close()})();
