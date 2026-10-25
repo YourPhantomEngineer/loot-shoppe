@@ -694,8 +694,8 @@ CH[2]={t:"The Ledger",
  unlock:()=>{S.story.flags.mine=true;tip("h_mine")},
  goals:[
   {id:"c2pip",t:"Hire Pip",ok:()=>fl("pipHired")},
-  {id:"c2rat",t:"Defeat the Rat Matriarch",ev:(ty,d)=>ty==="defeat"&&d.n==="Rat Matriarch"},
-  {id:"c2slime",t:"Defeat the Slime Monarch",ev:(ty,d)=>ty==="defeat"&&d.n==="Slime Monarch"},
+  {id:"c2rat",t:"Defeat the Rat Matriarch in the Mossy Cellar",ev:(ty,d)=>ty==="defeat"&&d.n==="Rat Matriarch"},
+  {id:"c2slime",t:"Defeat the Slime Monarch in the Mossy Cellar",ev:(ty,d)=>ty==="defeat"&&d.n==="Slime Monarch"},
   {id:"c2pay",t:()=>`Make your first payment to the Celestials (${fmt(DEBT_PAYMENT)}G)`,ok:()=>S.story.debtPaid>=1},
   {id:"c2well",t:()=>`Repair the Town Well (${fmt(BLD("well").gold)}G + materials)`,ok:()=>built("well"),lock:()=>S.story.items.glass?"":"Needs the Slime Monarch's star-glass"}
  ]};
@@ -804,8 +804,8 @@ CH[3]={t:"Sparks at the Smithy",
  unlock:()=>{S.story.flags.vault=true;tip("h_vault")},
  goals:[
   {id:"c3tav",t:()=>`Repair the Tavern`,ok:()=>built("tavern")},
-  {id:"c3wurm",t:"Defeat the Tunnel Wurm",ev:(ty,d)=>ty==="defeat"&&d.n==="Tunnel Wurm"},
-  {id:"c3fore",t:"Defeat the Kobold Foreman",ev:(ty,d)=>ty==="defeat"&&d.n==="Kobold Foreman"},
+  {id:"c3wurm",t:"Defeat the Tunnel Wurm in the Sunken Mine",ev:(ty,d)=>ty==="defeat"&&d.n==="Tunnel Wurm"},
+  {id:"c3fore",t:"Defeat the Kobold Foreman in the Sunken Mine",ev:(ty,d)=>ty==="defeat"&&d.n==="Kobold Foreman"},
   {id:"c3smith",t:"Repair the Smithy",ok:()=>built("smithy"),lock:()=>goalDone("c3fore")?"":"After the Kobold Foreman"},
   {id:"c3apo",t:"Repair the Apothecary",ok:()=>built("apothecary")},
   {id:"c3pay",t:()=>`Make your second payment (${fmt(DEBT_PAYMENT)}G)`,ok:()=>S.story.debtPaid>=2}
@@ -849,8 +849,8 @@ CH[4]={t:"What the Celestials Knew",
  done:"Two shards. One trap of a contract. One stranger with silver eyes. And a light at the top of the mountain that never goes out. Maribel's last legible note: \"If it holds, the town holds. If it breaks, run.\"",
  goals:[
   {id:"c4market",t:"Repair the Market Square",ok:()=>built("market")},
-  {id:"c4knight",t:"Defeat the Ember Knight",ev:(ty,d)=>ty==="defeat"&&d.n==="Ember Knight"},
-  {id:"c4col",t:"Defeat the Cinder Colossus",ev:(ty,d)=>ty==="defeat"&&d.n==="Cinder Colossus"},
+  {id:"c4knight",t:"Defeat the Ember Knight in the Ember Vault",ev:(ty,d)=>ty==="defeat"&&d.n==="Ember Knight"},
+  {id:"c4col",t:"Defeat the Cinder Colossus in the Ember Vault",ev:(ty,d)=>ty==="defeat"&&d.n==="Cinder Colossus"},
   {id:"c4watch",t:"Repair the Watchtower",ok:()=>built("watch")},
   {id:"c4pay",t:()=>`Make your third payment (${fmt(DEBT_PAYMENT)}G)`,ok:()=>S.story.debtPaid>=3}
  ]};
@@ -947,9 +947,9 @@ CH[5]={t:"Starfall",
  goals:[
   {id:"c5obs",t:"Repair the Observatory",ok:()=>built("obs")},
   {id:"c5lv10",t:"Reach Level 10",ok:()=>lvl()>=10},
-  {id:"c5golem",t:"Defeat the Prism Golem",ev:(ty,d)=>ty==="defeat"&&d.n==="Prism Golem"},
+  {id:"c5golem",t:"Defeat the Prism Golem in the Starfall Spire",ev:(ty,d)=>ty==="defeat"&&d.n==="Prism Golem"},
   {id:"c5pay",t:()=>`Make your final payment (${fmt(DEBT_PAYMENT)}G, clears Maribel's debt)`,ok:()=>S.story.debtPaid>=4},
-  {id:"c5wyrm",t:"Defeat the Astral Wyrm",ev:(ty,d)=>ty==="defeat"&&d.n==="Astral Wyrm",lock:()=>floorSealed(3,DUN[3].floors)?"The summit is sealed until the other four goals are done":""}
+  {id:"c5wyrm",t:"Defeat the Astral Wyrm in the Starfall Spire",ev:(ty,d)=>ty==="defeat"&&d.n==="Astral Wyrm",lock:()=>floorSealed(3,DUN[3].floors)?"The summit is sealed until the other four goals are done":""}
  ]};
 SCN["5.1"]={title:"The Observatory",on:"repair",when:d=>d.k==="obs",cards:[
  {s:["Brass telescopes, cracked lenses, and star charts pinned to every wall. Maribel's handwriting covers half of them."],b:"Look closer"},
@@ -992,9 +992,9 @@ CH[6]={t:"The Long Way Home",wait:true,
  goals:[
   {id:"c6council",t:"Hold the war council",ok:()=>seen("6.1")},
   {id:"c6weapon",t:()=>`Collect Bram's star-forged weapon (2 shards + ${Object.entries(WEAPON_MATS).map(([m,n])=>n+" "+MATS[m]).join(", ")})`,ok:()=>!!S.story.items.weapon},
-  {id:"c6exec",t:"Defeat the Celestial Executor",ev:(ty,d)=>ty==="defeat"&&d.n==="Celestial Executor"},
+  {id:"c6exec",t:"Defeat the Celestial Executor in the Hollow Heart",ev:(ty,d)=>ty==="defeat"&&d.n==="Celestial Executor"},
   {id:"c6bottom",t:"Reach the bottom of the Hollow Heart",ev:(ty,d)=>ty==="floor"&&d.d===4&&d.floor===DUN[4].floors,lock:()=>S.story.items.weapon?"":"Sealed until Bram's weapon is collected"},
-  {id:"c6voss",t:"Defeat Voss",ev:(ty,d)=>ty==="defeat"&&d.n==="Voss"}
+  {id:"c6voss",t:"Defeat Voss in the Hollow Heart",ev:(ty,d)=>ty==="defeat"&&d.n==="Voss"}
  ]};
 SCN["6.1"]={title:"The war council",on:"day",when:()=>S.story.ch===6,cards:[
  {s:["The shop is crowded for the first time in ten years. Not with customers. With friends."],b:"Continue"},

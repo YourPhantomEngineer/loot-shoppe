@@ -216,8 +216,8 @@ Opening entry:
 ## Journal: Chapter 2 goals
 
 1. Hire Pip
-2. Defeat the Rat Matriarch
-3. Defeat the Slime Monarch
+2. Defeat the Rat Matriarch in the Mossy Cellar
+3. Defeat the Slime Monarch in the Mossy Cellar
 4. Make your first payment to the Celestials (600G)
 5. Repair the Town Well (300G + 3 Moss Fiber + the star-glass, after the Slime Monarch)
 
@@ -374,8 +374,8 @@ Opening entry:
 ## Journal: Chapter 3 goals
 
 1. Repair the Tavern
-2. Defeat the Tunnel Wurm
-3. Defeat the Kobold Foreman
+2. Defeat the Tunnel Wurm in the Sunken Mine
+3. Defeat the Kobold Foreman in the Sunken Mine
 4. Repair the Smithy (after the Kobold Foreman)
 5. Repair the Apothecary
 6. Make your second payment (600G)
@@ -538,8 +538,8 @@ Opening entry:
 ## Journal: Chapter 4 goals
 
 1. Repair the Market Square
-2. Defeat the Ember Knight
-3. Defeat the Cinder Colossus
+2. Defeat the Ember Knight in the Ember Vault
+3. Defeat the Cinder Colossus in the Ember Vault
 4. Repair the Watchtower
 5. Make your third payment (600G)
 
@@ -762,9 +762,9 @@ Opening entry:
 
 1. Repair the Observatory
 2. Reach Level 10
-3. Defeat the Prism Golem
+3. Defeat the Prism Golem in the Starfall Spire
 4. Make your final payment (600G, clears Maribel's debt)
-5. Defeat the Astral Wyrm
+5. Defeat the Astral Wyrm in the Starfall Spire
 
 Opening entry:
 
@@ -997,9 +997,9 @@ Opening entry:
 
 1. Hold the war council
 2. Collect Bram's star-forged weapon (2 shards + 6 Ember Core, 6 Ore Chunk, 4 Stardust; +50% attack)
-3. Defeat the Celestial Executor
+3. Defeat the Celestial Executor in the Hollow Heart
 4. Reach the bottom of the Hollow Heart
-5. Defeat Voss
+5. Defeat Voss in the Hollow Heart
 
 Opening entry:
 
