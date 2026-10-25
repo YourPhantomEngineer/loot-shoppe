@@ -1,0 +1,10 @@
+const {chromium}=require('playwright');
+(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:320,height:844},isMobile:true,hasTouch:true});const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.goto('file://'+require('path').join(__dirname,'..','index.html'));
+const r=await p.evaluate(()=>{while(document.querySelector('#ov button'))document.querySelector('#ov button').click();
+  S.story.ch=2;S.story.debtPaid=1;tab='journal';render();
+  const row=document.querySelector('#debtrow'),detail=row?.querySelector(':scope > .sub'),due=detail?.textContent.match(/Next payment due in Chapter 3\./)?.[0]||'';
+  return {row:!!row,due,grouped:!!detail&&row.contains(detail),separate:[...document.querySelectorAll('section > .hint')].some(el=>el.textContent.toLowerCase().includes('next payment'))};
+});
+if(errs.length||!r.row||r.due!=='Next payment due in Chapter 3.'||!r.grouped||r.separate)throw new Error(JSON.stringify({r,errs}));
+console.log(JSON.stringify(r));await b.close()})();
