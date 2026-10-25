@@ -5,6 +5,8 @@ const b=await chromium.launch();const p=await b.newPage({viewport:{width:390,hei
 p.on('pageerror',e=>errs.push(e.message));
 await p.goto('file://'+require('path').join(__dirname,'..','index.html'));
 await p.evaluate(()=>localStorage.clear());await p.reload();
+const guide=await p.evaluate(()=>({introCards:SCN["1.1"].cards.length,combatTip:TIPS.t_combat.t}));
+if(guide.introCards!==3||!guide.combatTip.includes("don't attack that turn")||!guide.combatTip.includes("70% less damage"))throw new Error("Tutorial copy regression: "+JSON.stringify(guide));
 const out=await p.evaluate(()=>{
   const L=[];let lastKey="";
   const desc=e=>e.dataset.t?`tab:${e.dataset.t}`:e.dataset.act?`${e.dataset.act}${e.dataset.i!==undefined?":"+e.dataset.i:""}${e.dataset.k?":"+e.dataset.k:""}`:e.id?`#${e.id}`:"."+e.className.split(" ")[0];
