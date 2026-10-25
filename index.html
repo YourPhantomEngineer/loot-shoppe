@@ -42,6 +42,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--coin);outline-o
 .tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--panel);border-radius:8px;padding:4px;gap:4px}
 .tabs button{border:0;background:none;color:var(--muted);font:700 .78rem var(--body);padding:9px 1px;border-radius:6px;cursor:pointer;position:relative}
 .tabs button[aria-selected="true"]{background:var(--line);color:var(--fg)}
+.tabs button{position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.76rem!important}
+.tabs .dot{position:absolute;top:1px;right:1px;margin:0;min-width:15px;line-height:15px;font-size:.62rem;padding:0 4px}
 .dot{display:inline-block;vertical-align:1px;min-width:18px;padding:0 5px;border-radius:9px;background:var(--coin);color:#2a2008;font-size:.7rem;margin-left:4px;line-height:18px}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .stat{background:var(--panel);border-radius:6px;padding:10px;min-width:0}
@@ -123,6 +125,7 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 .rlog li{color:var(--fg)}
 .staffcard{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
 .row.locked{opacity:.55}
+.ov[hidden]{display:none}
 .ov{position:fixed;inset:0;z-index:30;background:rgba(5,14,16,.72);display:flex;align-items:flex-end;justify-content:center;
   padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .ovcard{width:100%;max-width:480px;background:var(--panel);border:1px solid var(--copper);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px;
@@ -216,17 +219,19 @@ const RECIPES=[
  {out:"aegis",items:{scale:1},mats:{h4:1,dust:3}}
 ];
 const CUST=[
- {n:"Village Kid",bud:[.85,1.02],cats:["potion","trinket"],w:3,say:i=>`Um... how much for the ${i}?`},
- {n:"Townsfolk",bud:[.95,1.2],cats:null,w:5,say:i=>`I've been looking for ${an(i)}.`},
- {n:"Adventurer",bud:[1.05,1.35],cats:["weapon","armor","potion","supply"],w:4,say:i=>`That ${i} could save my life. What's the price?`},
- {n:"Gem Collector",bud:[1.1,1.5],cats:["gem","trinket"],w:2,say:i=>`Ooh, ${an(i)}. I simply must have it.`},
- {n:"Noble",bud:[1.25,1.7],cats:null,w:1,say:i=>`I'll take the ${i}. Name your price.`}
+ {k:"kid",n:"Village Kid",bud:[.85,1.02],cats:["potion","trinket","gem"],w:3,need:()=>true,say:i=>`Um... how much for the ${i}?`},
+ {k:"town",n:"Townsfolk",bud:[.95,1.2],cats:null,w:5,need:()=>built("well"),say:i=>`I've been looking for ${an(i)}.`},
+ {k:"adv",n:"Adventurer",bud:[1.05,1.35],cats:["weapon","armor","potion","supply"],w:4,need:()=>true,say:i=>`That ${i} could save my life. What's the price?`},
+ {k:"coll",n:"Collector",bud:[1.1,1.6],cats:["gem","trinket"],w:2,need:()=>built("market"),say:i=>`Ooh, ${an(i)}. I simply must have it.`},
+ {k:"noble",n:"Noble",bud:[1.25,1.7],cats:null,w:1,need:()=>built("market"),say:i=>`I'll take the ${i}. Name your price.`},
+ {k:"trav",n:"Traveler",bud:[1,1.3],cats:null,w:4,need:()=>built("tavern"),say:i=>`Long road behind me. How much for the ${i}?`},
+ {k:"craft",n:"Craftsperson",bud:[1,1.25],cats:["weapon","armor","gem","trinket"],w:3,need:()=>built("smithy")&&built("apothecary"),say:i=>`Bram says you've got ${an(i)}. Good quality?`},
+ {k:"schol",n:"Scholar",bud:[1.2,1.7],cats:["trinket","gem","weapon"],w:2,need:()=>built("obs"),say:i=>`Fascinating. Is that ${an(i)}? I must study it.`}
 ];
 const UPG=[
  {k:"blade",n:"Sharpen Blade",d:l=>`Base attack ${dmgAt(l)} → ${dmgAt(l+1)}`,base:120},
  {k:"armor",n:"Reinforce Armor",d:l=>`Base HP ${hpAt(l)} → ${hpAt(l+1)}`,base:120},
  {k:"pack",n:"Bigger Pack",d:l=>`Carry ${capAt(l)} → ${capAt(l+1)} items`,base:90},
- {k:"shelf",n:"More Shelves",d:l=>`+1 customer a day (now +${l})`,base:150},
  {k:"sign",n:"Painted Sign",d:l=>`Customer budgets +${l*8}% → +${(l+1)*8}%`,base:200}
 ];
 const BR=[{k:"war",n:"Warrior"},{k:"scav",n:"Scavenger"},{k:"merc",n:"Merchant"}];
@@ -241,7 +246,6 @@ const SK=[
  {k:"escape",b:"scav",n:"Escape Artist",max:2,req:2,d:"+15% flee chance per rank"},
  {k:"tongue",b:"merc",n:"Silver Tongue",max:3,d:"+5% customer budgets per rank"},
  {k:"patience",b:"merc",n:"Calm Presence",max:2,d:"Customers allow +1 haggle per rank"},
- {k:"showman",b:"merc",n:"Showman",max:2,req:2,d:"+1 customer a day per rank"},
  {k:"bulk",b:"merc",n:"Master Crafter",max:2,req:2,d:"20% chance per rank to craft two"},
  {k:"boss2",b:"merc",n:"Good Employer",max:2,d:"Your shopkeeper sells for +5% more per rank"},
  {k:"quick",b:"merc",n:"Quick Sale",max:5,d:"Sell stock instantly from the Town tab for 15% of base value, +10% per extra rank"}
@@ -350,7 +354,7 @@ function finishScene(id){
   save();render();
   playNext();
 }
-const md=t=>String(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/_(.+?)_/g,"<em>$1</em>");
+const md=t=>String(t).replace(/\n/g,"<br>").replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/_(.+?)_/g,"<em>$1</em>");
 function cardHTML(c){
   let h="";
   for(const it of R_(c.s)||[]){
@@ -419,6 +423,202 @@ function migrateStory(){
 }
 
 /* ================= Story data ================= */
+/* ---------- Town buildings ---------- */
+const BUILD=[
+ {k:"well",n:"Town Well",ch:2,gold:300,mats:{fiber:3},item:"glass",req:()=>!!S.story.items.glass,lock:"Needs the star-glass. Defeat the Slime Monarch.",desc:"Townsfolk return. Unlocks Grand Reopening."},
+ {k:"tavern",n:"Tavern",ch:3,gold:600,mats:{scrap:4,fiber:3},desc:"Hire board and travelers."},
+ {k:"apothecary",n:"Apothecary",ch:3,gold:700,mats:{gel:4,fiber:3},desc:"Bombs, ropes and better potions."},
+ {k:"smithy",n:"Smithy",ch:3,gold:900,mats:{ore:6,scrap:4},req:()=>goalDone("c3fore"),lock:"Defeat the Kobold Foreman first.",desc:"Gear upgrades past level 3 and advanced crafting."},
+ {k:"market",n:"Market Square",ch:4,gold:2000,mats:{ore:6,ember:4},desc:"Collectors and special customer days."},
+ {k:"watch",n:"Watchtower",ch:4,gold:2500,mats:{ember:6},desc:"See each floor's modifier before you descend."},
+ {k:"obs",n:"Observatory",ch:5,gold:5000,mats:{ember:8,ore:6},desc:"Secret floor clues, relic lore and scholars."}
+];
+const BLD=k=>BUILD.find(b=>b.k===k);
+const canBuild=b=>!built(b.k)&&S.story.ch>=b.ch&&(!b.req||b.req())&&S.gold>=b.gold&&Object.entries(b.mats).every(([m,n])=>(S.mats[m]||0)>=n);
+function repair(k){
+  const b=BLD(k);if(!b||!canBuild(b))return;
+  S.gold-=b.gold;for(const [m,n] of Object.entries(b.mats))S.mats[m]-=n;
+  if(b.item)delete S.story.items[b.item];
+  S.story.built[k]=S.day;sfx.win();toast(`<b>${b.n}</b> repaired.`);
+  SE("repair",{k});save();render();
+}
+/* Max customers a day comes from the town; custBonus() is the hook for future skills or upgrades. */
+function custBase(){const b=S.story.built;let n=3;if(b.well)n=4;if(b.tavern)n=5;if(b.smithy&&b.apothecary)n=6;if(b.market)n=8;if(b.watch)n=9;if(b.festival)n=10;return n}
+const custBonus=()=>0;
+const dayBonus=()=>0; // special customer days arrive with the Market Square
+
+/* ---------- Dungeon gates (story flags, never level) ---------- */
+const DUN_GATE=[()=>true,()=>fl("mine"),()=>fl("vault"),()=>fl("spire"),()=>fl("hollow")];
+const DUN_LOCK=["","Opens at the end of Chapter 2","Opens at the end of Chapter 3","Opens when you reach Level 10 in Chapter 5","Opens in Chapter 6"];
+
+/* ---------- Maribel's debt ---------- */
+const debtLeft=()=>DEBT_PAYMENT*(DEBT_PAYMENTS-S.story.debtPaid);
+const payDue=()=>S.story.debtPaid<DEBT_PAYMENTS&&S.story.debtPaid<S.story.ch-1; // one payment goal per chapter, Ch2 to Ch5
+function payDebt(){
+  const st=S.story;
+  if(st.loan>0){tipNow("Wren","Clear the last loan first. One debt at a time.");return render()}
+  if(!payDue()||S.gold<DEBT_PAYMENT)return;
+  S.gold-=DEBT_PAYMENT;st.debtPaid++;sfx.coin();
+  jrnl(st.debtPaid>=DEBT_PAYMENTS?"Final payment made. Maribel's debt is cleared.":`Payment ${st.debtPaid} of ${DEBT_PAYMENTS} to the Celestials: ${fmt(DEBT_PAYMENT)}G. Balance: ${fmt(debtLeft())}G.`,"note");
+  SE("pay",{n:st.debtPaid});save();render();
+}
+/* A one-off line that isn't a story beat (shown in the tip bar, not stored as seen). */
+let tipSeq=0;
+function tipNow(w,t){const id="_now"+(++tipSeq);TIPS[id]={w,t};S.story.tipQ.push(id)}
+
+/* ---------- Log flavor ---------- */
+const LOGF={
+ 0:["Something skitters behind the barrels.","Old shelving, Maribel's labels still on the jars.","A faint glitter in the moss, gone when you look closer.","The air smells like rain and old pennies."],
+ "0deep":["Slime trails glitter like they swallowed starlight.","A child's drawing of a falling star, nailed to a beam.","The walls are warm here. Warmer than they should be."]
+};
+function flavorLine(){
+  const R=S.run;if(!R||Math.random()>.18)return;
+  let pool=LOGF[R.d]||[];
+  if(R.d===0&&R.floor>=3&&goalDone("c2slime"))pool=pool.concat(LOGF["0deep"]);
+  if(pool.length)rlog(`<i>${pick(pool)}</i>`);
+}
+
+/* ---------- Chapter 1: Dust and Doorbells ---------- */
+CH[1]={t:"Dust and Doorbells",wait:true,
+ open:"Hollowmere. The shop is mine now, along with whatever Aunt Maribel left in it. Wren says start with the cellar.",
+ done:()=>`Debt: the Celestial Consortium. Balance: ${fmt(DEBT_PAYMENT*DEBT_PAYMENTS)}G.\nWren says we pay it bit by bit. Maribel's journal has a map in the back, all mountain, with the summit circled twice. Above it, she wrote: "It's still warm."`,
+ unlock:()=>{S.story.flags.skills=true},
+ goals:[
+  {id:"c1f1",t:"Clear Floor 1 of the Mossy Cellar",ev:(ty,d)=>ty==="stairs"&&d.d===0&&d.floor===1},
+  {id:"c1sell",t:"Sell your first item",ev:ty=>ty==="sale",show:()=>seen("1.3")},
+  {id:"c1hag",t:"Haggle a sale above market value",ev:(ty,d)=>ty==="sale"&&d.above&&d.haggled,show:()=>seen("1.4")},
+  {id:"c1craft",t:"Craft a supply in the Workshop",ev:(ty,d)=>ty==="craft"&&IT[d.k].c==="supply",show:()=>goalDone("c1sell")||seen("1.5")},
+  {id:"c1lv2",t:"Reach Level 2",ok:()=>lvl()>=2,show:()=>goalDone("c1f1")}
+ ]};
+SCN["1.1"]={title:"Arrival",cards:[
+ {s:["The bell over the door still works. Nothing else does."],b:"Continue"},
+ {s:["Dust everywhere but the floor. An empty stockroom. A journal with your name on the first page, in Aunt Maribel's handwriting."],b:"Read it"},
+ {s:[["note","\"If you're reading this, the shop is yours. Keep the doors open. Keep the lamp lit. And whatever anyone offers, don't sell the cellar.\""]],b:"Continue"},
+ {s:["The door creaks. A woman with one hand and no patience looks you over."],b:"Continue"},
+ {s:[["Wren","You're Maribel's kin. Good. I'm Wren. I adventured with her for twenty years."],["Wren","The shop's got no stock, and the cellar's got rats the size of goats. Let's fix one of those problems."]],b:"Let's go"}],
+ done:()=>{jrnl(CH[1].open,"open");tab="town"}};
+SCN["1.2"]={title:"First delve",on:"enter",when:d=>d.d===0,cards:[
+ {s:[["Wren","Delving takes the whole day. Go deep for better loot, but every floor bites harder."],["Wren","Faint down there and you lose everything you found, plus some of your coin. The deeper you fall, the more it costs."]],b:"Into the cellar"}]};
+SCN["1.3"]={title:"Back from the cellar",on:"day",when:d=>d.fromDelve,cards:[
+ {s:[["Wren","Not bad. Loot's no good in a sack, though. Stock the shelf and open the doors."]],b:"Continue"}],
+ done:()=>tip("t_market")};
+SCN["1.4"]={title:"First shop day",on:"shopOpen",cards:[
+ {s:[["Wren","Only three customers a day while the town's like this. More will come when Hollowmere does."],["Wren","They'll make an offer. Their mood tells you how far you can push."]],b:"Open the doors"}]};
+SCN["1.5"]={title:"The Workshop",on:"tab",when:d=>d.t==="work",cards:[
+ {s:[["Wren","Maribel's workbench. She could make a rope out of rumors."],["Wren","Materials from the cellar become supplies. Supplies keep you breathing."]],b:"Continue"}]};
+SCN["1.6"]={title:"Upgrades",on:"tab",when:d=>d.t==="upg",cards:[
+ {s:[["Wren","Better shelves, better sales. Better supplies, deeper floors. Spend smart."]],b:"Continue"}]};
+SCN["1.7"]={title:"The letter",on:"day",when:()=>S.story.ch===1&&fl("ch1done")&&S.day>S.story.flags.ch1done,cards:[
+ {s:["A letter is slipped under the door. Heavy paper. A small gold star pressed into the wax seal."],b:"Open it"},
+ {s:[["note","\"To the new proprietor. Now that your aunt has been declared dead, the Celestial Consortium extends its condolences. Her outstanding balance transfers to you. We look forward to a long and orderly relationship. — G. Voss, Guildmaster\""]],b:"Continue"},
+ {s:[["Wren","The Celestials. Maribel borrowed from them to fund the expeditions. I told her not to.","reading over your shoulder"],["Wren","They're patient. That's what worries me."]],b:"What do we do?"},
+ {s:[["Wren","We pay it. Bit by bit. But you'll need to get tougher first."],["Wren","Out back. There's a training yard under all those weeds."]],b:"Follow her"}],
+ done:()=>endChapter()};
+TIPS.t_combat={w:"Wren",t:"Attack if you can win. Guard if it hits hard. Flee if your gut says flee.",ch:1};
+TIPS.t_hit={w:"Wren",t:"That number's a rough guess at its damage. Plan around it.",ch:1};
+TIPS.t_loot={w:"Wren",t:"Everything has a price. Mind your pack space.",ch:1};
+TIPS.t_belt={w:"Wren",t:"A supply costs your turn. Use it before you need it, not after.",ch:1};
+TIPS.t_room={w:"Wren",t:"The cellar's strange since the star fell. Not all strange is bad.",ch:1};
+TIPS.t_floor={w:"Wren",t:"Push deeper, or head up with what you've got. No shame in a short day.",ch:1};
+TIPS.t_market={w:"Wren",t:"Prices shift daily. Green means folk want it. Sell into the wind.",ch:1};
+TIPS.t_eager={w:"Wren",t:"That one wants it bad. Push.",ch:1};
+TIPS.t_keen={w:"Wren",t:"Interested. A little push won't hurt.",ch:1};
+TIPS.t_fair={w:"Wren",t:"Take a fair deal when you see one.",ch:1};
+TIPS.t_thrifty={w:"Wren",t:"Counting coins. Push and they'll walk.",ch:1};
+TIPS.t_sale1={w:"Wren",t:"First coin in the till in a long while. Maribel would've rung the bell twice.",ch:1};
+TIPS.t_above={w:"Wren",t:"Ha. Maybe you've got her nose for it.",ch:1};
+TIPS.t_walk={w:"Wren",t:"Lost one. Happens. Their mood can lie, but their feet never do.",ch:1};
+TIPS.t_craft1={w:"Wren",t:"Ugly, but it'll work. Most good things are.",ch:1};
+TIPS.t_skills={w:"Wren",t:"Fighter, finder, or seller. Pick what fits. You'll grow into the rest.",ch:1};
+TIPS.i_adv={w:"Adventurer",t:"Didn't think this place was still open. Got anything sharp?",ch:1};
+
+/* ---------- Chapter 2: The Ledger ---------- */
+CH[2]={t:"The Ledger",
+ open:"The Celestials want their coin. Wren says the cellar goes deeper than Maribel ever let on.",
+ start:()=>queue("2.1"),
+ done:"The well runs again. Star-glass did that. Maribel's notes say the big shards are deeper, past the mines. Next to her sketch of the Sunken Mine, she wrote: \"Kobolds. Not wild. Someone's paying them.\"",
+ unlock:()=>{S.story.flags.mine=true},
+ goals:[
+  {id:"c2pip",t:"Hire Pip",ok:()=>fl("pipHired")},
+  {id:"c2rat",t:"Defeat the Rat Matriarch",ev:(ty,d)=>ty==="defeat"&&d.n==="Rat Matriarch"},
+  {id:"c2slime",t:"Defeat the Slime Monarch",ev:(ty,d)=>ty==="defeat"&&d.n==="Slime Monarch"},
+  {id:"c2pay",t:()=>`Make your first payment to the Celestials (${fmt(DEBT_PAYMENT)}G)`,ok:()=>S.story.debtPaid>=1},
+  {id:"c2well",t:()=>`Repair the Town Well (${fmt(BLD("well").gold)}G + materials)`,ok:()=>built("well"),lock:()=>S.story.items.glass?"":"Needs the Slime Monarch's star-glass"}
+ ]};
+SCN["2.1"]={title:"The Guildmaster calls",cards:[
+ {s:["The bell rings. A tall man in blue and gold steps in, brushing dust from his sleeve as if it offended him."],b:"Continue"},
+ {s:[["Voss","Guildmaster Voss, of the Celestial Consortium. Your aunt was a dear customer."],["Voss","I do hope you're more… punctual."]],c:[["We'll pay.","3a"],["Get out of my shop.","3b"]]},
+ {id:"3a",s:[["Voss","Splendid. No rush. The Consortium is nothing if not patient."]],b:"Continue",next:"4"},
+ {id:"3b",s:[["Voss","Of course. It _is_ your shop. For now.","smiling"]],b:"Continue",next:"4"},
+ {id:"4",s:[["Wren","Didn't like his hands. Too clean for a man who collects debts."]],b:"Continue"}]};
+SCN["2.2"]={title:"The broom thief",on:"day",when:()=>S.story.ch===2&&seen("2.1")&&S.day>=S.story.chDay+1,cards:[
+ {s:["The floor is swept. You didn't sweep it. A gangly boy of about fifteen is hiding behind the counter, broom in hand.",
+   ["Pip","I wasn't stealing! Miss Maribel let me sweep for bread when I was little. After she left, I just… kept sweeping."],
+   ["Wren","That's Pip. Been minding this place longer than anyone."]],b:"Hire him"}],
+ done:()=>{const st=S.story;st.flags.met_pip=true;st.flags.pipHired=true;hire("pip",true);tip("pip_hired")}};
+TIPS.pip_hired={w:"Pip",t:"I'll sell everything! Well. Two things a day. Maybe."};
+TIPS.t_pipdelve={w:"Wren",t:"Hired hands sell while you're below. Less than you would, but better than an empty shelf."};
+SCN["2.3"]={on:"encounter",when:d=>d.n==="Rat Matriarch"&&S.story.ch===2,log:["<i>The squeaking stops all at once. Something big shifts in the dark.</i>"],done:()=>tip("t_rat")};
+TIPS.t_rat={w:"Wren",t:"Mini-bosses hit hard. Guard when it winds up. Bring tonics."};
+SCN["2.3b"]={on:"defeat",when:d=>d.n==="Rat Matriarch"&&S.story.ch===2,log:["<i>Behind her nest, the moss glows faintly. A tunnel leads down.</i>"]};
+SCN["2.4"]={title:"The Slime Monarch",on:"encounter",when:d=>d.n==="Slime Monarch"&&S.story.ch===2,cards:[
+ {s:["A mound of green ooze wearing a crown of rusted pots. Something bright pulses deep inside it."],b:"Fight"}]};
+SCN["2.4b"]={title:"Star-glass",on:"defeat",when:d=>d.n==="Slime Monarch"&&S.story.ch===2,cards:[
+ {s:["The Monarch melts away. Left behind: a sliver of crystal, warm as a sunlit stone.",["Wren","That's star-glass. Haven't seen any in ten years.","quiet"],["Wren","Keep it. Don't sell it. And don't show it around."]],b:"Continue"}],
+ done:()=>{S.story.items.glass=S.day}};
+SCN["2.5"]={title:"The first payment",on:"pay",when:d=>d.n===1,cards:[
+ {s:["A Celestial courier takes the coin, stamps a receipt with a small gold star, and leaves without a word.",["Wren","One down. Feels good, doesn't it? Don't get used to it."]],b:"Continue"}]};
+SCN["2.6"]={title:"The Well",on:"repair",when:d=>d.k==="well",cards:[
+ {s:[["Wren","Drop the star-glass in. Maribel always said the well went dry the night the star fell."]],b:"Drop it in"},
+ {s:["A faint glow. Then the sound of water, rising for the first time in twelve years."],b:"Continue"},
+ {s:["By evening, smoke rises from three chimneys that were cold this morning.",["Old Greta","Well, I'll be. The shop's lamp is lit.","from the street"]],b:"Continue"},
+ {s:[["Wren","Folk will come back now. More customers, more coin."],["Wren","And if the shop ever goes stale, close up and reopen it bigger. Maribel did it twice."]],b:"Continue"}],
+ done:()=>toast("Customers: 3 → 4. <b>Grand Reopening</b> unlocked.")};
+TIPS.i_town={w:"Townsfolk",t:"Heard the well's flowing. Figured I'd see if you sell anything a body can afford."};
+
+/* ---------- Tip hooks ---------- */
+const MOOD_TIP={eager:"t_eager",keen:"t_keen",fair:"t_fair",thrifty:"t_thrifty"};
+const INTRO={adv:"i_adv",town:"i_town",trav:"i_trav",craft:"i_craft",coll:"i_coll",schol:"i_schol"};
+tipHooks=function(type,d){
+  const T={combat:"t_combat",hit:"t_hit",loot:"t_loot",belt:"t_belt",roomEvent:"t_room",stairs:"t_floor",walk:"t_walk"}[type];
+  if(T)tip(T);
+  if(type==="customer"){if(MOOD_TIP[d.mood])tip(MOOD_TIP[d.mood]);if(INTRO[d.type])tip(INTRO[d.type])}
+  if(type==="sale"){tip("t_sale1");if(d.above&&d.haggled)tip("t_above")}
+  if(type==="craft")tip("t_craft1");
+  if(type==="tab"&&d.t==="skills")tip("t_skills");
+  if(type==="enter"&&onStaff("pip"))tip("t_pipdelve");
+  if(typeof tipHooks2==="function")tipHooks2(type,d);
+};
+
+/* ---------- Journal extras: debt, town ---------- */
+function journalExtras(){
+  const st=S.story;let h="";
+  if(st.ch>=2||st.debtPaid){
+    const due=payDue(),loanLock=st.loan>0;
+    h+=`<section><h2>Ledgers</h2><div class="list">
+      <div class="row"><span><b>Maribel's debt</b> <span class="sub">Celestial Consortium</span></span>
+        <span class="sub">${st.debtPaid>=DEBT_PAYMENTS?"Paid in full.":`${st.debtPaid} of ${DEBT_PAYMENTS} payments made · balance ${fmt(debtLeft())}G`}</span>
+        <span class="right">${st.debtPaid<DEBT_PAYMENTS?`<button class="btn gold sm" data-act="payDebt" ${due&&S.gold>=DEBT_PAYMENT&&!loanLock?"":"disabled"}>Pay ${fmt(DEBT_PAYMENT)}G</button>`:"✓"}</span></div>
+      ${typeof loanRow==="function"?loanRow():""}
+    </div>
+    ${st.debtPaid<DEBT_PAYMENTS&&!due?`<p class="hint" style="margin-top:8px">The next payment comes due in Chapter ${st.debtPaid+2}.</p>`:""}
+    ${loanLock&&due?`<p class="hint" style="margin-top:8px"><b class="who">Wren</b> “Clear the last loan first. One debt at a time.”</p>`:""}
+    </section>`;
+  }
+  const avail=BUILD.filter(b=>st.ch>=b.ch||built(b.k));
+  if(avail.length){
+    h+=`<section><h2>Hollowmere <small>${custBase()} customers a day</small></h2><div class="list">${avail.map(b=>{
+      if(built(b.k))return `<div class="row"><span><b>${b.n}</b> <span class="crown">Repaired</span></span><span class="sub">${b.desc}</span><span class="right">✓</span></div>`;
+      const reqOk=!b.req||b.req();
+      const parts=[`<span class="${S.gold>=b.gold?"have":"need"}">${fmt(b.gold)}G</span>`,...Object.entries(b.mats).map(([m,n])=>`<span class="${(S.mats[m]||0)>=n?"have":"need"}">${n} ${MATS[m]}</span> (${S.mats[m]||0})`)];
+      if(b.item)parts.push(`<span class="${S.story.items[b.item]?"have":"need"}">star-glass</span>`);
+      return `<button class="row" data-act="repair" data-k="${b.k}" ${canBuild(b)?"":"disabled"}><span><b>${b.n}</b></span>
+        <span class="sub">${reqOk?parts.join(" + "):b.lock}<br>${b.desc}</span><span class="right">Repair</span></button>`}).join("")}</div></section>`;
+  }
+  if(typeof journalExtras2==="function")h+=journalExtras2();
+  return h;
+}
+
 /*STORYDATA*/
 
 /* ================= State ================= */
@@ -434,6 +634,7 @@ function migrate(){
   S.staffs=S.staffs||{};S.keep=S.keep||{};S.report=S.report||null;
   migrateStory();
   S.legacy=S.legacy||{stars:0,perks:{},count:0,total:0};S.legacy.perks=S.legacy.perks||{};S.lifeStart=S.lifeStart||0;
+  delete S.skills?.showman;
   S.over=null;S.belt=S.belt||[];S.mats=S.mats||{};S.skills=S.skills||{};S.bosses=S.bosses||{};
   if(S.run){const R=S.run;R.got=R.got||{};R.atkB=R.atkB||1;R.ev=R.ev||null;if(R.fight){R.fight.turn=R.fight.turn||0;if(!R.fight.kind)R.fight.kind=R.fight.boss?"boss":"mob"}}
 }
@@ -455,7 +656,7 @@ const maxHp=()=>Math.round(hpAt(S.gear.armor)*(1+.1*sk("skin"))*(1+.1*pk("heir")
 const cap=()=>capAt(S.gear.pack)+2*sk("pockets")+2*pk("pack");
 const crit=()=>.1+.08*sk("exec");
 const fleeCh=()=>Math.min(.95,.6+.15*sk("escape"));
-const custN=()=>3+S.gear.shelf+sk("showman")+pk("conn");
+const custN=()=>custBase()+custBonus()+dayBonus();
 const signB=()=>1+.08*S.gear.sign+.05*sk("tongue")+.05*pk("name");
 const patMax=()=>3+sk("patience");
 const quickPct=()=>sk("quick")?.05+.1*sk("quick"):0;
@@ -465,7 +666,7 @@ const upCost=u=>Math.round(u.base*Math.pow(1.9,S.gear[u.k]));
 const week=()=>Math.ceil(S.day/7);
 const rentFor=w=>Math.round(250*Math.pow(w,1.8)/10)*10;
 const count=(arr,k)=>arr.filter(x=>x===k).length;
-const dunOpen=i=>lvl()>=DUN[i].lvl;
+const dunOpen=i=>!!(DUN_GATE[i]&&DUN_GATE[i]());
 
 /* ================= Sound ================= */
 let ac=null;
@@ -603,6 +804,7 @@ function addXp(n){
 }
 function addMat(k,n){S.mats[k]=(S.mats[k]||0)+n}
 function endDay(){
+  const fromDelve=!!S.run;
   if(S.run)settleShift();else S.report=null;
   S.run=null;S.shop=null;
   const finished=S.day;S.day++;
@@ -610,7 +812,7 @@ function endDay(){
   S.news="";
   if(Math.random()<.18){const c=pick(CATS);S.trend[c]=Math.min(1.6,S.trend[c]+.3);S.news=`Word around town: ${CATN[c].toLowerCase()} are in demand.`}
   tab="town";
-  SE("day",{finished});
+  SE("day",{finished,fromDelve});
   save();render();
 }
 
@@ -631,9 +833,12 @@ const staffWage=k=>Math.round(ST(k).wage*(1+staffRec(k).wageB));
 const forSale=()=>S.inv.filter(k=>!S.keep[k]);
 const THIEF_TARGETS=["pip","marlo"];
 const catchChance=k=>.1+.15*(staffLvl(k)-1);
+const custW=c=>c.w*(typeof dayWeight==="function"?dayWeight(c):1);
 function pickCust(){
-  let w=Math.random()*CUST.reduce((a,c)=>a+c.w,0),ti=0;for(;ti<CUST.length;ti++){w-=CUST[ti].w;if(w<=0)break}
-  return CUST[Math.min(ti,CUST.length-1)];
+  const pool=CUST.filter(c=>c.need());
+  let w=Math.random()*pool.reduce((a,c)=>a+custW(c),0);
+  for(const c of pool){w-=custW(c);if(w<=0)return c}
+  return pool[pool.length-1];
 }
 function hire(k,quiet){const s=ST(k);if(!s||!s.need()||S.crew.includes(k))return;S.crew.push(k);S.story.hiredEver[k]=true;confirmFire=null;
   if(!quiet){sfx.coin();toast(`<b>${s.n}</b> joins your staff and will mind the shop on days you go delving.`)}SE("hire",{k});save();render()}
@@ -707,7 +912,7 @@ function startDelve(i){
     mod:null,atkB:1,ev:null,elite:false,miniDone:false,secret:false,secretFloor:false,
     event:`You step into the ${DUN[i].n}. Torchlight flickers on damp stone.`,log:[]};
   S.report=null;S.run.shift=staffShift();
-  save();render();
+  save();render();SE("enter",{d:i});
 }
 function rlog(m){S.run.log.unshift(m);S.run.log=S.run.log.slice(0,5)}
 function rollItem(boost){
@@ -739,11 +944,12 @@ function makeFight(n,kind){
   const hm={mob:1,elite:2.2,mini:2.4,boss:3.5}[kind],am={mob:1,elite:1.35,mini:1.2,boss:1.3}[kind];
   const hp=Math.round((10+R.floor*3)*f*hm);
   R.fight={n,hp,max:hp,atk:Math.round((2+R.floor*.8)*f*am),turn:0,kind,boss:kind==="mini"||kind==="boss",wind:false};
+  SE("combat",{kind});
 }
 function explore(){
   const R=S.run,D=DUN[R.d],f=TF[D.t-1];R.steps++;R.left=null;R.dropSel=null;sfx.step();
   const last=R.floor===D.floors,mod=R.mod;
-  if(!R.secretFloor&&!last&&!R.stairs&&R.steps>=2&&Math.random()<(mod==="dark"?.1:.22)){R.stairs=true;R.event="You spot a staircase leading down.";rlog(R.event);return save(),render()}
+  if(!R.secretFloor&&!last&&!R.stairs&&R.steps>=2&&Math.random()<(mod==="dark"?.1:.22)){R.stairs=true;R.event="You spot a staircase leading down.";rlog(R.event);SE("stairs",{d:R.d,floor:R.floor});return save(),render()}
   if(last&&!R.lair&&!R.bossDone&&R.steps>=2&&Math.random()<.25){R.lair=true;R.event=`Heavy footsteps echo ahead. The lair of the ${D.boss} is close.`;sfx.boss();rlog(R.event);return save(),render()}
   if(R.floor===Math.ceil(D.floors/2)&&!R.miniDone&&R.steps>=2&&Math.random()<.3){
     R.ev={type:"mini"};R.event=`A massive shape blocks the corridor: the ${MINI[R.d]}, guardian of this depth.`;sfx.boss();rlog(R.event);return save(),render()}
@@ -751,14 +957,14 @@ function explore(){
   const r=Math.random();let c=.36+.04*sk("keen")+(R.secretFloor?.15:0);
   if(r<c){
     const k=R.secretFloor&&Math.random()<.3?secretItem():rollItem();
-    if(bagAdd(k)){R.event=`You find ${an(IT[k].n)}! (worth about ${val(k)}G)`;sfx.loot()}else R.event=`You find ${an(IT[k].n)}, but your pack is full.`;
+    if(bagAdd(k)){R.event=`You find ${an(IT[k].n)}! (worth about ${val(k)}G)`;sfx.loot();SE("loot")}else R.event=`You find ${an(IT[k].n)}, but your pack is full.`;
   }
   else if(r<(c+=mod==="dark"?.16:.08)){const g=dropMats(mod==="dark"?ri(2,3):ri(1,2));R.event=`You pry loose ${g.join(" and ")} from the walls.`;sfx.loot()}
   else if(r<(c+=.30+(mod==="haunted"?.2:0)+R.floor*.01)){makeFight(pick(D.mon),"mob");R.event=`A ${R.fight.n} blocks your path!`}
   else if(r<(c+=mod==="flooded"?.18:.09)){const d=hurtPct(.12);R.event=mod==="flooded"?`You slip into a flooded pit! You lose ${d} HP.`:`A trap springs! You lose ${d} HP.`;sfx.hurt()}
   else if(r<(c+=mod==="blessed"?.12:.07)){const h=Math.round(maxHp()*.3);R.hp=Math.min(maxHp(),R.hp+h);R.event=`A clear spring restores ${h} HP.`}
   else{const g=Math.round(rnd(4,12)*f*R.floor);S.gold+=g;R.event=`You find a dropped purse with ${g}G.`;sfx.coin()}
-  rlog(R.event);
+  rlog(R.event);flavorLine();
   if(R.hp<=0)return faint();
   save();render();
 }
@@ -780,7 +986,7 @@ function startEvent(){
   if(t==="sleeper"){R.ev.mon=pick(D.mon);R.event=`A ${R.ev.mon} is asleep across the passage.`}
   if(t==="fountain")R.event="A glowing fountain bubbles in the dark. The water smells strange.";
   if(t==="elite"){R.ev.mon=pick(D.mon);R.elite=true;R.event=`A sealed door glows with runes. Behind it, an elite ${R.ev.mon} guards a treasure.`}
-  rlog(R.event);
+  rlog(R.event);SE("roomEvent",{t});
 }
 const sneakCh=()=>Math.min(.95,.65+.1*sk("escape"));
 function openChest(pre){
@@ -829,7 +1035,7 @@ function evChoice(c){
     }
   }
   else if(E.type==="elite"&&c==="fight"){R.ev=null;makeFight("Elite "+E.mon,"elite");R.event=`The door grinds open. The elite ${E.mon} charges!`;sfx.boss()}
-  else if(E.type==="mini"&&c==="fight"){R.ev=null;makeFight(MINI[R.d],"mini");R.event=`The ${MINI[R.d]} roars and attacks!`;sfx.boss()}
+  else if(E.type==="mini"&&c==="fight"){R.ev=null;makeFight(MINI[R.d],"mini");R.event=`The ${MINI[R.d]} roars and attacks!`;sfx.boss();rlog(R.event);SE("encounter",{n:MINI[R.d],d:R.d});return save(),render()}
   rlog(R.event);
   if(R.hp<=0)return faint();
   save();render();
@@ -838,7 +1044,7 @@ function evChoice(c){
 /* ---------- Combat ---------- */
 function challengeBoss(){
   const R=S.run,D=DUN[R.d];
-  makeFight(D.boss,"boss");R.lair=false;R.event=`The ${D.boss} rises to face you!`;sfx.boss();rlog(R.event);save();render();
+  makeFight(D.boss,"boss");R.lair=false;R.event=`The ${D.boss} rises to face you!`;sfx.boss();rlog(R.event);save();render();SE("encounter",{n:D.boss,d:R.d});
 }
 function monsterTurn(guard){
   const R=S.run,F=R.fight;F.turn++;
@@ -847,6 +1053,7 @@ function monsterTurn(guard){
   R.hp-=t;guard?sfx.guard():sfx.hurt();
   let m=heavy?`The ${F.n} unleashes a crushing blow for ${t}!`:`The ${F.n} hits you for ${t}.`;
   if(F.boss&&!heavy&&F.turn%3===2){F.wind=true;m+=` It's winding up a heavy attack!`}
+  SE("hit");
   return m;
 }
 function attack(){
@@ -881,7 +1088,7 @@ function eliteWin(pre){
 function miniWin(pre){
   const R=S.run,D=DUN[R.d],f=TF[D.t-1];
   const g=Math.round(rnd(20,40)*f*D.t),k=rollItem(true),sup=pick(["bomb","rope","whet","pick"]);
-  S.gold+=g;R.fight=null;R.miniDone=true;
+  S.gold+=g;R.fight=null;R.miniDone=true;SE("defeat",{n:MINI[R.d],kind:"mini",d:R.d});
   const where=giveSupply(sup);
   R.event=`${pre}The ${MINI[R.d]} collapses! +${g}G, ${dropMats(2).join(", ")}`+(bagAdd(k)?`, ${an(IT[k].n)}`:"")+(where?`, and ${an(IT[sup].n)} (${where}).`:".");
   {const x=xpm(25*D.t);R.event+=` +${x} XP.`;sfx.win();rlog(R.event);addXp(x)}save();render();
@@ -892,7 +1099,7 @@ function bossWin(pre){
   const g=Math.round(rnd(40,80)*f*D.t),x=xpm(40*D.t);
   S.gold+=g;addMat(D.heart,1);R.got[D.heart]=(R.got[D.heart]||0)+1;
   const k=rollItem(true);const fit=bagAdd(k);
-  R.fight=null;R.bossDone=true;
+  R.fight=null;R.bossDone=true;SE("defeat",{n:D.boss,kind:"boss",d:R.d});
   R.event=`${pre}The ${D.boss} falls! +${g}G, ${MATS[D.heart]}${fit?`, and ${an(IT[k].n)}`:""}.`+(first?" First victory: +1 skill point!":"");
   if(Math.random()<.35+.05*sk("keen")){R.secret=true;R.event+=" Behind the lair, a hidden stairway grinds open...";}
   R.event+=` +${x} XP.`;rlog(R.event);sfx.win();addXp(x);
@@ -916,7 +1123,7 @@ function canUse(k){
 function useItem(src,i){
   const R=S.run,F=R.fight,arr=src==="belt"?S.belt:R.bag,k=arr[i];
   if(!k||!canUse(k))return;
-  arr.splice(i,1);let m;
+  arr.splice(i,1);let m;SE("belt",{k});
   if(HEAL[k]){const h=Math.max(1,Math.round(maxHp()*HEAL[k]));R.hp=Math.min(maxHp(),R.hp+h);m=`You drink the ${IT[k].n} and recover ${h} HP.`;sfx.guard()}
   else if(k==="whet"){R.atkB+=.3;m="You hone your blade: +30% attack for this delve.";sfx.craft()}
   else if(k==="rope"){m=`You yank the Escape Rope and vanish from the ${F.n}'s reach.`;if(F.kind==="boss")R.lair=true;R.fight=null;R.event=m;rlog(m);return save(),render()}
@@ -938,7 +1145,7 @@ function descend(){
   if(sk("wind")){const h=Math.round(maxHp()*.15*sk("wind"));R.hp=Math.min(maxHp(),R.hp+h);m+=` Second Wind restores ${h} HP.`}
   if(R.mod)m+=` This floor is ${MODS[R.mod].n}.`;
   if(R.floor===DUN[R.d].floors)m+=" This is the deepest floor.";
-  R.event=m;rlog(m);sfx.step();save();render();
+  R.event=m;rlog(m);sfx.step();save();render();SE("floor",{d:R.d,floor:R.floor});
 }
 function secretStairs(){
   const R=S.run;R.left=null;R.dropSel=null;R.floor=DUN[R.d].floors+1;R.secretFloor=true;R.secret=false;R.stairs=false;R.lair=false;R.mod=null;R.steps=0;
@@ -978,7 +1185,7 @@ function craft(i){
   S.inv.push(r.out);if(two)S.inv.push(r.out);S.crafted++;
   const xp=xpm(Math.ceil(val(r.out)/20));
   sfx.craft();toast(`Crafted ${two?"<b>two</b> ":""}<b>${IT[r.out].n}</b> (worth about ${val(r.out)}G each) · +${xp} XP`);
-  addXp(xp);save();render();
+  addXp(xp);SE("craft",{k:r.out});save();render();
 }
 
 /* ================= Legacy (prestige) ================= */
@@ -989,7 +1196,6 @@ const PERKS=[
  {k:"name",n:"Renowned Name",max:5,base:2,d:r=>`+${5*r}% → +${5*(r+1)}% customer budgets`},
  {k:"pack",n:"Packrat",max:3,base:2,d:r=>`+${2*r} → +${2*(r+1)} pack space`},
  {k:"luck",n:"Lucky Finds",max:3,base:2,d:r=>`Rarer loot in every dungeon (rank ${r} → ${r+1})`},
- {k:"conn",n:"Old Connections",max:3,base:3,d:r=>`+${r} → +${r+1} customers a day`},
  {k:"loyal",n:"Loyal Staff",max:1,base:3,d:()=>"Your shopkeeper and their experience stay when you retire"},
  {k:"head",n:"Head Start",max:3,base:3,d:r=>`+${2*r} → +${2*(r+1)} bonus skill points`}
 ];
@@ -1030,20 +1236,21 @@ const MOODS=[
  {min:0,k:"thrifty",n:"Thrifty",ic:"\u25bc",tells:["They count their coins twice.","Their coin purse looks awfully thin.","They wince a little at your price tags."]}
 ];
 const moodOf=c=>MOODS.find(m=>c.max/val(c.k)>=m.min);
-function openShop(){S.shop={left:custN(),cur:null,combo:0,today:0,log:[],pct:S.shop?.pct||130,served:0};nextCust();save();render()}
+function openShop(){S.shop={left:custN(),cur:null,combo:0,today:0,log:[],pct:S.shop?.pct||130,served:0};SE("shopOpen");nextCust();save();render()}
 function slog(m){S.shop.log.unshift(m);S.shop.log=S.shop.log.slice(0,6)}
 function nextCust(){
   const P=S.shop;P.cur=null;
   while(P.left>0){
     P.left--;P.served++;
-    let w=Math.random()*CUST.reduce((a,c)=>a+c.w,0),ti=0;for(;ti<CUST.length;ti++){w-=CUST[ti].w;if(w<=0)break}
-    ti=Math.min(ti,CUST.length-1);const C=CUST[ti];
+    const C=pickCust(),ti=CUST.indexOf(C);
     const m=S.inv.filter(k=>!C.cats||C.cats.includes(IT[k].c));
     if(!m.length){slog(`A ${C.n.toLowerCase()} browsed but found nothing they wanted.`);continue}
-    const k=C.n==="Noble"?m.reduce((a,b)=>val(b)>val(a)?b:a):pick(m);
+    const rel=m.filter(x=>IT[x].sec);
+    const k=C.k==="schol"&&rel.length?pick(rel):C.k==="noble"?m.reduce((a,b)=>val(b)>val(a)?b:a):pick(m);
     const max=Math.round(val(k)*rnd(...C.bud)*signB());
     P.cur={t:ti,k,max,pat:patMax(),pmax:patMax(),counter:null,fb:"",phase:"offer",offer:Math.max(1,Math.round(max*rnd(.72,.88)))};
     P.cur.tell=pick(moodOf(P.cur).tells);
+    SE("customer",{type:C.k,mood:moodOf(P.cur).k});
     return;
   }
 }
@@ -1054,13 +1261,13 @@ function sell(price){
   const x=xpm(Math.ceil(v/8*(1+.25*P.combo)));
   slog(`Sold ${IT[c.k].n} for ${fmt(price)}G · +${x} XP${perfect?` · great price! combo ×${P.combo}`:""}`);
   sfx.coin();if(perfect&&P.combo>1)toast(`Haggle combo <b>×${P.combo}</b> · bonus XP`);
-  addXp(x);nextCust();save();render();
+  addXp(x);SE("sale",{above:price>v,haggled:c.phase==="haggle"});nextCust();save();render();
 }
 function offer(){
   const P=S.shop,c=P.cur,price=Math.max(1,Math.round(val(c.k)*P.pct/100));
   if(price<=c.max)return sell(price);
   c.pat--;
-  if(c.pat<=0){slog(`The ${CUST[c.t].n.toLowerCase()} left in a huff.`);P.combo=0;sfx.fail();nextCust();return save(),render()}
+  if(c.pat<=0){slog(`The ${CUST[c.t].n.toLowerCase()} left in a huff.`);P.combo=0;sfx.fail();SE("walk");nextCust();return save(),render()}
   c.fb=price>c.max*1.3?"“That's way too much!”":price>c.max*1.1?"“Hmm, that's steep.”":"“Just a little lower...”";
   c.counter=Math.max(c.counter||1,Math.round(Math.min(price-1,c.max*rnd(.85,.97))));
   sfx.hurt();save();render();
@@ -1108,9 +1315,9 @@ function vTown(){
   <section><h2>Market today</h2><div class="chips">${chips}</div>${S.news?`<p class="hint" style="margin-top:8px">${S.news}</p>`:""}</section>
   <button class="big" data-act="shop" ${S.inv.length?"":"disabled"}>Open the shop<small>${S.inv.length?`Up to ${custN()} customers · ${S.inv.length} item${S.inv.length===1?"":"s"} in stock · uses the day`:"Your shelves are empty. Go delving first."}</small></button>
   <section><h2>Go delving <small>${S.crew.length?`${nameList(S.crew.map(k=>ST(k).n))} mind${S.crew.length>1?"":"s"} the shop`:"uses the day"}</small></h2><div class="list">
-    ${DUN.map((d,i)=>`<button class="row" data-act="delve" data-i="${i}" ${L<d.lvl?"disabled":""}>
-      <span><b>${d.n}</b>${S.bosses[i]?`<span class="crown">Boss beaten</span>`:""}</span><span class="sub">${L<d.lvl?`Unlocks at level ${d.lvl}`:`${d.floors} floors · boss: ${d.boss}`}</span>
-      <span class="right">${L<d.lvl?"Locked":"Enter"}</span></button>`).join("")}
+    ${DUN.map((d,i)=>{const open=dunOpen(i);if(d.hidden&&!open)return "";return `<button class="row" data-act="delve" data-i="${i}" ${open?"":"disabled"}>
+      <span><b>${d.n}</b>${S.bosses[i]?`<span class="crown">Boss beaten</span>`:""}</span><span class="sub">${open?`${d.floors} floors · boss: ${d.boss}`:DUN_LOCK[i]}</span>
+      <span class="right">${open?"Enter":"Locked"}</span></button>`}).join("")}
   </div></section>
   ${staffSection()}
   <section><h2>Supply belt <small>${S.belt.length}/${BELT} · tap to unequip</small></h2>
@@ -1390,6 +1597,7 @@ app.addEventListener("click",e=>{
     drop:()=>dropPick(+b.dataset.i), pickup:pickUp,
     equip:()=>equip(b.dataset.k), unequip:()=>unequip(+b.dataset.i), secret:secretStairs,
     learn:()=>learn(b.dataset.k),
+    payDebt, repair:()=>repair(b.dataset.k),
     hire:()=>hire(b.dataset.k), fireAsk:()=>{confirmFire=b.dataset.k;render()}, fireNo:()=>{confirmFire=null;render()}, fireDo:()=>fire(b.dataset.k),
     keep:()=>{const k=b.dataset.k;if(S.keep[k])delete S.keep[k];else S.keep[k]=true;save();render()},
     reportOk:()=>{S.report=null;save();render()},
