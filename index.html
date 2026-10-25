@@ -236,7 +236,7 @@ const ITEMS=[
  ["halberd","Steel Halberd","weapon",420,3],["helm","Knight's Helm","armor",380,3],["draught","Ember Draught","potion",260,3],["bird","Clockwork Bird","trinket",600,3],["ruby","Ruby","gem",540,3],
  ["rune","Runeblade","weapon",1400,4],["scale","Wyrmscale Mail","armor",1600,4],["elixir","Starlight Elixir","potion",950,4],["orrery","Brass Orrery","trinket",2100,4],["sapphire","Star Sapphire","gem",2400,4],
  ["charm","Mossheart Charm","trinket",320,1,1],["lantern","Foreman's Lantern","trinket",950,2,1],["crown","Cinder Crown","gem",2800,3,1],["aegis","Astral Aegis","armor",7500,4,1],
- ["bomb","Fire Bomb","supply",45,1],["rope","Escape Rope","supply",30,1],["whet","Whetstone","supply",40,1],["pick","Lockpick","supply",25,1],
+ ["bomb","Fire Bomb","supply",45,1],["rope","Escape Rope","supply",30,1],["ladder","Ladder","supply",55,1],["whet","Whetstone","supply",40,1],["pick","Lockpick","supply",25,1],
  ["idol","Mossglass Idol","trinket",900,1,0,1],["gpick","Golden Pickaxe","weapon",2600,2,0,1],["feather","Phoenix Feather","trinket",7000,3,0,1],["star","Fallen Star","gem",20000,4,0,1]
 ].map(([k,n,c,b,t,craft,sec])=>({k,n,c,b,t,craft:!!craft,sec:!!sec}));
 const IT=Object.fromEntries(ITEMS.map(i=>[i.k,i]));
@@ -256,6 +256,7 @@ const ATF=[.95,1.25,1.75,2.85]; // monster attack scaling by tier
 const RECIPES=[
  {out:"bomb",items:{},mats:{scrap:1,gel:1}},
  {out:"rope",items:{},mats:{fiber:3}},
+ {out:"ladder",items:{},mats:{fiber:2,scrap:1}},
  {out:"pick",items:{},mats:{scrap:2}},
  {out:"whet",items:{},mats:{scrap:1,ore:1}},
  {out:"tonic",items:{herb:2},mats:{gel:1}},
@@ -669,7 +670,7 @@ TIPS.t_pay={w:"Wren",t:"When you've coin to spare, pay the Celestials from the *
 TIPS.t_combat={w:"Wren",t:"Attack deals damage; if the enemy survives, it hits back. Guard means you don't attack that turn, but the enemy deals about 70% less damage. Flee might fail, giving the enemy a free hit.",ch:1,hl:{sel:"[data-act=attack],[data-act=guard],[data-act=flee]"}};
 TIPS.t_hit={w:"Wren",t:"That number's a rough guess at its damage. Plan around it.",ch:1,hl:{sel:".mdmg"}};
 TIPS.t_loot={w:"Wren",t:"Everything has a price. Mind your pack space.",ch:1,hl:{sel:"#packcap"}};
-TIPS.t_belt={w:"Wren",t:"A supply costs your turn. Use it before you need it, not after.",ch:1,hl:{sel:"#usepanel"}};
+TIPS.t_belt={w:"Wren",t:"Combat supplies cost your turn. Ladders work between fights to skip a floor. Use supplies before you need them, not after.",ch:1,hl:{sel:"#usepanel"}};
 TIPS.t_room={w:"Wren",t:"The cellar's strange since the star fell. Not all strange is bad.",ch:1};
 TIPS.t_floor={w:"Wren",t:"Push deeper, or head up with what you've got. No shame in a short day.",ch:1,hl:{sel:"[data-act=descend],[data-act=leave]"}};
 TIPS.t_market={w:"Wren",t:"Prices shift daily. Green means folk want it.",ch:1,hl:{sel:"#mkt",tab:"town",town:true}};
@@ -1706,11 +1707,13 @@ function canUse(k){
   const R=S.run;if(!R||R.ev)return false;
   if(HEAL[k])return R.hp<maxHp();
   if(k==="bomb"||k==="rope")return !!R.fight;
+  if(k==="ladder")return !R.fight&&!R.secretFloor&&R.floor<DUN[R.d].floors&&!floorSealed(R.d,R.floor+1);
   return k==="whet";
 }
 function useItem(src,i){
   const R=S.run,F=R.fight,arr=src==="belt"?S.belt:R.bag,k=arr[i];
   if(!k||!canUse(k))return;
+  if(k==="ladder")return src==="belt"&&descend(true);
   arr.splice(i,1);let m;SE("belt",{k});
   if(HEAL[k]){const h=Math.max(1,Math.round(maxHp()*HEAL[k]));R.hp=Math.min(maxHp(),R.hp+h);m=`You drink the ${IT[k].n} and recover ${h} HP.`;sfx.guard()}
   else if(k==="whet"){R.atkB+=.3;m="You hone your blade: +30% attack for this delve.";sfx.craft()}
@@ -1728,14 +1731,16 @@ function equip(k){if(S.belt.length>=BELT||!S.inv.includes(k))return;S.inv.splice
 function unequip(i){if(S.belt[i]){S.inv.push(S.belt.splice(i,1)[0]);save();render()}}
 
 /* ---------- Movement ---------- */
-function descend(){
-  if(floorSealed(S.run.d,S.run.floor+1))return;
-  const R=S.run;R.floor++;R.stairs=false;R.steps=0;R.ev=null;R.left=null;R.dropSel=null;R.mod=R.nextMod!==undefined?R.nextMod:rollMod(R.floor);delete R.nextMod;
-  let m=`You descend to floor ${R.floor}.`;
+function descend(byLadder=false){
+  const R=S.run,D=R&&DUN[R.d],ladder=byLadder?S.belt.indexOf("ladder"):-1;
+  if(!R||R.fight||R.ev||R.secretFloor||R.floor>=D.floors||(!byLadder&&!R.stairs)||(byLadder&&ladder<0)||floorSealed(R.d,R.floor+1))return false;
+  if(byLadder){S.belt.splice(ladder,1);SE("belt",{k:"ladder"})}
+  R.floor++;R.stairs=false;R.steps=0;R.ev=null;R.left=null;R.dropSel=null;R.mod=byLadder?rollMod(R.floor):R.nextMod!==undefined?R.nextMod:rollMod(R.floor);delete R.nextMod;
+  let m=byLadder?`You secure the Ladder and climb down to floor ${R.floor}.`:`You descend to floor ${R.floor}.`;
   if(sk("wind")){const h=Math.round(maxHp()*.15*sk("wind"));R.hp=Math.min(maxHp(),R.hp+h);m+=` Second Wind restores ${h} HP.`}
   if(R.mod)m+=` This floor is ${MODS[R.mod].n}.`;
   if(R.floor===DUN[R.d].floors)m+=" This is the deepest floor.";
-  R.event=m;rlog(m);sfx.step();save();render();SE("floor",{d:R.d,floor:R.floor});
+  R.event=m;rlog(m);sfx.step();save();render();SE("floor",{d:R.d,floor:R.floor});return true;
 }
 function secretStairs(){
   const R=S.run;R.left=null;R.dropSel=null;R.floor=DUN[R.d].floors+1;R.secretFloor=true;R.secret=false;R.stairs=false;R.lair=false;R.mod=null;R.steps=0;
@@ -2045,7 +2050,7 @@ function vTown(){
   ${staffSection()}
   <section id="belt" class="town-section town-supplies"><h2>Supply belt <small>${S.belt.length}/${BELT} · tap to unequip</small></h2>
     <div class="chips">${S.belt.length?S.belt.map((k,i)=>`<button class="chip usebtn on" data-act="unequip" data-i="${i}">${IT[k].n}</button>`).join(""):`<span class="hint">Empty. Supplies on your belt come with you into every dungeon.</span>`}</div>
-    ${eq.length?`<div class="chips" style="margin-top:8px">${eq.map(([k,n])=>`<button class="chip usebtn" data-act="equip" data-k="${k}" ${S.belt.length>=BELT?"disabled":""}>+ ${IT[k].n}${n>1?` ×${n}`:""}</button>`).join("")}</div>`:`<p class="hint" style="margin-top:8px">Craft bombs, ropes, whetstones, and lockpicks in the Workshop. Potions in stock can go on your belt too.</p>`}
+    ${eq.length?`<div class="chips" style="margin-top:8px">${eq.map(([k,n])=>`<button class="chip usebtn" data-act="equip" data-k="${k}" ${S.belt.length>=BELT?"disabled":""}>+ ${IT[k].n}${n>1?` ×${n}`:""}</button>`).join("")}</div>`:`<p class="hint" style="margin-top:8px">Craft bombs, ropes, ladders, whetstones, and lockpicks in the Workshop. Potions in stock can go on your belt too.</p>`}
   </section>
   <section class="town-section town-stock"><h2>Stock <small>${S.inv.length} item${S.inv.length===1?"":"s"}</small></h2>
     ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">${built("obs")&&LORE[k]?`<i class="lore">${LORE[k]}</i><br>`:""}Market value ${val(k)}G · <button class="tag${isKept(k)?" keep":""}" data-act="keep" data-k="${k}">${isKept(k)?"Keep":"For sale"}</button></span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
@@ -2160,8 +2165,8 @@ function usePanel(){
   const R=S.run;
   const items=[...S.belt.map((k,i)=>({k,s:"belt",i})),...R.bag.map((k,i)=>({k,s:"bag",i})).filter(o=>HEAL[o.k])];
   return `<section id="usepanel"><h2>Supplies <small>${R.fight?"using one takes your turn":`belt ${S.belt.length}/${BELT}`}</small></h2>
-    <div class="chips">${items.length?items.map(o=>`<button class="chip usebtn" data-act="use" data-s="${o.s}" data-i="${o.i}" ${canUse(o.k)?"":"disabled"}>${IT[o.k].n}${o.s==="bag"?" (pack)":""}</button>`).join("")
-    :`<span class="hint">No supplies. Equip potions, bombs, ropes, whetstones, or lockpicks on your belt in town.</span>`}</div></section>`;
+    <div class="chips">${items.length?items.map(o=>`<button class="chip usebtn" data-act="use" data-s="${o.s}" data-i="${o.i}" ${canUse(o.k)?"":"disabled"}>${IT[o.k].n}${o.k==="ladder"?R.secretFloor||R.floor>=DUN[R.d].floors?" · deepest floor":floorSealed(R.d,R.floor+1)?" · path sealed":" · skip 1 floor":""}${o.s==="bag"?" (pack)":""}</button>`).join("")
+    :`<span class="hint">No supplies. Equip potions, bombs, ropes, ladders, whetstones, or lockpicks on your belt in town.</span>`}</div></section>`;
 }
 function vDelve(){
   const R=S.run,D=DUN[R.d],F=R.fight,hp=Math.max(0,R.hp);

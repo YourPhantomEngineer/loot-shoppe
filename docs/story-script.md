@@ -77,7 +77,7 @@ Opening entry:
 - **First combat (highlighting Attack, Guard and Flee):** "Attack deals damage; if the enemy survives, it hits back. Guard means you don't attack that turn, but the enemy deals about 70% less damage. Flee might fail, giving the enemy a free hit."
 - **First enemy hit (highlighting the enemy's damage number):** "That number's a rough guess at its damage. Plan around it."
 - **First loot (highlighting your pack space):** "Everything has a price. Mind your pack space."
-- **First supply-belt use (highlighting the supply belt):** "A supply costs your turn. Use it before you need it, not after."
+- **First supply-belt use (highlighting the supply belt):** "Combat supplies cost your turn. Ladders work between fights to skip a floor. Use supplies before you need them, not after."
 - **First room event:** "The cellar's strange since the star fell. Not all strange is bad."
 - **First floor cleared (highlighting the Descend and Return to town buttons):** "Push deeper, or head up with what you've got. No shame in a short day."
 
@@ -152,6 +152,8 @@ Opening entry:
 > **Wren:** "Ugly, but it'll work. Most good things are."
 
 → **Tutorial prompt** (highlighting the supply belt on the Town tab): Wren: "Put it on your belt before you head down."
+
+**Ladder (defined):** a tier 1 supply crafted from 2 Moss Fiber + 1 Scrap Iron. Equip it on the supply belt, then use it between encounters to descend exactly one normal dungeon floor without finding the stairs. The Ladder is consumed only after a successful descent. It cannot be used during combat or room events, on the deepest or secret floor, or to bypass a story-sealed floor.
 
 ## Scene 1.6: Upgrades
 
@@ -367,7 +369,7 @@ Opening entry:
 
 **Unlocks:** Sunken Mine, Smithy (gear upgrades, advanced crafting), Apothecary (bombs, ropes, advanced potions), Tavern (hire board), Marlo and Old Greta. Customers 4 → 5 (Tavern) → 6 (Smithy + Apothecary).
 
-**What each building gates (settled):** the Smithy unlocks gear upgrades above level 3 and tier 3–4 recipes (including the Cinder Crown and Astral Aegis boss crafts). The Apothecary unlocks recipes for bombs, ropes, Healing Tonic, Ember Draught and Starlight Elixir. Lockpicks and whetstones are craftable from the start, so Chapter 1's "craft a supply" goal always works. The Tavern opens the hire board for Marlo, Old Greta and Sable.
+**What each building gates (settled):** the Smithy unlocks gear upgrades above level 3 and tier 3–4 recipes (including the Cinder Crown and Astral Aegis boss crafts). The Apothecary unlocks recipes for bombs, ropes, Healing Tonic, Ember Draught and Starlight Elixir. Lockpicks, whetstones and ladders are craftable from the start, so Chapter 1's "craft a supply" goal always works. The Tavern opens the hire board for Marlo, Old Greta and Sable.
 
 ## Journal: Chapter 3 goals
 
