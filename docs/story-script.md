@@ -1472,7 +1472,7 @@ Regulars whose style you already know are shown as known, whatever your skills.
 
 ### Decisions settled while building the game
 
-- **Fainting:** you lose everything found that run (items and materials) plus 10% of your gold on floor 1, +5% per floor deeper, up to 50% on a secret floor. Wren's line in Scene 1.2 now says so.
+- **Fainting:** you lose everything found that run (items and materials) plus 10% of your total gold (everything you're carrying, not just what you found that run) on floor 1, +5% per floor deeper, up to 50% on a secret floor. Wren's line in Scene 1.2 now says so.
 - **Customers a day:** buildings set a base, not a cap; More Shelves, Showman and Old Connections were removed (see the Town building summary).
 - **Retire and Legacy:** replaced by Grand Reopening and Reputation (see Grand Reopening).
 - **Grand Reopening also resets** skills, materials and belt supplies.

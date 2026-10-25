@@ -1843,7 +1843,7 @@ function faint(){
   const pct=faintPct(R.floor),gold=Math.floor(S.gold*pct);S.gold-=gold;
   sfx.fail();
   const parts=[];if(items)parts.push(`${items} item${items===1?"":"s"}`);if(mats)parts.push(`${mats} material${mats===1?"":"s"}`);
-  parts.push(`<b>${fmt(gold)}G</b> (${Math.round(pct*100)}% of your gold)`);
+  parts.push(`<b>${fmt(gold)}G</b> (${Math.round(pct*100)}% of your total gold)`);
   const lost=parts.length>1?parts.slice(0,-1).join(", ")+(parts.length>2?",":"")+" and "+parts.at(-1):parts[0];
   endDay();
   notice("You fainted",`You were dragged back to town. You lost ${lost}.`);
@@ -2333,7 +2333,7 @@ function vDelve(){
   <div class="card">
     <p class="event" style="margin:0">${R.event}</p>
     ${actions}
-    <p class="hint dhint">${hint} If you faint here you lose everything found this run and ${Math.round(faintPct(R.floor)*100)}% of your gold.</p>
+    <p class="hint dhint">${hint} If you faint here you lose everything found this run and ${Math.round(faintPct(R.floor)*100)}% of your total gold.</p>
   </div>
   ${usePanel()}
   <section><h2>Pack <small id="packcap">${R.bag.length}/${cap()} · worth ~${fmt(R.bag.reduce((a,k)=>a+val(k),0))}G</small></h2>
