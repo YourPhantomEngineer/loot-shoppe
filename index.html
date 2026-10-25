@@ -260,6 +260,8 @@ const SK=[
  {k:"patience",b:"merc",n:"Calm Presence",max:2,d:"Customers allow +1 haggle per rank"},
  {k:"bulk",b:"merc",n:"Master Crafter",max:2,req:2,d:"20% chance per rank to craft two"},
  {k:"boss2",b:"merc",n:"Good Employer",max:2,d:"Your shopkeeper sells for +5% more per rank",need:()=>Object.keys(S.story.hiredEver).length>0,needT:"Hire your first shopkeeper to unlock"},
+ {k:"read",b:"merc",n:"Read the Room",max:3,d:"30% chance per rank to see a new customer's haggling style"},
+ {k:"poker",b:"merc",n:"Poker Face",max:2,d:"25% chance per rank that a turned-down offer costs no patience"},
  {k:"quick",b:"merc",n:"Quick Sale",max:5,d:"Sell stock instantly from the Town tab for 15% of base value, +10% per extra rank"}
 ];
 const dmgAt=l=>4+3*l, hpAt=l=>30+15*l, capAt=l=>6+2*l;
@@ -533,11 +535,11 @@ SCN["1.3"]={title:"Back from the cellar",on:"day",when:d=>d.fromDelve,cards:[
  {s:[["Wren","Not bad. Loot's no good in a sack, though. Stock the shelf and open the doors."]],b:"Continue"}],
  done:()=>tip("t_market")};
 SCN["1.4"]={title:"First shop day",on:"shopOpen",cards:[
- {s:[["Wren","Only three customers a day while the town's like this. More will come when Hollowmere does."],["Wren","They'll make an offer. Their mood tells you how far you can push."]],b:"Open the doors"}]};
+ {s:[["Wren","Only three customers a day while the town's like this."],["Wren","They'll make an offer. Their mood tells you how far you can push."]],b:"Open the doors"}]};
 SCN["1.5"]={title:"The Workshop",on:"tab",when:d=>d.t==="work",cards:[
- {s:[["Wren","Maribel's workbench. She could make a rope out of rumors."],["Wren","Materials from the cellar become supplies. Supplies keep you breathing."]],b:"Continue"}]};
+ {s:[["Wren","Maribel's workbench. She could make a rope out of rumors."],["Wren","Materials from the cellar can be used to craft new items to sell and the supplies you craft can be equipped on your supply belt (in Town Tab) to carry with you when you go delving."]],b:"Continue"}]};
 SCN["1.6"]={title:"Upgrades",on:"tab",when:d=>d.t==="upg",cards:[
- {s:[["Wren","Better shelves, better sales. Better supplies, deeper floors. Spend smart."]],b:"Continue"}]};
+ {s:[["Wren","Gear and Shop upgrades can be purchased here. Sharpen your blades, buy bigger packs. Fix the town to unlock new upgrades."]],b:"Continue"}]};
 SCN["1.7"]={title:"The letter",on:"day",when:()=>S.story.ch===1&&fl("ch1done")&&S.day>S.story.flags.ch1done,cards:[
  {s:["A letter is slipped under the door. Heavy paper. A small gold star pressed into the wax seal."],b:"Open it"},
  {s:[["note","\"To the new proprietor. Now that your aunt has been declared dead, the Celestial Consortium extends its condolences. Her outstanding balance transfers to you. We look forward to a long and orderly relationship. — G. Voss, Guildmaster\""]],b:"Continue"},
@@ -554,7 +556,7 @@ TIPS.t_market={w:"Wren",t:"Prices shift daily. Green means folk want it. Sell in
 TIPS.t_eager={w:"Wren",t:"That one wants it bad. Push.",ch:1};
 TIPS.t_keen={w:"Wren",t:"Interested. A little push won't hurt.",ch:1};
 TIPS.t_fair={w:"Wren",t:"Take a fair deal when you see one.",ch:1};
-TIPS.t_thrifty={w:"Wren",t:"Counting coins. Push and they'll walk.",ch:1};
+TIPS.t_thrifty={w:"Wren",t:"This one's counting coins. Push and they'll walk.",ch:1};
 TIPS.t_sale1={w:"Wren",t:"First coin in the till in a long while. Maribel would've rung the bell twice.",ch:1};
 TIPS.t_above={w:"Wren",t:"Ha. Maybe you've got her nose for it.",ch:1};
 TIPS.t_walk={w:"Wren",t:"Lost one. Happens. Their mood can lie, but their feet never do.",ch:1};
@@ -910,7 +912,15 @@ SCN["epi"]={title:"The Festival of Lights",on:"day",when:()=>fl("vossDone"),card
 /* ---------- Shop themes (Festival Grounds cosmetics) ---------- */
 const THEMES=[{k:"",n:"Lantern",d:"Teal stone and copper. Maribel's original."},{k:"festival",n:"Festival",d:"Crimson bunting and lantern gold."},{k:"starlight",n:"Starlight",d:"Midnight blue and silver, like the summit."}];
 function applyTheme(){document.documentElement.dataset.shop=(S.story&&built("festival")&&S.theme)||""}
-function tipHooks3(type,d){}
+TIPS.t_insult={w:"Wren",t:"Ask double and they'll take it personal. That's two strikes, not one."};
+TIPS.t_sus={w:"Wren",t:"Drop your price that fast and they figure it was never worth it."};
+TIPS.t_return={w:"Wren",t:"Told you. Let 'em walk and some come crawling back."};
+TIPS.t_regular={w:"Wren",t:"That's one of the regulars. They remember how you treat them."};
+TIPS.t_pitch={w:"Wren",t:"Talking it up works on dreamers. Misers just get bored."};
+function tipHooks3(type,d){
+  const T={insult:"t_insult",suspicious:"t_sus",returned:"t_return",pitch:"t_pitch"}[type];if(T)tip(T);
+  if(type==="customer"&&d.reg)tip("t_regular");
+}
 
 function journalExtras2(){
   const st=S.story;let h="";
@@ -952,7 +962,7 @@ function doReopen(){
   const st=S.story;if(st.loan>0||!built("well"))return;
   const g=starsNow(),L=S.legacy;L.stars+=g;L.total+=g;L.count++;
   const keep={legacy:L,sound:S.sound,music:S.music,sold:S.sold,earned:S.earned,crafted:S.crafted,story:st,
-    crew:S.crew,staffs:S.staffs,keep:S.keep,theme:S.theme,day:S.day+1,trend:S.trend};
+    crew:S.crew,staffs:S.staffs,keep:S.keep,regs:S.regs,theme:S.theme,day:S.day+1,trend:S.trend};
   S=Object.assign(fresh(),keep);
   S.inv=[];S.lifeStart=S.earned;S.gold=STARTUP_LOAN+250*pk("fortune");
   st.loan=STARTUP_LOAN;st.loanFrom=loanLender();st.reopens++;
@@ -1039,13 +1049,14 @@ function vossTurn(guard){
 const KEY="dungeon-loot-shoppe-v1",OLD_KEYS=["haggle-hollow-v1"];
 const fresh=()=>({day:1,gold:150,xp:0,inv:["herb","herb","dagger","quartz"],gear:{blade:0,armor:0,pack:0,shelf:0,sign:0},
   trend:{weapon:1,armor:1,potion:1,trinket:1,gem:1},run:null,shop:null,over:null,sold:0,earned:0,sound:true,news:"",
-  mats:{},skills:{},bosses:{},crafted:0,music:true,belt:[],legacy:{stars:0,perks:{},count:0,total:0},lifeStart:0,crew:[],staffs:{},keep:{},report:null,story:Object.assign(newStory(),{queue:["1.1"]})});
+  mats:{},skills:{},bosses:{},crafted:0,music:true,belt:[],legacy:{stars:0,perks:{},count:0,total:0},lifeStart:0,crew:[],staffs:{},keep:{},report:null,regs:{},story:Object.assign(newStory(),{queue:["1.1"]})});
 /* Merge a saved game over fresh defaults; story and crew are left out when the save predates them so migration can infer them. */
 function loadState(o){const n=Object.assign(fresh(),o);if(!o.story)delete n.story;if(!o.crew)delete n.crew;return n}
 let S=fresh();
 try{let raw=localStorage.getItem(KEY);if(!raw)for(const k of OLD_KEYS){raw=localStorage.getItem(k);if(raw){localStorage.setItem(KEY,raw);break}}const s=JSON.parse(raw);if(s)S=loadState(s)}catch(e){}
 function migrate(){
-  S.staffs=S.staffs||{};S.keep=S.keep||{};S.report=S.report||null;
+  S.staffs=S.staffs||{};S.keep=S.keep||{};S.report=S.report||null;S.regs=S.regs||{};
+  if(S.shop&&S.shop.cur&&!S.shop.cur.per){const c=S.shop.cur;c.per="bluffer";c.line="";c.mood=moodOf(c).k}
   migrateStory();
   S.legacy=S.legacy||{stars:0,perks:{},count:0,total:0};S.legacy.perks=S.legacy.perks||{};S.lifeStart=S.lifeStart||0;
   for(const [k,base] of [["conn",3],["loyal",3]]){const r=S.legacy.perks[k]||0;if(r){for(let i=1;i<=r;i++)S.legacy.stars+=base*i;delete S.legacy.perks[k]}}
@@ -1648,22 +1659,56 @@ const MOODS=[
  {min:0,k:"thrifty",n:"Thrifty",ic:"\u25bc",tells:["They count their coins twice.","Their coin purse looks awfully thin.","They wince a little at your price tags."]}
 ];
 const moodOf=c=>MOODS.find(m=>c.max/val(c.k)>=m.min);
-function openShop(){S.shop={left:custN(),cur:null,combo:0,today:0,log:[],pct:S.shop?.pct||130,served:0};SE("shopOpen");nextCust();save();render()}
+/* Haggling styles (hidden): they set the opening offer, patience, counter-offers and whether a walk-out returns. */
+const PERSONA={
+ straight:{n:"Straight shooter",w:25,offer:[1,1],pat:2,maxMul:1,back:.15,lines:["I don't haggle. That's my price.","That's a fair number. It's the only number."]},
+ haggler:{n:"Haggler",w:30,offer:[.65,.8],pat:4,maxMul:1,back:.5,ctr:[.88,.98],lines:["Let's dance, shall we?","Opening bid. You know how this goes."]},
+ bluffer:{n:"Bluffer",w:25,offer:[.8,.9],pat:3,maxMul:1,back:.55,lines:["Take it or leave it.","Final offer. Probably."]},
+ impulse:{n:"Impulse buyer",w:20,offer:[.85,.95],pat:1,maxMul:1.1,back:.25,lines:["Quick, before I talk myself out of it!","I need it. Now. How much?"]}
+};
+function pickPersona(){let w=Math.random()*100;for(const k in PERSONA){w-=PERSONA[k].w;if(w<=0)return k}return "bluffer"}
+const REGS={kid:["Little Wick","Pell and Posy"],town:["Old Tam","Widow Hessa","Farmer Bix"],adv:["Kesta the Bold","Brother Ulm","Rook"],
+  trav:["Jory the Peddler","Saska from the next valley"],craft:["Ilse the cooper","Dob the tanner"],coll:["the Spoon Man","Madame Orsolya"],noble:["Lord Fenwick"],schol:["Professor Quill"]};
+const regRec=n=>(S.regs[n]=S.regs[n]||{p:pickPersona(),trust:0,visits:0});
+const cName=c=>c.reg?c.reg.replace(/^the /,"The "):"The "+CUST[c.t].n.toLowerCase();
+const moodK=c=>c.mood||moodOf(c).k;
+function openShop(){S.shop={left:custN(),cur:null,combo:0,today:0,log:[],pct:S.shop?.pct||130,served:0,back:[],regsToday:[]};SE("shopOpen");nextCust();save();render()}
 function slog(m){S.shop.log.unshift(m);S.shop.log=S.shop.log.slice(0,6)}
+function makeCustomer(C,k){
+  const P=S.shop;let reg=null;
+  const pool=(REGS[C.k]||[]).filter(n=>!P.regsToday.includes(n));
+  if(pool.length&&Math.random()<.35){reg=pick(pool);P.regsToday.push(reg)}
+  const R=reg?regRec(reg):null,per=R?R.p:pickPersona(),Pz=PERSONA[per];
+  const max=Math.max(1,Math.round(val(k)*rnd(...C.bud)*signB()*Pz.maxMul*(1+.05*(R?R.trust:0))));
+  const pat=Pz.pat+sk("patience");
+  const c={t:CUST.indexOf(C),k,max,per,reg,pat,pmax:pat,counter:null,fb:"",phase:"offer",
+    offer:Math.max(1,Math.round(max*rnd(...Pz.offer))),
+    line:per==="bluffer"&&Math.random()<.6?pick(PERSONA.straight.lines):pick(Pz.lines),
+    known:!!(R&&R.visits>0)};
+  c.read=!c.known&&Math.random()<.3*sk("read");
+  c.mood=moodOf(c).k;c.tell=pick(MOODS.find(m=>m.k===c.mood).tells);
+  return c;
+}
+function endVisit(c){if(c.reg&&!c.counted){c.counted=true;regRec(c.reg).visits++}}
 function nextCust(){
-  const P=S.shop;P.cur=null;
+  const P=S.shop;P.cur=null;P.back=P.back||[];P.regsToday=P.regsToday||[];
   while(P.left>0){
     P.left--;P.served++;
-    const C=pickCust(),ti=CUST.indexOf(C);
+    const C=pickCust();
     const m=S.inv.filter(k=>!C.cats||C.cats.includes(IT[k].c));
     if(!m.length){slog(`A ${C.n.toLowerCase()} browsed but found nothing they wanted.`);continue}
     const rel=m.filter(x=>IT[x].sec);
     const k=C.k==="schol"&&rel.length?pick(rel):C.k==="noble"?m.reduce((a,b)=>val(b)>val(a)?b:a):pick(m);
-    const max=Math.round(val(k)*rnd(...C.bud)*signB());
-    P.cur={t:ti,k,max,pat:patMax(),pmax:patMax(),counter:null,fb:"",phase:"offer",offer:Math.max(1,Math.round(max*rnd(.72,.88)))};
-    P.cur.tell=pick(moodOf(P.cur).tells);
-    SE("customer",{type:C.k,mood:moodOf(P.cur).k});
+    P.cur=makeCustomer(C,k);
+    SE("customer",{type:C.k,mood:P.cur.mood,reg:!!P.cur.reg});
     return;
+  }
+  while(P.back.length){ // customers who walked out may come back after the last customer, with a better offer
+    const c=P.back.shift();
+    if(!S.inv.includes(c.k)){slog(`${cName(c)} came back, but the ${IT[c.k].n} was gone.`);continue}
+    Object.assign(c,{phase:"offer",back:true,pat:1,pmax:1,counter:null,fb:"",sus:false,lastAsk:null});
+    c.offer=Math.min(c.max,Math.max(c.offer+1,Math.round(c.max*rnd(.9,.98))));
+    P.cur=c;slog(`${cName(c)} came back!`);SE("returned");return;
   }
 }
 function sell(price){
@@ -1671,26 +1716,58 @@ function sell(price){
   S.inv.splice(S.inv.indexOf(c.k),1);S.gold+=price;P.today+=price;S.earned+=price;S.sold++;
   const perfect=price/c.max>=.92;P.combo=perfect?P.combo+1:0;
   const x=xpm(Math.ceil(v/8*(1+.25*P.combo)));
-  slog(`Sold ${IT[c.k].n} for ${fmt(price)}G · +${x} XP${perfect?` · great price! combo ×${P.combo}`:""}`);
+  let note="";
+  if(c.reg){const R=regRec(c.reg);
+    if(price<=v*1.05){R.trust=Math.min(3,R.trust+1);note=` ${cName(c)} will remember the fair deal.`}
+    else if(price>=c.max*.95&&price>v*1.15){R.trust=Math.max(-3,R.trust-1);note=` ${cName(c)} won't forget that price.`}}
+  endVisit(c);
+  slog(`Sold ${IT[c.k].n} for ${fmt(price)}G · +${x} XP${perfect?` · great price! combo ×${P.combo}`:""}${note}`);
   sfx.coin();if(perfect&&P.combo>1)toast(`Haggle combo <b>×${P.combo}</b> · bonus XP`);
   addXp(x);SE("sale",{above:price>v,haggled:c.phase==="haggle"});nextCust();save();render();
 }
+function custLeaves(c,msg){const P=S.shop;slog(msg);endVisit(c);P.combo=0;sfx.fail();SE("walk");nextCust();save();render()}
 function offer(){
-  const P=S.shop,c=P.cur,price=Math.max(1,Math.round(val(c.k)*P.pct/100));
+  const P=S.shop,c=P.cur,v=val(c.k),price=Math.max(1,Math.round(v*P.pct/100));
   if(price<=c.max)return sell(price);
-  c.pat--;
-  if(c.pat<=0){slog(`The ${CUST[c.t].n.toLowerCase()} left in a huff.`);P.combo=0;sfx.fail();SE("walk");nextCust();return save(),render()}
-  c.fb=price>c.max*1.3?"“That's way too much!”":price>c.max*1.1?"“Hmm, that's steep.”":"“Just a little lower...”";
-  c.counter=Math.max(c.counter||1,Math.round(Math.min(price-1,c.max*rnd(.85,.97))));
+  const insult=price>c.max*1.3;
+  const newlySus=!c.sus&&c.lastAsk&&price<c.lastAsk*.8;if(newlySus)c.sus=true;
+  c.lastAsk=price;
+  let cost=insult?2:1;const poker=Math.random()<.25*sk("poker");if(poker)cost=insult?1:0;
+  c.pat-=cost;
+  if(insult)SE("insult");if(newlySus)SE("suspicious");
+  if(c.pat<=0)return custLeaves(c,`${cName(c)} left in a huff.`);
+  c.fb=(insult?"\u201cThat's an insult!\u201d":price>c.max*1.1?"\u201cHmm, that's steep.\u201d":"\u201cJust a little lower...\u201d")
+    +(poker&&cost<(insult?2:1)?" Your poker face holds.":"")+(c.sus?" They narrow their eyes: you came down awfully fast.":"");
+  if(c.per==="straight"){c.counter=c.offer;c.fb+=" \u201cI said my price.\u201d"}
+  else if(!(c.sus&&c.counter))c.counter=Math.max(c.counter||1,Math.round(Math.min(price-1,c.max*rnd(...(PERSONA[c.per].ctr||[.85,.97])))));
   sfx.hurt();save();render();
 }
 function startHaggle(){
-  const P=S.shop,c=P.cur,v=val(c.k);if(!c)return;
+  const P=S.shop,c=P.cur;if(!c)return;const v=val(c.k);
   c.phase="haggle";c.counter=c.offer;
   P.pct=Math.max(50,Math.round(Math.max(v,c.offer)/v*100));
   save();render();
 }
-function refuse(){const P=S.shop;slog(`You turned away a ${CUST[P.cur.t].n.toLowerCase()}.`);P.combo=0;nextCust();save();render()}
+function letWalk(){
+  const P=S.shop,c=P.cur;if(!c)return;P.combo=0;endVisit(c);
+  if(!c.back&&Math.random()<PERSONA[c.per].back)P.back.push(c);
+  slog(`${cName(c)} walked out.`);nextCust();save();render();
+}
+const sweetPick=c=>{const o=S.inv.filter(x=>x!==c.k&&val(x)<=val(c.k)*.5);return o.length?o.reduce((a,b)=>val(b)<val(a)?b:a):null};
+function pitchTalk(){
+  const c=S.shop.cur;if(!c||c.pitched||c.phase!=="haggle")return;
+  c.pitched=true;c.pat--;SE("pitch");
+  if(c.pat<=0)return custLeaves(c,`${cName(c)} got bored of the sales pitch and left.`);
+  if(Math.random()<.6){c.max=Math.round(c.max*rnd(1.05,1.1));c.fb="They lean in. You can see them warming to it."}
+  else c.fb="They don't look convinced.";
+  save();render();
+}
+function pitchSweet(){
+  const c=S.shop.cur;if(!c||c.pitched||c.phase!=="haggle")return;const x=sweetPick(c);if(!x)return;
+  c.pitched=true;S.inv.splice(S.inv.indexOf(x),1);
+  c.max+=Math.round(Math.min(val(x)*1.5,c.max*.15));c.fb=`You throw in ${an(IT[x].n)}. They look pleased.`;
+  SE("pitch");sfx.coin();save();render();
+}
 
 /* ================= Views ================= */
 const app=document.getElementById("app");
@@ -1900,35 +1977,40 @@ function vShop(){
   const P=S.shop,c=P.cur;
   let body;
   if(c){
-    const C=CUST[c.t],v=val(c.k),price=Math.max(1,Math.round(v*P.pct/100)),pm=c.pmax||3,M=moodOf(c);
-    const sMax=Math.max(200,P.pct+40);
-    const head=`<div class="custhead"><span class="who">${C.n}</span><span class="mood ${M.k}">${M.ic} ${M.n}</span></div>
+    const C=CUST[c.t],v=val(c.k),price=Math.max(1,Math.round(v*P.pct/100)),pm=c.pmax||3,M=MOODS.find(m=>m.k===moodK(c));
+    const sMax=Math.max(200,P.pct+40),R=c.reg?S.regs[c.reg]:null;
+    const style=c.known?`You know their style: ${PERSONA[c.per].n}`:c.read?`You read them: ${PERSONA[c.per].n}`:"";
+    const trust=R&&c.known&&R.trust?(R.trust>0?`Remembers your fair deals (+${R.trust*5}% budget)`:`Still sore about your prices (${R.trust*5}% budget)`):"";
+    const head=`<div class="custhead"><span class="who">${c.reg?`${cName(c)} <span class="sub">${C.n} · Regular</span>`:C.n}${c.back?` <span class="sub">· back with a better offer</span>`:""}</span><span class="mood ${M.k}">${M.ic} ${M.n}</span></div>
+      ${style||trust?`<div class="chips">${style?`<span class="chip up">${style}</span>`:""}${trust?`<span class="chip ${R.trust>0?"up":"down"}">${trust}</span>`:""}</div>`:""}
       ${c.tell?`<p class="tell">${c.tell}</p>`:""}
-      <p class="quote">“${C.say(IT[c.k].n)}”</p>
-      <div class="row" style="padding:0;border:0"><span><b>${IT[c.k].n}</b><span class="cat">${IT[c.k].c}</span></span><span class="sub">Market value ${v}G</span><span class="right">Patience ${"●".repeat(Math.max(0,c.pat))}${"○".repeat(Math.max(0,pm-c.pat))}</span></div>`;
+      <p class="quote">\u201c${C.say(IT[c.k].n)}\u201d</p>
+      <div class="row" style="padding:0;border:0"><span><b>${IT[c.k].n}</b><span class="cat">${IT[c.k].c}</span></span><span class="sub">Market value ${v}G</span><span class="right">Patience ${"\u25cf".repeat(Math.max(0,c.pat))}${"\u25cb".repeat(Math.max(0,pm-c.pat))}</span></div>`;
     if(c.phase==="offer")body=`<div class="card">
       ${head}
       <div class="offerbox"><span class="lbl">Their offer</span><b>${fmt(c.offer)}G</b><span class="sub">${Math.round(c.offer/v*100)}% of market</span></div>
+      ${c.line?`<p class="quote">\u201c${c.back?"Fine. That's as high as I go.":c.line}\u201d</p>`:""}
       <div class="btns">
         <button class="btn gold" data-act="acceptOffer">Accept ${fmt(c.offer)}G</button>
         <button class="btn" data-act="haggle">Haggle</button>
-        <button class="btn alt" data-act="refuse">Refuse sale</button>
+        <button class="btn alt" data-act="refuse">Let them walk</button>
       </div>
-      <p class="hint">Their mood hints at how far they'll go: ▲▲ Eager pays well above market, ▼ Thrifty wants a bargain.</p>
+      <p class="hint">Their mood hints at how far they'll go: \u25b2\u25b2 Eager pays well above market, \u25bc Thrifty wants a bargain. Some customers open at their limit.</p>
     </div>`;
-    else body=`<div class="card">
+    else{const sw=sweetPick(c);body=`<div class="card">
       ${head}
       <label for="price" class="lbl">Your price</label>
       <div class="price"><b id="pv">${fmt(price)}G</b><span id="pp" class="sub">${P.pct}% of market</span></div>
       <input type="range" id="price" min="50" max="${sMax}" step="1" value="${P.pct}">
-      ${c.fb?`<p class="fb bad">${c.fb} They offer ${fmt(c.counter)}G.</p>`:`<p class="hint">Their opening offer was ${fmt(c.offer||c.counter||0)}G.</p>`}
+      ${c.fb?`<p class="fb ${/warming|pleased/.test(c.fb)?"":"bad"}">${c.fb}${c.counter&&!/warming|pleased|convinced/.test(c.fb)?` They offer ${fmt(c.counter)}G.`:""}</p>`:`<p class="hint">Their opening offer was ${fmt(c.offer||c.counter||0)}G.</p>`}
       <div class="btns">
         <button class="btn" data-act="offer">Offer</button>
         ${c.counter?`<button class="btn gold" data-act="accept">Accept ${fmt(c.counter)}G</button>`:""}
-        <button class="btn alt" data-act="refuse">Refuse sale</button>
+        <button class="btn alt" data-act="refuse">Let them walk</button>
       </div>
-      <p class="hint">Sell close to the most they'll pay to build a combo for bonus XP.</p>
-    </div>`;
+      ${c.pitched?"":`<div class="btns"><button class="btn alt sm" data-act="pitchTalk">Talk it up (\u22121 patience)</button><button class="btn alt sm" data-act="pitchSweet" ${sw?"":"disabled"}>${sw?`Throw in ${an(IT[sw].n)}`:"Nothing small to throw in"}</button></div>`}
+      <p class="hint">Sell close to the most they'll pay to build a combo for bonus XP. Ask far too much and they take it as an insult.</p>
+    </div>`}
   }else{
     body=`<div class="card"><p class="event" style="margin:0">That's everyone for today. You earned <span class="coin">${fmt(P.today)}G</span>.</p>
       <button class="btn" data-act="close">Close up and end the day</button></div>`;
@@ -1938,9 +2020,9 @@ function vShop(){
   <div class="stats">
     <div class="stat"><span class="lbl">Gold</span><b class="coin">${fmt(S.gold)}G</b></div>
     <div class="stat"><span class="lbl">Today</span><b>+${fmt(P.today)}G</b></div>
-    <div class="stat"><span class="lbl">Combo</span><b>×${P.combo}</b></div>
+    <div class="stat"><span class="lbl">Combo</span><b>\u00d7${P.combo}</b></div>
   </div>
-  <p class="hint" style="margin:0">Customer ${Math.min(P.served,custN())} of ${custN()} · ${S.inv.length} item${S.inv.length===1?"":"s"} left in stock</p>
+  <p class="hint" style="margin:0">Customer ${Math.min(P.served,custN())} of ${custN()}${P.back&&P.back.length?` · ${P.back.length} might come back`:""} · ${S.inv.length} item${S.inv.length===1?"":"s"} left in stock</p>
   ${body}
   <section><h2>Today's sales</h2><ul class="log">${P.log.length?P.log.map(l=>`<li>${l}</li>`).join(""):`<li>No sales yet.</li>`}</ul></section>
   ${c?`<button class="ghost" data-act="close" style="align-self:center">Close early</button>`:""}`;
@@ -1999,7 +2081,7 @@ app.addEventListener("click",e=>{
     quick:()=>{const k=b.dataset.k;if(!sk("quick")||!S.inv.includes(k))return;const p=quickPrice(k);
       S.inv.splice(S.inv.indexOf(k),1);S.gold+=p;S.earned+=p;S.sold++;sfx.coin();toast(`Sold ${an(IT[k].n)} for <b>${fmt(p)}G</b>.`);save();render()},
     explore, attack, guard, flee, descend, boss:challengeBoss, leave:leaveDungeon,
-    offer, accept:()=>sell(S.shop.cur.counter), acceptOffer:()=>sell(S.shop.cur.offer), haggle:startHaggle, refuse, close:endDay,
+    offer, accept:()=>sell(S.shop.cur.counter), acceptOffer:()=>sell(S.shop.cur.offer), haggle:startHaggle, refuse:letWalk, pitchTalk, pitchSweet, close:endDay,
     exportSave:()=>{
       save();saveCode="LS1:"+btoa(unescape(encodeURIComponent(JSON.stringify(S))));saveBox="export";
       const done=ok=>{saveMsg=ok?"Copied to your clipboard. Paste it somewhere safe, like a note.":"Select the code below and copy it.";render();if(!ok){const t=document.getElementById("exportCode");t&&t.select()}};
