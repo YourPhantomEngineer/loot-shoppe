@@ -10,6 +10,18 @@ Oct 24, 2026 · @Boss
 
 **Portraits:** every speaking character has a 16×16 pixel-art portrait beside their lines and tips. So does every customer type, on the shop customer card (regulars use their type's portrait). Staff also have portraits on their staff cards and hire rows. Looks, for anyone adding scenes: Wren (brown hair with a grey streak and ponytail, scar, green cloak), Maribel (long silver hair, plum shawl), Pip (messy ginger hair, freckles, apron, broom), Marlo (slick black hair, mustache, blue vest with gold), Old Greta (white bun, glasses, green shawl), Bram (bald, black beard, soot, leather apron), Sable (dark hood, pale skin, silver eyes), Voss (white hair, gold cracks in pale skin, blue-and-gold coat with a star), Ember Knight (blackened helm, burning visor), Kobold Foreman (hard hat, red scales, safety vest), Celestial Executor (gold armor, star seal for a face). A new speaking character needs a portrait added to match.
 
+**Ending a chapter:** finishing every goal doesn't move the story on by itself. Wren tells the player, and a button on the Journal's chapter card starts the next one, so the player chooses when.
+
+- **Chapter 1:** Wren tip (highlighting the Journal tab, then the Sleep until morning button): "That's everything for now. Get some sleep. Open the **Journal** and turn in for the night; Chapter 2 starts in the morning." The Journal card says "Every goal is done. Chapter 2 begins in the morning." with a **Sleep until morning** button that ends the day. The letter (Scene 1.7) arrives the next morning. Ending the day any other way (a delve or a shop day) also works.
+- **Chapters 2–5:** Wren tip (highlighting the Journal tab, then the Start Chapter button): "That's every goal this chapter. Open the **Journal** and start the next one when you're ready." The Journal card shows **Start Chapter N: Title**. Tapping it writes the chapter-complete entry, applies the chapter's unlocks and starts the next chapter.
+- **Chapter 6:** no button. The epilogue plays on its own when the player gets home after Voss.
+
+**Fainting** shows a pop-up the player dismisses ("You fainted: You were dragged back to town. You lost …"). It appears ahead of any other waiting prompt.
+
+**Item info:** every item shows a small (i). Tapping it opens a card with the item's type and market value, what it does (for potions and supplies), where it's found (which dungeon, rarer in neighboring ones, secret floors, boss and mini-boss drops, dungeon peddlers) and its Workshop recipe.
+
+**Delve buffs** (like the Whetstone's or the shrine's attack bonus) show under the HP bar at the top of the delve screen.
+
 # Chapter 1: Dust and Doorbells
 
 **Chapter goal:** teach the core loop (delve → sell → haggle → craft) and introduce Wren, Maribel, and the Celestials.
@@ -469,7 +481,7 @@ Opening entry:
 
 > **Wren:** "That's the Celestial seal."
 >
-> **Wren:** "Could be nothing. Mining guilds hire anyone. Could be nothing."
+> **Wren:** "Could be nothing. Mining guilds hire anyone."
 
 **Journal note:** *First shard recovered. The kobolds were digging for it on Celestial orders.*
 

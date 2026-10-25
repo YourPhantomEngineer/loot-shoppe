@@ -3,7 +3,8 @@ window.T={
   seenLog:[],
   tipsSeen:[],
   through(choice){ // click through every queued scene (taking `choice` on choice cards) and dismiss every pop-up
-    let n=0;while((scn||tipOpen||(S.story&&S.story.hl))&&n<400){
+    let n=0;while((scn||tipOpen||(S.story&&S.story.hl)||(typeof chReady==='function'&&chReady()&&!S.run&&!S.shop))&&n<400){
+      if(!scn&&!tipOpen&&!S.story.hl){T.chStarted=(T.chStarted||0)+1;nextChapter();n++;continue}
       if(!scn&&!tipOpen){const id=S.story.hl,H=hlSpec();T.hlSeen=(T.hlSeen||[]);
         if(H){const inTown=!S.run&&!S.shop;if(H.tab&&inTown)tab=H.tab;render();T.hlSeen.push(id+(S.story.hl!==id?":DROPPED":hlShown?":ok":H.town&&!inTown?":waiting":":notshown"))}
         if(H&&H.town&&(S.run||S.shop)){break}

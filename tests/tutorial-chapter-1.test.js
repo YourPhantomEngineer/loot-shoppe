@@ -52,7 +52,7 @@ const out=await p.evaluate(()=>{
   L.push("-- second delve for the belt");
   tap('[data-act=delve][data-i="0"]');
   g=0;while(S.run&&!S.story.tips.t_belt&&g<300){
-    if(S.run.fight){S.run.hp=Math.min(S.run.hp,10);const u=app.querySelector("#usepanel [data-act=use]:not([disabled])");if(u){L.push("  tap use belt");u.click();drain();continue}tap("[data-act=attack]")}
+    if(S.run.fight){S.run.hp=Math.min(S.run.hp,10);const u=app.querySelector("#usepanel [data-act=use]:not([disabled]):not([aria-disabled=true])");if(u){L.push("  tap use belt");u.click();drain();continue}tap("[data-act=attack]")}
     else if(S.run.ev)tap("[data-act=ev]:last-child");else tap("[data-act=explore]");
     g++}
   if(app.querySelector(".hl"))tapBlank();
