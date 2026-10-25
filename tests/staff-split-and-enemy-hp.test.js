@@ -15,6 +15,11 @@ const r=await p.evaluate(()=>{const o={};T.through();
   // never more than a staff member's daily limit
   S.crew=["pip","marlo","greta","sable"];for(const k of S.crew)S.staffs[k]={sold:0,wageB:0,rateB:0};S.inv=Array(30).fill("dagger");S.gold=1e7;
   const rep=staffShift(),c=n=>rep.lines.filter(l=>l.startsWith(n+" sold")).length;o.limits=c("Pip")<=staffSells("pip")&&c("Sable")<=staffSells("sable");
+  // staff aren't held to the shop's customers a day, only their own limits
+  let most=0,within=true;for(let d=0;d<20;d++){for(const k of S.crew)S.staffs[k]={sold:0,wageB:0,rateB:-.5};S.inv=[...Array(20).fill("dagger"),...Array(20).fill("ring")];S.gold=1e7;
+    const r2=staffShift(),n=r2.lines.filter(l=>/ sold | traded /.test(l)).length;most=Math.max(most,n);
+    within=within&&["Pip","Marlo","Old Greta","Sable"].every((nm,i)=>r2.lines.filter(l=>l.startsWith(nm+" sold")||l.includes(" traded "+nm+" ")).length<=staffSells(S.crew[i]))}
+  o.pastShopLimit=most>custN()+2&&within;o.most=most;o.custN=custN();
   // enemy HP
   S.crew=[];startDelve(0);T.through();S.run.hp=9999;let g=0;while(!S.run.fight&&g<300){explore();T.through();S.run.ev=null;g++}
   render();const F=S.run.fight;o.enemyHp=app.querySelector('.mhp')?.textContent===`HP ${fmt(F.hp)} / ${fmt(F.max)}`;

@@ -1543,7 +1543,8 @@ function hire(k,quiet){const s=ST(k);if(!s||!s.need()||S.crew.includes(k))return
 let confirmFire=null;
 function fire(k){const s=ST(k);S.crew=S.crew.filter(x=>x!==k);confirmFire=null;toast(`${s?s.n:"Your shopkeeper"} heads back to the Tavern hire board.`);save();render()}
 const nameList=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
-/* Runs when you head into a dungeon: every shopkeeper on staff shares the day's customers. Settled now, reported on return. */
+/* Runs when you head into a dungeon. Staff aren't bound by the shop's customers a day: each shopkeeper serves their own
+   customers, up to their daily sales limit, with room for 2 who balk or find nothing they want. Settled now, reported on return. */
 /* Who makes a sale: later hires start with more pull (Pip 1, Marlo 2, Greta 3, Sable 4, so 10/20/30/40% at equal levels),
    and each level above 1 adds 1. A level 5 Pip (5) outsells a level 1 Sable (4). */
 const staffWeight=k=>{const L=staffLvl(k);return STAFF.findIndex(s=>s.k===k)+1+(Math.min(L,5)-1)+.1*Math.max(0,L-5)};
@@ -1557,17 +1558,16 @@ function staffShift(){
   const who=nameList(crew.map(c=>c.n)),wage=staffPayroll(crew.map(c=>c.k));
   if(!forSale().length)return {who,lines:[`Nothing was marked For sale, so ${who} took the day off.`],gold:0,wage:0};
   if(S.gold<wage)return {who,lines:[`You couldn't cover ${fmt(wage)}G in wages, so the shop stayed closed.`],gold:0,wage:0};
-  const lines=[];let gold=0,attempts=custN()+2,raise=null;
+  const lines=[];let gold=0,raise=null;
   const evSt=pick(crew);
   let ev=Math.random()<.35?pick(["great","swindle","trade","tip","raise",...(THIEF_TARGETS.includes(evSt.k)?["thief"]:[])]):null;
   const take=key=>S.inv.splice(S.inv.indexOf(key),1);
   // Each sale goes to a staff member picked at random, weighted toward later, more skilled hires and higher levels,
   // from those who haven't reached their daily limit.
-  const sold={},L0={};for(const st of crew){sold[st.k]=0;L0[st.k]=staffLvl(st.k)}
-  const free=()=>crew.filter(st=>sold[st.k]<staffSells(st.k));
-  while(attempts>0&&forSale().length&&free().length){
-    attempts--;
-    const st=pickStaff(free()),rate=staffRate(st.k);
+  const sold={},L0={},served={};for(const st of crew){sold[st.k]=0;served[st.k]=0;L0[st.k]=staffLvl(st.k)}
+  const free=()=>crew.filter(st=>sold[st.k]<staffSells(st.k)&&served[st.k]<staffSells(st.k)+2);
+  while(forSale().length&&free().length){
+    const st=pickStaff(free()),rate=staffRate(st.k);served[st.k]++;
     const C=pickCust(),m=forSale().filter(x=>!C.cats||C.cats.includes(IT[x].c));
     if(!m.length)continue;
     const key=pick(m),v=val(key);let price=Math.max(1,Math.round(v*rate*rnd(.95,1.05)));
