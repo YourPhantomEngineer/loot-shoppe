@@ -494,7 +494,9 @@ function tipBar(){
    call: a callout line above it. first: outline only the first match. */
 const TABSEL=t=>`[data-act=tab][data-t="${t}"]`;
 const tabHl=t=>({sel:TABSEL(t),town:true,stay:true});
-const hlSpec=()=>{const id=S.story&&S.story.hl;if(!id)return null;const T=TIPS[id];return T&&T.hl?R_(T.hl):null};
+const hlSpec=()=>{const id=S.story&&S.story.hl;if(!id)return null;const T=TIPS[id];
+  if(T&&T.skip&&T.skip()){S.story.hl=null;return null} // its moment has passed (e.g. the chapter already moved on)
+  return T&&T.hl?R_(T.hl):null};
 let hlShown=false,hlScrolled="";
 function hlSet(id){S.story.hl=id;hlShown=false;hlScrolled=""}
 function hlClear(){if(!S.story||!S.story.hl)return false;S.story.hl=null;hlShown=false;return true}
