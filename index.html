@@ -740,10 +740,17 @@ function leaveDungeon(){
   toast(`Back in town with <b>${R.bag.length}</b> item${R.bag.length===1?"":"s"}`+(mats?` and ${mats} material${mats===1?"":"s"}`:"")+".");
   endDay();
 }
+/* Fainting: lose everything found this run (items and materials) plus a share of gold that grows with depth. */
+const faintPct=(floor=S.run?.floor||1)=>Math.min(.5,.05+.05*floor);
 function faint(){
-  const R=S.run;const kept=R.bag.length?[pick(R.bag)]:[];
-  S.inv.push(...kept);sfx.fail();
-  toast(kept.length?`You fainted and crawled home with only a <b>${IT[kept[0]].n}</b>. Materials are safe.`:"You fainted and crawled home empty-handed.");
+  const R=S.run,items=R.bag.length;let mats=0;
+  for(const [k,n] of Object.entries(R.got||{})){const lost=Math.min(n,S.mats[k]||0);S.mats[k]=(S.mats[k]||0)-lost;mats+=lost}
+  R.bag=[];R.got={};
+  const pct=faintPct(R.floor),gold=Math.floor(S.gold*pct);S.gold-=gold;
+  sfx.fail();
+  const parts=[];if(items)parts.push(`${items} item${items===1?"":"s"}`);if(mats)parts.push(`${mats} material${mats===1?"":"s"}`);
+  parts.push(`<b>${fmt(gold)}G</b> (${Math.round(pct*100)}% of your gold)`);
+  toast(`You fainted and were dragged back to town. Lost ${parts.length>1?parts.slice(0,-1).join(", ")+(parts.length>2?",":"")+" and "+parts.at(-1):parts[0]}.`);
   endDay();
 }
 
@@ -1063,7 +1070,7 @@ function vDelve(){
   <div class="card">
     <p class="event" style="margin:0">${R.event}</p>
     ${actions}
-    <p class="hint">${hint}${buff} If you faint you keep one item; materials are always safe.</p>
+    <p class="hint">${hint}${buff} If you faint here you lose everything found this run and ${Math.round(faintPct(R.floor)*100)}% of your gold.</p>
   </div>
   ${usePanel()}
   <section><h2>Pack <small>${R.bag.length}/${cap()} · worth ~${fmt(R.bag.reduce((a,k)=>a+val(k),0))}G</small></h2>
