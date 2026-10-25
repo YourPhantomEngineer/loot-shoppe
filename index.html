@@ -1245,7 +1245,11 @@ const staffNext=k=>staffLvl(k)>=5?null:(staffLvl(k))*12;
 const staffRate=k=>ST(k).rate+.03*(staffLvl(k)-1)+staffRec(k).rateB+.05*sk("boss2");
 const staffSells=k=>ST(k).sells+Math.floor((staffLvl(k)-1)/2);
 const staffWage=k=>Math.round(ST(k).wage*(1+staffRec(k).wageB));
-const forSale=()=>S.inv.filter(k=>!S.keep[k]);
+/* Keep tags: items that go on the supply belt (potions and supplies) default to Keep; anything else defaults to For sale.
+   S.keep[k] stores the player's own choice (true = Keep, false = For sale) and overrides the default. */
+const keepsByDefault=k=>!!HEAL[k]||IT[k].c==="supply";
+const isKept=k=>S.keep[k]!==undefined?!!S.keep[k]:keepsByDefault(k);
+const forSale=()=>S.inv.filter(k=>!isKept(k));
 const THIEF_TARGETS=["pip","marlo"];
 const catchChance=k=>.1+.15*(staffLvl(k)-1);
 const custW=c=>c.w*(typeof dayWeight==="function"?dayWeight(c):1);
@@ -1732,7 +1736,7 @@ function vTown(){
     ${eq.length?`<div class="chips" style="margin-top:8px">${eq.map(([k,n])=>`<button class="chip usebtn" data-act="equip" data-k="${k}" ${S.belt.length>=BELT?"disabled":""}>+ ${IT[k].n}${n>1?` ×${n}`:""}</button>`).join("")}</div>`:`<p class="hint" style="margin-top:8px">Craft bombs, ropes, whetstones, and lockpicks in the Workshop. Potions in stock can go on your belt too.</p>`}
   </section>
   <section><h2>Stock <small>${S.inv.length} item${S.inv.length===1?"":"s"}</small></h2>
-    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">${built("obs")&&LORE[k]?`<i>${LORE[k]}</i><br>`:""}Market value ${val(k)}G${H?` · <button class="tag${S.keep[k]?" keep":""}" data-act="keep" data-k="${k}">${S.keep[k]?"Keep":"For sale"}</button>`:""}</span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
+    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">${built("obs")&&LORE[k]?`<i>${LORE[k]}</i><br>`:""}Market value ${val(k)}G${H?` · <button class="tag${isKept(k)?" keep":""}" data-act="keep" data-k="${k}">${isKept(k)?"Keep":"For sale"}</button>`:""}</span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
     ${H&&inv.length?`<p class="hint" style="margin-top:8px">Your staff only sell items marked For sale. Tap a tag to switch it.</p>`:""}
     ${sk("quick")&&inv.length?`<p class="hint" style="margin-top:8px">Quick Sale pays ${Math.round(quickPct()*100)}% of base value instantly and doesn't use the day.</p>`:""}
   </section>
@@ -1986,7 +1990,7 @@ app.addEventListener("click",e=>{
     learn:()=>learn(b.dataset.k),
     payDebt, repair:()=>repair(b.dataset.k), forge, theme:()=>{S.theme=b.dataset.k;applyTheme();save();render()},
     hire:()=>hire(b.dataset.k), fireAsk:()=>{confirmFire=b.dataset.k;render()}, fireNo:()=>{confirmFire=null;render()}, fireDo:()=>fire(b.dataset.k),
-    keep:()=>{const k=b.dataset.k;if(S.keep[k])delete S.keep[k];else S.keep[k]=true;save();render()},
+    keep:()=>{const k=b.dataset.k;S.keep[k]=!isKept(k);save();render()},
     reportOk:()=>{S.report=null;save();render()},
     raiseYes:()=>{const k=S.report.raise,rec=staffRec(k);rec.wageB+=.2;rec.rateB+=.05;toast(`${ST(k).n} beams. <b>+5% prices</b>, wage now ${fmt(staffWage(k))}G.`);sfx.coin();S.report=null;save();render()},
     raiseNo:()=>{toast(`${ST(S.report.raise).n} sighs and gets back to work.`);S.report=null;save();render()},
