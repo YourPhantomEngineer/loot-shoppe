@@ -1,0 +1,13 @@
+const {chromium}=require('playwright');
+(async()=>{const b=await chromium.launch();const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.goto('file://'+require('path').join(__dirname,'..','index.html'));
+const r=await p.evaluate(()=>{while(document.querySelector('#ov button'))document.querySelector('#ov button').click();
+  const badge=()=>{render();return app.querySelector('[data-t="upg"] .dot')?.textContent||''};
+  S.gold=1e6;S.gear={blade:3,armor:3,pack:3,sign:10};delete S.story.built.smithy;
+  const lockedBadge=badge();tab='upg';render();const lockNote=/Higher gear levels need the Smithy/.test(app.textContent)&&/Kobold Foreman/.test(app.textContent);
+  S.gear.blade=2;const oneReady=badge();
+  S.gear.blade=3;S.story.built.smithy=1;const smithyReady=badge();
+  return {lockedBadge,lockNote,oneReady,smithyReady};
+});
+if(errs.length||r.lockedBadge!==''||!r.lockNote||r.oneReady!=='1'||r.smithyReady!=='3')throw new Error(JSON.stringify({r,errs}));
+console.log(JSON.stringify(r));await b.close()})();

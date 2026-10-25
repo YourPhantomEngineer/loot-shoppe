@@ -161,6 +161,8 @@ Opening entry:
 
 > **Wren:** "Gear and Shop upgrades can be purchased here. Sharpen your blades, buy bigger packs. Fix the town to unlock new upgrades."
 
+**Locked-state note:** until the Smithy is repaired, the Upgrades page explains that Sharpen Blade, Reinforce Armor and Bigger Pack stop at level 3, and that the Kobold Foreman must be defeated in Chapter 3 before the Smithy can be unlocked and built. The Upgrades tab's purchase count only includes upgrades the player can actually buy now; Smithy-locked levels do not count.
+
 ## Scene 1.7: The letter (chapter climax)
 
 **Trigger:** all five goals complete, at the start of the next day.
