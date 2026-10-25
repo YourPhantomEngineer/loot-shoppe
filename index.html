@@ -142,9 +142,10 @@ html[data-shop="starlight"]{--bg:#0f1530;--panel:#18204a;--line:#2a3468;--copper
 body.ovopen{overflow:hidden}
 .tutcall{position:relative;background:var(--coin);color:#2a2008;font-weight:700;border-radius:8px;padding:10px 12px;margin:10px 0 8px;font-size:.92rem}
 .tutcall::after{content:"";position:absolute;left:24px;bottom:-7px;border:7px solid transparent;border-bottom:0;border-top-color:var(--coin)}
-.row.tut{outline:2px solid var(--coin);outline-offset:-2px;border-radius:6px;animation:tutpulse 1.6s ease-in-out infinite}
-@keyframes tutpulse{50%{background:rgba(242,201,76,.12)}}
-@media (prefers-reduced-motion:reduce){.row.tut{animation:none}}
+.hl{outline:2px solid var(--coin);outline-offset:2px;border-radius:6px;animation:hlpulse 1.4s ease-in-out infinite}
+.row.hl,.tabs .hl,section.hl{outline-offset:-2px}
+@keyframes hlpulse{50%{box-shadow:0 0 0 5px rgba(242,201,76,.28);background-color:rgba(242,201,76,.12)}}
+@media (prefers-reduced-motion:reduce){.hl{animation:none}}
 .tipcard{max-width:420px}
 .tipbar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--panel);border:1px solid var(--copper);border-radius:8px;padding:10px 12px}
 .tipbar p{margin:0;font-size:.92rem;line-height:1.45}
@@ -272,7 +273,7 @@ const dmgAt=l=>4+3*l, hpAt=l=>30+15*l, capAt=l=>6+2*l;
    s items: "narration" | ["note","letter text"] | ["Speaker","line","stage direction"].
    Every scene, tip and intro plays once; seen flags live in S.story. */
 const DEBT_PAYMENT=600, DEBT_PAYMENTS=4, STARTUP_LOAN=300;
-const newStory=()=>({ch:1,chDay:1,goals:{},seen:{},tips:{},flags:{},choices:{},built:{},items:{},hiredEver:{},
+const newStory=()=>({ch:1,chDay:1,goals:{},seen:{},tips:{},flags:{tut2:1},hl:null,choices:{},built:{},items:{},hiredEver:{},
   debtPaid:0,loan:0,reopens:0,journal:[],queue:[],tipQ:[]});
 const SCN={}, TIPS={}, CH=[null];
 const fl=k=>!!S.story.flags[k];
@@ -282,7 +283,7 @@ const built=k=>!!S.story.built[k];
 const onStaff=k=>S.crew.includes(k);
 const R_=v=>typeof v==="function"?v():v;
 function jrnl(text,kind="entry"){S.story.journal.push({ch:S.story.ch,day:S.day,text,kind})}
-function tip(id){const T=TIPS[id];if(!T||S.story.tips[id])return;S.story.tips[id]=S.day;S.story.tipQ.push(id)}
+function tip(id,front){const T=TIPS[id];if(!T||S.story.tips[id])return;S.story.tips[id]=S.day;front?S.story.tipQ.unshift(id):S.story.tipQ.push(id)}
 function queue(id){const st=S.story,sc=SCN[id];if(!sc||(!sc.repeat&&st.seen[id])||st.queue.includes(id))return;st.queue.push(id)}
 
 /* ---------- Chapters and goals ---------- */
@@ -341,8 +342,16 @@ function playNext(){
   const st=S.story;if(scn||tipOpen)return;
   const id=st.queue.find(x=>SCN[x]);
   if(!id){ // scenes from a newer version wait in the queue
-    while(st.tipQ.length&&!TIPS[st.tipQ[0]])st.tipQ.shift();
-    if(st.tipQ.length){tipOpen=st.tipQ[0];drawOv()}
+    st.tipQ=st.tipQ.filter(t=>TIPS[t]);
+    if(hlSpec())return; // one highlight at a time: the next prompt waits until this one is done
+    const inTown=!S.run&&!S.shop;
+    for(const t of [...st.tipQ]){
+      const T=TIPS[t];
+      if(T.skip&&T.skip()){st.tipQ=st.tipQ.filter(x=>x!==t);continue}
+      if(T.hl&&R_(T.hl).town&&!inTown)continue; // prompts about the town wait until you're back in town
+      if(!T.t){st.tipQ=st.tipQ.filter(x=>x!==t);hlSet(t);render();return} // highlight with no card
+      tipOpen=t;drawOv();return;
+    }
     return;
   }
   const sc=SCN[id];
@@ -406,11 +415,53 @@ function tipBar(){
   return `<div class="tipbar"><p><b class="who">${T.w}</b> ${T.n?md(T.t):`“${md(T.t)}”`}</p><button class="ghost" data-act="tipOk">${q.length>1?`Next (${q.length-1})`:"Got it"}</button></div>`;
 }
 
-let tutScrolled=false;
-function tutCellarFocus(){
-  if(!S.story||!fl("tutCellar")||S.run||S.shop||tab!=="town"||scn||tipOpen){tutScrolled=false;return}
-  if(tutScrolled)return;tutScrolled=true;
-  const el=app.querySelector(".row.tut");if(el)setTimeout(()=>el.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"center"}),60);
+/* ---------- Highlights ---------- */
+/* A tip's hl says what to point at once the player taps Got it (a tip with no text is a highlight on its own).
+   sel: what to outline. tab: the tab it sits on; if another tab is open, that tab is outlined first.
+   town: it lives in town, so it waits while delving or shopping and is dropped when you leave town.
+   stay: it stays until tapped (tabs, dungeons, Open the shop); otherwise it shows for that moment, until the next tap.
+   call: a callout line above it. first: outline only the first match. */
+const TABSEL=t=>`[data-act=tab][data-t="${t}"]`;
+const tabHl=t=>({sel:TABSEL(t),town:true,stay:true});
+const hlSpec=()=>{const id=S.story&&S.story.hl;if(!id)return null;const T=TIPS[id];return T&&T.hl?R_(T.hl):null};
+let hlShown=false,hlScrolled="";
+function hlSet(id){S.story.hl=id;hlShown=false;hlScrolled=""}
+function hlClear(){if(!S.story||!S.story.hl)return false;S.story.hl=null;hlShown=false;return true}
+function applyHl(){
+  hlShown=false;
+  if(!S.story)return;
+  if(S.story.hl&&!hlSpec())S.story.hl=null;
+  const H=hlSpec();if(!H||scn||tipOpen)return;
+  const inTown=!S.run&&!S.shop&&!S.over;
+  if(H.town&&!inTown)return;
+  let sel=H.sel,call=H.call,redirect=false;
+  if(H.tab&&tab!==H.tab){sel=TABSEL(H.tab);call=null;redirect=true}
+  let els=[...app.querySelectorAll(sel)];
+  if(!els.length){ // nothing to point at here: drop it so later prompts aren't held up
+    if(!redirect){hlClear();save();setTimeout(playNext,0)}
+    return;
+  }
+  if(H.first&&!redirect)els=els.slice(0,1);
+  els.forEach(e=>e.classList.add("hl"));
+  if(call){const c=document.createElement("div");c.className="tutcall";c.setAttribute("role","status");c.innerHTML=call;els[0].before(c)}
+  if(!redirect)hlShown=true;
+  const key=S.story.hl+"|"+sel;
+  if(hlScrolled!==key){hlScrolled=key;const el=els[0];
+    setTimeout(()=>{const r=el.getBoundingClientRect();if(r.top<0||r.bottom>innerHeight)el.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"center"})},60)}
+}
+/* Called on every tap in the game before it's handled. Returns true if the highlight was finished. */
+function hlTap(b){
+  const H=hlSpec();if(!H)return false;
+  if(H.stay){if(b.closest(H.sel))return hlClear()}
+  else if(hlShown)return hlClear();
+  return false;
+}
+/* Leaving town (delve or shop) sets a town highlight aside until you're back; tabs and dungeons still wait to be tapped,
+   other town highlights are dropped. Ending a delve or shop day drops an in-the-moment highlight. */
+function hlLeave(toTown){
+  const st=S.story,H=hlSpec();
+  if(toTown){if(H&&!H.town)hlClear();if(st.hlPark&&!st.hl){hlSet(st.hlPark)}st.hlPark=null;return}
+  if(H&&H.town){if(H.stay)st.hlPark=st.hl;hlClear()}
 }
 /* ---------- Journal view ---------- */
 function goalRows(c){
@@ -429,6 +480,21 @@ function vJournal(){
 }
 
 /* ---------- Save migration ---------- */
+/* Saves from before tutorial highlights: count prompts whose moment has passed as already seen. */
+function migrateTut2(st){
+  if(st.flags.tut2)return;st.flags.tut2=S.day;
+  const g=id=>!!st.goals[id],done=(id,c)=>{if(c)st.tips[id]=st.tips[id]||S.day};
+  const cellarWaiting=!!st.flags.tutCellar;delete st.flags.tutCellar;
+  if(S.day>1||S.xp>0||S.sold>0||cellarWaiting)st.flags.cellar1=st.flags.cellar1||S.day;
+  done("t_journal",st.seen["1.1"]);done("h_cellar",st.seen["1.1"]&&!cellarWaiting);
+  if(cellarWaiting){st.tips.h_cellar=S.day;delete st.flags.cellar1;st.hl="h_cellar"}
+  done("h_shop",st.seen["1.3"]);done("t_work",g("c1sell"));done("t_upg",g("c1hag"));done("t_beltgo",g("c1craft"));
+  done("h_skills",st.flags.skills);done("t_pay",st.flags.skills);
+  done("h_well",st.items.glass||st.built.well);done("h_reopen",st.built.well);
+  done("h_mine",st.flags.mine);done("h_vault",st.flags.vault);done("h_hire",st.built.tavern);done("h_collect",st.built.market);
+  done("h_spire",st.seen["5.2"]);done("h_heart",st.seen["6.1"]);done("h_forge",st.seen["6.1"]);done("h_fest",st.built.festival);
+  done("t_reopen1",st.reopens>0);
+}
 function migrateStory(){
   if(!S.crew)S.crew=S.hired?[S.hired]:[];
   delete S.hired;
@@ -438,6 +504,7 @@ function migrateStory(){
     for(let c=1;c<st.ch;c++)for(const g of chGoals(c))if(!st.goals[g.id])st.goals[g.id]=S.day;
     if(st.ch===1&&st.flags.ch1done)for(const g of chGoals(1))if(!st.goals[g.id])st.goals[g.id]=S.day;
     if(st.flags["ch"+st.ch+"ended"]&&CH[st.ch+1])startChapter(st.ch+1);
+    migrateTut2(st);
     return;
   }
   const st=S.story=newStory();
@@ -488,7 +555,7 @@ const debtLeft=()=>DEBT_PAYMENT*(DEBT_PAYMENTS-S.story.debtPaid);
 const payDue=()=>S.story.debtPaid<DEBT_PAYMENTS&&S.story.debtPaid<S.story.ch-1; // one payment goal per chapter, Ch2 to Ch5
 function payDebt(){
   const st=S.story;
-  if(st.loan>0){tipNow("Wren","Clear the last loan first. One debt at a time.");return render()}
+  if(st.loan>0){tipNow("Wren","Clear the last loan first. One debt at a time.",LOAN_HL);return render()}
   if(!payDue()||S.gold<DEBT_PAYMENT)return;
   S.gold-=DEBT_PAYMENT;st.debtPaid++;sfx.coin();
   jrnl(st.debtPaid>=DEBT_PAYMENTS?"Final payment made. Maribel's debt is cleared.":`Payment ${st.debtPaid} of ${DEBT_PAYMENTS} to the Celestials: ${fmt(DEBT_PAYMENT)}G. Balance: ${fmt(debtLeft())}G.`,"note");
@@ -496,7 +563,7 @@ function payDebt(){
 }
 /* A one-off line that isn't a story beat (shown in the tip bar, not stored as seen). */
 let tipSeq=0;
-function tipNow(w,t){const id="_now"+(++tipSeq);TIPS[id]={w,t};S.story.tipQ.push(id);playNext()}
+function tipNow(w,t,hl){const id="_now"+(++tipSeq);TIPS[id]={w,t,hl};S.story.tipQ.push(id);playNext()}
 
 /* ---------- Log flavor ---------- */
 const LOGF={
@@ -528,12 +595,12 @@ SCN["1.1"]={title:"Arrival",cards:[
  {s:[["note","\"If you're reading this, the shop is yours. Keep the doors open. Keep the lamp lit. And whatever anyone offers, don't sell the cellar.\""]],b:"Continue"},
  {s:["The door creaks. A woman with one hand and no patience looks you over."],b:"Continue"},
  {s:[["Wren","You're Maribel's kin. Good. I'm Wren. I adventured with her for twenty years."],["Wren","The shop's got no stock, and the cellar's got rats the size of goats. Let's fix one of those problems."]],b:"Let's go"}],
- done:()=>{jrnl(CH[1].open,"open");tab="town";S.story.flags.tutCellar=true}};
+ done:()=>{jrnl(CH[1].open,"open");tab="town";tip("t_journal");tip("h_cellar")}};
 SCN["1.2"]={title:"First delve",on:"enter",when:d=>d.d===0,cards:[
  {s:[["Wren","Delving takes the whole day. Go deep for better loot, but every floor bites harder."],["Wren","Faint down there and you lose everything you found, plus some of your coin. The deeper you fall, the more it costs."]],b:"Into the cellar"}]};
 SCN["1.3"]={title:"Back from the cellar",on:"day",when:d=>d.fromDelve,cards:[
- {s:[["Wren","Not bad. Loot's no good in a sack, though. Stock the shelf and open the doors."]],b:"Continue"}],
- done:()=>tip("t_market")};
+ {s:[["Wren","Not bad. Loot's no good in a sack, though. Open the shop and let the customers come to you."]],b:"Continue"}],
+ done:()=>{tip("t_market");tip("h_shop")}};
 SCN["1.4"]={title:"First shop day",on:"shopOpen",cards:[
  {s:[["Wren","Only three customers a day while the town's like this."],["Wren","They'll make an offer. Their mood tells you how far you can push."]],b:"Open the doors"}]};
 SCN["1.5"]={title:"The Workshop",on:"tab",when:d=>d.t==="work",cards:[
@@ -545,18 +612,27 @@ SCN["1.7"]={title:"The letter",on:"day",when:()=>S.story.ch===1&&fl("ch1done")&&
  {s:[["note","\"To the new proprietor. Now that your aunt has been declared dead, the Celestial Consortium extends its condolences. Her outstanding balance transfers to you. We look forward to a long and orderly relationship. — G. Voss, Guildmaster\""]],b:"Continue"},
  {s:[["Wren","The Celestials. Maribel borrowed from them to fund the expeditions. I told her not to.","reading over your shoulder"],["Wren","They're patient. That's what worries me."]],b:"What do we do?"},
  {s:[["Wren","We pay it. Bit by bit. But you'll need to get tougher first."],["Wren","Out back. There's a training yard under all those weeds."]],b:"Follow her"}],
- done:()=>endChapter()};
-TIPS.t_combat={w:"Wren",t:"Attack if you can win. Guard if it hits hard. Flee if your gut says flee.",ch:1};
-TIPS.t_hit={w:"Wren",t:"That number's a rough guess at its damage. Plan around it.",ch:1};
-TIPS.t_loot={w:"Wren",t:"Everything has a price. Mind your pack space.",ch:1};
-TIPS.t_belt={w:"Wren",t:"A supply costs your turn. Use it before you need it, not after.",ch:1};
+ done:()=>{endChapter();tip("h_skills");tip("t_pay")}};
+TIPS.t_journal={w:"Wren",t:"Maribel's journal is yours now. Your goals are in the **Journal** tab. Check it whenever you're not sure what's next.",ch:1,hl:tabHl("journal")};
+TIPS.h_cellar={ch:1,hl:{sel:'[data-act=delve][data-i="0"]',tab:"town",town:true,stay:true,call:"Tap <b>Mossy Cellar</b> to enter the dungeon."},skip:()=>fl("cellar1")};
+TIPS.h_shop={ch:1,hl:{sel:"[data-act=shop]",tab:"town",town:true,stay:true},skip:()=>S.sold>0};
+TIPS.t_work={w:"Wren",t:"Maribel's workbench is in the **Workshop** tab. Go make something.",ch:1,hl:tabHl("work")};
+TIPS.t_upg={w:"Wren",t:"Coin's for spending too. See what the **Upgrades** tab has.",ch:1,hl:tabHl("upg")};
+TIPS.t_beltgo={w:"Wren",t:"Put it on your belt before you head down.",ch:1,hl:{sel:"#belt",tab:"town",town:true}};
+TIPS.h_skills={ch:1,hl:tabHl("skills")};
+TIPS.t_pay={w:"Wren",t:"When you've coin to spare, pay the Celestials from the **Journal** tab. Every bit off the balance is a bit they can't hold over you.",ch:1,hl:{sel:"[data-act=payDebt]",tab:"journal",town:true}};
+TIPS.t_combat={w:"Wren",t:"Attack if you can win. Guard if it hits hard. Flee if your gut says flee.",ch:1,hl:{sel:"[data-act=attack],[data-act=guard],[data-act=flee]"}};
+TIPS.t_hit={w:"Wren",t:"That number's a rough guess at its damage. Plan around it.",ch:1,hl:{sel:".mdmg"}};
+TIPS.t_loot={w:"Wren",t:"Everything has a price. Mind your pack space.",ch:1,hl:{sel:"#packcap"}};
+TIPS.t_belt={w:"Wren",t:"A supply costs your turn. Use it before you need it, not after.",ch:1,hl:{sel:"#usepanel"}};
 TIPS.t_room={w:"Wren",t:"The cellar's strange since the star fell. Not all strange is bad.",ch:1};
-TIPS.t_floor={w:"Wren",t:"Push deeper, or head up with what you've got. No shame in a short day.",ch:1};
-TIPS.t_market={w:"Wren",t:"Prices shift daily. Green means folk want it. Sell into the wind.",ch:1};
-TIPS.t_eager={w:"Wren",t:"That one wants it bad. Push.",ch:1};
-TIPS.t_keen={w:"Wren",t:"Interested. A little push won't hurt.",ch:1};
-TIPS.t_fair={w:"Wren",t:"Take a fair deal when you see one.",ch:1};
-TIPS.t_thrifty={w:"Wren",t:"This one's counting coins. Push and they'll walk.",ch:1};
+TIPS.t_floor={w:"Wren",t:"Push deeper, or head up with what you've got. No shame in a short day.",ch:1,hl:{sel:"[data-act=descend],[data-act=leave]"}};
+TIPS.t_market={w:"Wren",t:"Prices shift daily. Green means folk want it.",ch:1,hl:{sel:"#mkt",tab:"town",town:true}};
+const MOOD_HL={sel:".custhead .mood"};
+TIPS.t_eager={w:"Wren",t:"That one wants it bad. Push.",ch:1,hl:MOOD_HL};
+TIPS.t_keen={w:"Wren",t:"Interested. A little push won't hurt.",ch:1,hl:MOOD_HL};
+TIPS.t_fair={w:"Wren",t:"Take a fair deal when you see one.",ch:1,hl:MOOD_HL};
+TIPS.t_thrifty={w:"Wren",t:"This one's counting coins. Push and they'll walk.",ch:1,hl:MOOD_HL};
 TIPS.t_sale1={w:"Wren",t:"First coin in the till in a long while. Maribel would've rung the bell twice.",ch:1};
 TIPS.t_above={w:"Wren",t:"Ha. Maybe you've got her nose for it.",ch:1};
 TIPS.t_walk={w:"Wren",t:"Lost one. Happens. Their mood can lie, but their feet never do.",ch:1};
@@ -569,7 +645,7 @@ CH[2]={t:"The Ledger",
  open:"The Celestials want their coin. Wren says the cellar goes deeper than Maribel ever let on.",
  start:()=>queue("2.1"),
  done:"The well runs again. Star-glass did that. Maribel's notes say the big shards are deeper, past the mines. Next to her sketch of the Sunken Mine, she wrote: \"Kobolds. Not wild. Someone's paying them.\"",
- unlock:()=>{S.story.flags.mine=true},
+ unlock:()=>{S.story.flags.mine=true;tip("h_mine")},
  goals:[
   {id:"c2pip",t:"Hire Pip",ok:()=>fl("pipHired")},
   {id:"c2rat",t:"Defeat the Rat Matriarch",ev:(ty,d)=>ty==="defeat"&&d.n==="Rat Matriarch"},
@@ -597,7 +673,7 @@ SCN["2.4"]={title:"The Slime Monarch",on:"encounter",when:d=>d.n==="Slime Monarc
  {s:["A mound of green ooze wearing a crown of rusted pots. Something bright pulses deep inside it."],b:"Fight"}]};
 SCN["2.4b"]={title:"Star-glass",on:"defeat",when:d=>d.n==="Slime Monarch"&&S.story.ch===2,cards:[
  {s:["The Monarch melts away. Left behind: a sliver of crystal, warm as a sunlit stone.",["Wren","That's star-glass. Haven't seen any in ten years.","quiet"],["Wren","Keep it. Don't sell it. And don't show it around."]],b:"Continue"}],
- done:()=>{S.story.items.glass=S.day}};
+ done:()=>{S.story.items.glass=S.day;tip("h_well")}};
 SCN["2.5"]={title:"The first payment",on:"pay",when:d=>d.n===1,cards:[
  {s:["A Celestial courier takes the coin, stamps a receipt with a small gold star, and leaves without a word.",["Wren","One down. Feels good, doesn't it? Don't get used to it."]],b:"Continue"}]};
 SCN["2.6"]={title:"The Well",on:"repair",when:d=>d.k==="well",cards:[
@@ -605,7 +681,7 @@ SCN["2.6"]={title:"The Well",on:"repair",when:d=>d.k==="well",cards:[
  {s:["A faint glow. Then the sound of water, rising for the first time in twelve years."],b:"Continue"},
  {s:["By evening, smoke rises from three chimneys that were cold this morning.",["Old Greta","Well, I'll be. The shop's lamp is lit.","from the street"]],b:"Continue"},
  {s:[["Wren","Folk will come back now. More customers, more coin."],["Wren","And if the shop ever goes stale, close up and reopen it bigger. Maribel did it twice."]],b:"Continue"}],
- done:()=>toast("Customers: 3 → 4. <b>Grand Reopening</b> unlocked.")};
+ done:()=>{toast("Customers: 3 → 4. <b>Grand Reopening</b> unlocked.");tip("h_reopen")}};
 TIPS.i_town={w:"Townsfolk",t:"Heard the well's flowing. Figured I'd see if you sell anything a body can afford."};
 
 /* ---------- Tip hooks ---------- */
@@ -615,9 +691,10 @@ tipHooks=function(type,d){
   const T={combat:"t_combat",hit:"t_hit",loot:"t_loot",belt:"t_belt",roomEvent:"t_room",stairs:"t_floor",walk:"t_walk"}[type];
   if(T)tip(T);
   if(type==="customer"){if(MOOD_TIP[d.mood])tip(MOOD_TIP[d.mood]);if(INTRO[d.type])tip(INTRO[d.type])}
-  if(type==="sale"){tip("t_sale1");if(d.above&&d.haggled)tip("t_above")}
-  if(type==="craft")tip("t_craft1");
-  if(type==="tab"&&d.t==="skills")tip("t_skills");
+  const c1=S.story.ch===1;
+  if(type==="sale"){tip("t_sale1");if(c1)tip("t_work");if(d.above&&d.haggled){tip("t_above");if(c1)tip("t_upg")}}
+  if(type==="craft"){tip("t_craft1");if(c1&&(IT[d.k].c==="supply"||HEAL[d.k]))tip("t_beltgo")}
+  if(type==="tab"&&d.t==="skills")tip("t_skills",true);
   if(type==="enter"&&onStaff("pip"))tip("t_pipdelve");
   if(typeof tipHooks2==="function")tipHooks2(type,d);
 };
@@ -678,7 +755,7 @@ LOGF[2]=["The stone glows red at the seams, like coals breathing.","Celestial ba
 CH[3]={t:"Sparks at the Smithy",
  open:"Maribel thought someone was paying the kobolds. Wren thinks Maribel was usually right.",
  done:"One shard in hand. The forge is lit. Maribel's notes for the Ember Vault are shaky, like she wrote them in a hurry: \"The Vault is not a vault. It's a door. Someone has been knocking.\"",
- unlock:()=>{S.story.flags.vault=true},
+ unlock:()=>{S.story.flags.vault=true;tip("h_vault")},
  goals:[
   {id:"c3tav",t:()=>`Repair the Tavern`,ok:()=>built("tavern")},
   {id:"c3wurm",t:"Defeat the Tunnel Wurm",ev:(ty,d)=>ty==="defeat"&&d.n==="Tunnel Wurm"},
@@ -690,7 +767,7 @@ CH[3]={t:"Sparks at the Smithy",
 SCN["3.1"]={title:"The Tavern reopens",on:"repair",when:d=>d.k==="tavern",cards:[
  {s:[["Wren","Finally. A place to sit that isn't your counter."],"Within the hour, a hire board is nailed by the door. One name is already on it."],b:"Continue"},
  {s:[["Marlo","Marlo. Clerk, salesman, charmer. The Consortium likes to keep an eye on its… investments. So they loaned me out."],["Marlo","Don't worry. I sell better than I spy."],["Wren","Keep your ledger locked.","under her breath"]],c:[["Hire him","hire"],["Not now","no"]]}],
- done:ch=>{S.story.flags.met_marlo=true;if(ch==="hire")hire("marlo",true);else tip("marlo_no");toast("Customers: 4 → 5. The hire board is open.")}};
+ done:ch=>{S.story.flags.met_marlo=true;if(ch==="hire")hire("marlo",true);else tip("marlo_no");toast("Customers: 4 → 5. The hire board is open.");tip("h_hire")}};
 TIPS.marlo_no={w:"Marlo",t:"Your loss. I'll be at the Tavern, looking trustworthy."};
 TIPS.i_trav={w:"Traveler",t:"Word in the next valley is Hollowmere's waking up. Thought I'd see for myself."};
 SCN["3.2"]={title:"Into the Sunken Mine",on:"enter",when:d=>d.d===1,cards:[
@@ -714,7 +791,7 @@ SCN["3.6"]={title:"Bram and the Smithy",on:"repair",when:d=>d.k==="smithy",cards
  {s:["A big man with soot-black arms is already inside, kicking the forge like an old friend.",["Bram","Left when the mine flooded. Heard the well came back. Figured the forge might too."]],b:"Continue"},
  {s:[["Bram","Star-glass. Put a chip of that in the coals and they'll burn for a week.","seeing the shard"],["Bram","Bring me ore and I'll make you something worth fighting with."]],b:"Continue"}],
  done:()=>{if(built("apothecary"))toast("Customers: 5 → 6.")}};
-TIPS.t_gear={w:"Wren",t:"Good steel means you come home. Spend here before you spend on pride."};
+TIPS.t_gear={w:"Wren",t:"Good steel means you come home. Spend here before you spend on pride.",hl:{sel:"[data-act=up][data-k=blade],[data-act=up][data-k=armor],[data-act=up][data-k=pack]",tab:"upg",town:true}};
 SCN["3.7"]={title:"The Apothecary",on:"repair",when:d=>d.k==="apothecary",cards:[
  {s:["The jars are still labeled in Maribel's hand. Someone left a note on the counter: \"Back soon. — M.\"",["Wren","She wrote that ten years ago.","long pause"],["Wren","Bombs, ropes, the good tonics. They're yours to make now."]],b:"Continue"}],
  done:()=>{if(built("smithy"))toast("Customers: 5 → 6.")}};
@@ -733,7 +810,7 @@ CH[4]={t:"What the Celestials Knew",
  ]};
 SCN["4.1"]={title:"Market day",on:"repair",when:d=>d.k==="market",cards:[
  {s:["Stalls go up overnight. Bunting. A fiddler. Hollowmere smells like bread again.",["Pip","There's a man here who collects _spoons_. He has a spoon _bag_."],["Wren","Collectors. They pay stupid money for shiny things. Be nice to them."]],b:"Continue"}],
- done:()=>toast("Customers: 6 → 8. Special customer days begin.")};
+ done:()=>{toast("Customers: 6 → 8. Special customer days begin.");tip("h_collect")}};
 TIPS.i_coll={w:"Collector",t:"Is that a genuine cellar-moss trinket? I'll pay double. Don't tell my wife."};
 SCN["4.2"]={title:"Into the Ember Vault",on:"enter",when:d=>d.d===2,cards:[
  {s:[["Wren","I was here once. Ten years ago."],["Wren","Bring water. Bring more than you think."]],b:"Continue"}]};
@@ -775,7 +852,7 @@ TIPS.idle_s2={w:"Sable",t:"Don't stand near the cellar when a Celestial walks by
 TIPS.idle_s3={w:"Sable",t:"I like this shop. Nobody here looks at me like a tool."};
 SCN["4.9"]={title:"The Watchtower",on:"repair",when:d=>d.k==="watch",cards:[
  {s:[["Wren","From up here you can see the whole valley. And the Spire."],"At the mountain's peak, a faint light flickers. Steady. Waiting. Like someone holding a lamp."],b:"Continue"}],
- done:()=>toast("Customers: 8 → 9. Floor modifier preview unlocked.")};
+ done:()=>{toast("Customers: 8 → 9. Floor modifier preview unlocked.");S.story.flags.hlMod=S.day}};
 
 function tipHooks2(type,d){
   if(type==="tab"&&d.t==="upg"&&built("smithy"))tip("t_gear");
@@ -832,13 +909,14 @@ SCN["5.1"]={title:"The Observatory",on:"repair",when:d=>d.k==="obs",cards:[
  {s:["Brass telescopes, cracked lenses, and star charts pinned to every wall. Maribel's handwriting covers half of them."],b:"Look closer"},
  {s:[["Wren","She spent nights up here. Said the star didn't fall. It was _pulled_."],"One very old chart, older than the town, shows a gap in a constellation. A star went missing long, long ago. Beside it, in Maribel's hand: _\"Two stars fell. Where is the first?\"_"],b:"Continue"},
  {s:[["Old Greta","Odd. Says here the Celestial Consortium was founded the year Hollowmere was.","peering at a town record"],["Old Greta","No. Before. That can't be right."]],b:"Continue"}],
- done:()=>toast("Secret floor clues and relic lore unlocked. Scholars are coming.")};
+ done:()=>{toast("Secret floor clues and relic lore unlocked. Scholars are coming.");S.story.flags.hlLore=S.day;S.story.flags.hlStair=S.day;loreCheck()}};
 TIPS.i_schol={w:"Scholar",t:"A relic from a secret floor? Name your price. No, truly, I have a grant."};
 SCN["5.2"]={title:"Sable's confession",on:["level","day","repair","pay"],when:d=>S.story.ch===5&&goalDone("c5lv10")&&(onStaff("sable")||d._t==="day"),cards:[
  {s:[["Sable","The Spire's open now. Before you climb, you should know what I am."],["Sable","The Celestials take orphans. They put us in a room with star-glass until our eyes change. Then we can feel shards through solid rock."]],b:"Continue"},
  ()=>({s:[["Sable","They call us Starlings. Voss calls us 'instruments.' I ran. The safest place to hide was his blind spot: the town around a shop he was about to repossess."],["Wren","...You could've told us."],["Sable",S.story.hiredEver.sable?"You'd have thrown me out. You nearly did.":"You did turn me away. I don't blame you."]],b:"Continue"}),
  {s:[["Sable","One more thing. Voss isn't a man. I've felt him the way I feel shards. He's _old_. Older than the mountain's monsters. He hums the same as the star."]],b:"What does he want?"},
- {s:[["Sable","I don't know yet. But he doesn't want your coin. Never did."]],b:"Continue"}]};
+ {s:[["Sable","I don't know yet. But he doesn't want your coin. Never did."]],b:"Continue"}],
+ done:()=>tip("h_spire")};
 SCN["5.3"]={title:"Into the Starfall Spire",on:"enter",when:d=>d.d===3,cards:[
  {s:[["Wren","I'll get you halfway. That's where I lost my hand last time."],["Wren","Bring her home."],["Sable","I'll climb with you. I can feel the shards up there, and whatever's holding the light."]],b:"Continue"}]};
 SCN["5.4"]={on:"encounter",when:d=>d.n==="Prism Golem"&&S.story.ch===5,log:["<i>A figure of living crystal turns toward you. Every facet shows a different you.</i>"]};
@@ -877,7 +955,7 @@ SCN["6.1"]={title:"The war council",on:"day",when:()=>S.story.ch===6,cards:[
  {s:[["Maribel","I saw his thoughts while he took the heart. He fell here, long before the town. His own kind cast him down.","wrapped in a blanket by the counter"],["Maribel","And the second star didn't fall on its own. He pulled it down. Fuel."],["Maribel","He burns worlds to travel. The star's power and the heat of the core, together, are enough to launch him home."],["Maribel","Before, he couldn't pass my ward or burn through the rock. With the heart, he can do both. That's how he went straight down."]],b:"And us?"},
  {s:[["Maribel","The blast would scorch the whole world. Every field, every forest, every living thing."],["Pip","...Even the spoon man?","quietly"],["Maribel","Even the spoon man."]],b:"Continue"},
  {s:[["Bram","Then we stop him. Give me those two shards. I'll forge something that can cut starlight."],["Marlo","The Consortium's vault key is still in my coat. Take whatever supplies you need."],["Old Greta","I'll keep the shop open. If the world ends, it ends with the lamp lit."],["Sable","I can feel him. I'll guide you down."],["Wren","And I'm coming. All the way, this time."]],b:"Continue"}],
- done:()=>{S.story.flags.hollow=S.day;toast("The cellar's deepest door opens. <b>The Hollow Heart</b> is unlocked.")}};
+ done:()=>{S.story.flags.hollow=S.day;toast("The cellar's deepest door opens. <b>The Hollow Heart</b> is unlocked.");tip("h_heart");tip("h_forge")}};
 SCN["6.2"]={title:"The star-forged weapon",on:"weapon",cards:[
  {s:[["Bram","Two shards, folded into steel. It's warm. Like holding a hand."],["Maribel","That's the star. It remembers us. It wants him stopped too."],["Maribel","There's a little of its light left in me. Not much. I'm saving it for the end."]],b:"Continue"}],
  done:()=>tip("t_ready")};
@@ -907,7 +985,7 @@ SCN["epi"]={title:"The Festival of Lights",on:"day",when:()=>fl("vossDone"),card
  {s:[["Wren","So. What now, shopkeeper?"]],b:"Open the shop."}],
  done:()=>{const st=S.story;st.built.festival=S.day;st.ended=S.day;st.flags.ch6ended=S.day;
   jrnl("The debt is paid. The star is sleeping. The man in the blue coat is a cold stone in the deepest dark, and Sable checks on him once a month just to be sure.\nMaribel sits by the counter most days now, haggling with customers and winning. Pip still sweeps. Wren still says \"don't get used to it.\"\nWhoever reads this next: keep the doors open. Keep the lamp lit. And don't sell the cellar.","done");
-  toast("Customers: 9 → 10. <b>Festival Grounds</b> open. The Hollow Heart stays open.")}};
+  toast("Customers: 9 → 10. <b>Festival Grounds</b> open. The Hollow Heart stays open.");tip("h_fest")}};
 
 /* ---------- Shop themes (Festival Grounds cosmetics) ---------- */
 const THEMES=[{k:"",n:"Lantern",d:"Teal stone and copper. Maribel's original."},{k:"festival",n:"Festival",d:"Crimson bunting and lantern gold."},{k:"starlight",n:"Starlight",d:"Midnight blue and silver, like the summit."}];
@@ -920,7 +998,29 @@ TIPS.t_pitch={w:"Wren",t:"Talking it up works on dreamers. Misers just get bored
 function tipHooks3(type,d){
   const T={insult:"t_insult",suspicious:"t_sus",returned:"t_return",pitch:"t_pitch"}[type];if(T)tip(T);
   if(type==="customer"&&d.reg)tip("t_regular");
+  const st=S.story;
+  if(type==="stairs"&&st.flags.hlMod&&built("watch")){delete st.flags.hlMod;tip("h_mod")}
+  if(type==="floor"&&st.flags.hlStair&&built("obs")&&d.floor===DUN[d.d].floors){delete st.flags.hlStair;tip("h_stair")}
+  if(type==="day")loreCheck();
 }
+function loreCheck(){if(fl("hlLore")&&S.inv.some(k=>LORE[k])){delete S.story.flags.hlLore;tip("h_lore")}}
+/* Highlights for things the story unlocks */
+const dunHl=i=>({sel:`[data-act=delve][data-i="${i}"]`,tab:"town",town:true,stay:true});
+TIPS.h_well={hl:{sel:"[data-act=repair][data-k=well]",tab:"journal",town:true}};
+TIPS.h_reopen={hl:{sel:"[data-act=reopen]",tab:"journal",town:true}};
+TIPS.h_mine={hl:dunHl(1)};
+TIPS.h_vault={hl:dunHl(2)};
+TIPS.h_spire={hl:dunHl(3)};
+TIPS.h_heart={hl:dunHl(4)};
+TIPS.h_hire={hl:{sel:"#staff",tab:"town",town:true}};
+TIPS.h_collect={hl:{sel:"#mkt",tab:"town",town:true}};
+TIPS.h_mod={hl:{sel:"[data-act=descend]"}};
+TIPS.h_stair={hl:{sel:".dhint"}};
+TIPS.h_lore={hl:{sel:".lore",tab:"town",town:true,first:true}};
+TIPS.h_forge={hl:{sel:"[data-act=forge]",tab:"journal",town:true}};
+TIPS.h_fest={hl:{sel:"#themes",tab:"journal",town:true}};
+const LOAN_HL={sel:"#loanrow",tab:"journal",town:true};
+TIPS.t_reopen1={w:"Wren",t:"Folk remember a good name. Spend your stars in the **Journal**, and pay off the startup loan there too.",hl:{sel:"#rep,#loanrow",tab:"journal",town:true}};
 
 function journalExtras2(){
   const st=S.story;let h="";
@@ -930,13 +1030,13 @@ function journalExtras2(){
       <span><b>Star-forged blade</b></span><span class="sub">${parts.join(" + ")}<br>+50% attack. Needed to reach the bottom of the Hollow Heart.</span><span class="right">Collect</span></button></div></section>`;
   }
   if(typeof reopenSection==="function")h+=reopenSection();
-  if(built("festival"))h+=`<section><h2>Shop colors <small>Festival Grounds</small></h2><div class="list">${THEMES.map(t=>`<button class="row" data-act="theme" data-k="${t.k}" ${(S.theme||"")===t.k?"disabled":""}><span><b>${t.n}</b></span><span class="sub">${t.d}</span><span class="right">${(S.theme||"")===t.k?"In use":"Use"}</span></button>`).join("")}</div></section>`;
+  if(built("festival"))h+=`<section id="themes"><h2>Shop colors <small>Festival Grounds</small></h2><div class="list">${THEMES.map(t=>`<button class="row" data-act="theme" data-k="${t.k}" ${(S.theme||"")===t.k?"disabled":""}><span><b>${t.n}</b></span><span class="sub">${t.d}</span><span class="right">${(S.theme||"")===t.k?"In use":"Use"}</span></button>`).join("")}</div></section>`;
   return h;
 }
 /* ---------- Grand Reopening, startup loan, Reputation ---------- */
 const loanLender=()=>!seen("4.4")?"Celestial Consortium":S.story.ended?"Hollowmere Mutual, in the old Consortium office":"Hollowmere Mutual, at a Tavern table";
 function askReopen(){
-  if(S.story.loan>0){tipNow("Wren","Clear the last loan first. One debt at a time.");return render()}
+  if(S.story.loan>0){tipNow("Wren","Clear the last loan first. One debt at a time.",LOAN_HL);return render()}
   if(!built("well")||S.run||S.shop)return;
   queue("reopenAsk");playNext();
 }
@@ -968,7 +1068,7 @@ function doReopen(){
   st.loan=STARTUP_LOAN;st.loanFrom=loanLender();st.reopens++;
   migrate();
   jrnl(`Grand Reopening No. ${st.reopens}. The shelves are bare again, and the doors are open. Keep the lamp lit.`,"note");
-  tab="journal";queue("reopen");if(st.ended)queue("reopenEnd");
+  tab="journal";queue("reopen");if(st.ended)queue("reopenEnd");tip("t_reopen1");
   toast(`Grand Reopening! <b>+${g} Reputation star${g===1?"":"s"}</b>`);
 }
 function payLoan(all){
@@ -983,7 +1083,7 @@ function payLoan(all){
 }
 function loanRow(){
   const st=S.story;if(!(st.loan>0))return "";
-  return `<div class="row"><span><b>Startup loan: ${fmt(st.loan)}G</b> <span class="sub">${st.loanFrom||loanLender()}</span></span>
+  return `<div class="row" id="loanrow"><span><b>Startup loan: ${fmt(st.loan)}G</b> <span class="sub">${st.loanFrom||loanLender()}</span></span>
     <span class="sub loanpay"><label for="loanAmt" class="sub">Amount</label><input id="loanAmt" type="number" inputmode="numeric" min="1" max="${Math.min(st.loan,S.gold)}" value="${Math.min(st.loan,S.gold)}">
       <button class="btn alt sm" data-act="payLoan" ${S.gold>0?"":"disabled"}>Pay</button></span>
     <span class="right"><button class="btn gold sm" data-act="payLoanAll" ${S.gold>=st.loan?"":"disabled"}>Pay all</button></span></div>`;
@@ -993,7 +1093,7 @@ function reopenSection(){
   const st=S.story,L=S.legacy,g=starsNow(),nextGold=Math.pow(starsFromGold()+1,2)*1500,loan=st.loan>0;
   return `<section><h2>Grand Reopening <small>${st.reopens?`${st.reopens} so far`:"available"}</small></h2>
     <div class="card">
-      <div class="pline"><div><span class="lbl">Reputation</span><b class="starnum">★ ${fmt(L.stars)}</b></div>
+      <div class="pline" id="rep"><div><span class="lbl">Reputation</span><b class="starnum">★ ${fmt(L.stars)}</b></div>
         <button class="btn gold" data-act="reopen" ${loan||S.run||S.shop?"disabled":""}>Reopen${g?` +${g}★`:""}</button></div>
       ${loan?`<p class="hint"><b class="who">Wren</b> “Clear the last loan first. One debt at a time.”</p>`:""}
       <p class="hint">Resets gold, stock, gear upgrades, level, skills, materials and supplies, and takes a new ${fmt(STARTUP_LOAN)}G startup loan. Keeps the Journal, the town, your staff, Maribel's debt payments and story items.</p>
@@ -1232,7 +1332,7 @@ function addMat(k,n){S.mats[k]=(S.mats[k]||0)+n}
 function endDay(){
   const fromDelve=!!S.run;
   if(S.run)settleShift();else S.report=null;
-  S.run=null;S.shop=null;
+  S.run=null;S.shop=null;hlLeave(true);
   const finished=S.day;S.day++;
   CATS.forEach(c=>{let t=S.trend[c]*rnd(.88,1.12);t+=(1-t)*.15;S.trend[c]=Math.min(1.6,Math.max(.6,t))});
   S.news="";
@@ -1341,7 +1441,8 @@ function startDelve(i){
   S.run={d:i,floor:1,hp:maxHp(),bag:[],got:{},fight:null,stairs:false,lair:false,bossDone:false,steps:0,
     mod:null,atkB:1,ev:null,elite:false,miniDone:false,secret:false,secretFloor:false,
     event:`You step into the ${DUN[i].n}. Torchlight flickers on damp stone.`,log:[]};
-  if(i===0)delete S.story.flags.tutCellar;
+  if(i===0)S.story.flags.cellar1=S.story.flags.cellar1||S.day;
+  hlLeave(false);
   S.report=null;S.run.shift=staffShift();
   save();render();SE("enter",{d:i});
 }
@@ -1672,7 +1773,7 @@ const REGS={kid:["Little Wick","Pell and Posy"],town:["Old Tam","Widow Hessa","F
 const regRec=n=>(S.regs[n]=S.regs[n]||{p:pickPersona(),trust:0,visits:0});
 const cName=c=>c.reg?c.reg.replace(/^the /,"The "):"The "+CUST[c.t].n.toLowerCase();
 const moodK=c=>c.mood||moodOf(c).k;
-function openShop(){S.shop={left:custN(),cur:null,combo:0,today:0,log:[],pct:S.shop?.pct||130,served:0,back:[],regsToday:[]};SE("shopOpen");nextCust();save();render()}
+function openShop(){hlLeave(false);S.shop={left:custN(),cur:null,combo:0,today:0,log:[],pct:S.shop?.pct||130,served:0,back:[],regsToday:[]};SE("shopOpen");nextCust();save();render()}
 function slog(m){S.shop.log.unshift(m);S.shop.log=S.shop.log.slice(0,6)}
 function makeCustomer(C,k){
   const P=S.shop;let reg=null;
@@ -1800,20 +1901,20 @@ function vTown(){
   const H=S.crew.length?ST(S.crew[0]):null;
   return `
   ${reportCard()}
-  <section><h2>Market today</h2><div class="chips">${chips}</div>${dayNews()?`<p class="hint" style="margin-top:8px;color:var(--coin)">${dayNews()}</p>`:""}${S.news?`<p class="hint" style="margin-top:8px">${S.news}</p>`:""}</section>
+  <section id="mkt"><h2>Market today</h2><div class="chips">${chips}</div>${dayNews()?`<p class="hint" style="margin-top:8px;color:var(--coin)">${dayNews()}</p>`:""}${S.news?`<p class="hint" style="margin-top:8px">${S.news}</p>`:""}</section>
   <button class="big" data-act="shop" ${S.inv.length?"":"disabled"}>Open the shop<small>${S.inv.length?`Up to ${custN()} customers · ${S.inv.length} item${S.inv.length===1?"":"s"} in stock · uses the day`:"Your shelves are empty. Go delving first."}</small></button>
   <section><h2>Go delving <small>${S.crew.length?`${nameList(S.crew.map(k=>ST(k).n))} mind${S.crew.length>1?"":"s"} the shop`:"uses the day"}</small></h2><div class="list">
-    ${DUN.map((d,i)=>{const open=dunOpen(i);if(d.hidden&&!open)return "";const tut=i===0&&fl("tutCellar");return `${tut?`<div class="tutcall" role="status">Tap <b>Mossy Cellar</b> to enter the dungeon.</div>`:""}<button class="row${tut?" tut":""}" data-act="delve" data-i="${i}" ${open?"":"disabled"}>
+    ${DUN.map((d,i)=>{const open=dunOpen(i);if(d.hidden&&!open)return "";return `<button class="row" data-act="delve" data-i="${i}" ${open?"":"disabled"}>
       <span><b>${d.n}</b>${S.bosses[i]?`<span class="crown">Boss beaten</span>`:""}</span><span class="sub">${open?`${d.floors} floors · boss: ${d.boss}`:DUN_LOCK[i]}</span>
       <span class="right">${open?"Enter":"Locked"}</span></button>`}).join("")}
   </div></section>
   ${staffSection()}
-  <section><h2>Supply belt <small>${S.belt.length}/${BELT} · tap to unequip</small></h2>
+  <section id="belt"><h2>Supply belt <small>${S.belt.length}/${BELT} · tap to unequip</small></h2>
     <div class="chips">${S.belt.length?S.belt.map((k,i)=>`<button class="chip usebtn on" data-act="unequip" data-i="${i}">${IT[k].n}</button>`).join(""):`<span class="hint">Empty. Supplies on your belt come with you into every dungeon.</span>`}</div>
     ${eq.length?`<div class="chips" style="margin-top:8px">${eq.map(([k,n])=>`<button class="chip usebtn" data-act="equip" data-k="${k}" ${S.belt.length>=BELT?"disabled":""}>+ ${IT[k].n}${n>1?` ×${n}`:""}</button>`).join("")}</div>`:`<p class="hint" style="margin-top:8px">Craft bombs, ropes, whetstones, and lockpicks in the Workshop. Potions in stock can go on your belt too.</p>`}
   </section>
   <section><h2>Stock <small>${S.inv.length} item${S.inv.length===1?"":"s"}</small></h2>
-    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">${built("obs")&&LORE[k]?`<i>${LORE[k]}</i><br>`:""}Market value ${val(k)}G${H?` · <button class="tag${isKept(k)?" keep":""}" data-act="keep" data-k="${k}">${isKept(k)?"Keep":"For sale"}</button>`:""}</span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
+    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">${built("obs")&&LORE[k]?`<i class="lore">${LORE[k]}</i><br>`:""}Market value ${val(k)}G${H?` · <button class="tag${isKept(k)?" keep":""}" data-act="keep" data-k="${k}">${isKept(k)?"Keep":"For sale"}</button>`:""}</span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
     ${H&&inv.length?`<p class="hint" style="margin-top:8px">Your staff only sell items marked For sale. Tap a tag to switch it.</p>`:""}
     ${sk("quick")&&inv.length?`<p class="hint" style="margin-top:8px">Quick Sale pays ${Math.round(quickPct()*100)}% of base value instantly and doesn't use the day.</p>`:""}
   </section>
@@ -1855,7 +1956,7 @@ function staffSection(){
     </div>`}).join("");
   const others=STAFF.filter(s=>!S.crew.includes(s.k));
   const wage=S.crew.reduce((a,k)=>a+staffWage(k),0);
-  return `<section><h2>Shop staff <small>${S.crew.length?`${fmt(wage)}G a delve day`:"hire help for delve days"}</small></h2>
+  return `<section id="staff"><h2>Shop staff <small>${S.crew.length?`${fmt(wage)}G a delve day`:"hire help for delve days"}</small></h2>
     ${cards}
     ${others.length?`<div class="list">${others.map(s=>{const open=s.need();return open?`<button class="row" data-act="hire" data-k="${s.k}" ${built("tavern")||s.k==="pip"?"":"disabled"}>
         <span><b>${s.n}</b> <span class="sub">${R_(s.title)}</span>${S.staffs[s.k]?` <span class="sub">· Lv ${staffLvl(s.k)}</span>`:""}</span>
@@ -1923,7 +2024,7 @@ function evButtons(){
 function usePanel(){
   const R=S.run;
   const items=[...S.belt.map((k,i)=>({k,s:"belt",i})),...R.bag.map((k,i)=>({k,s:"bag",i})).filter(o=>HEAL[o.k])];
-  return `<section><h2>Supplies <small>${R.fight?"using one takes your turn":`belt ${S.belt.length}/${BELT}`}</small></h2>
+  return `<section id="usepanel"><h2>Supplies <small>${R.fight?"using one takes your turn":`belt ${S.belt.length}/${BELT}`}</small></h2>
     <div class="chips">${items.length?items.map(o=>`<button class="chip usebtn" data-act="use" data-s="${o.s}" data-i="${o.i}" ${canUse(o.k)?"":"disabled"}>${IT[o.k].n}${o.s==="bag"?" (pack)":""}</button>`).join("")
     :`<span class="hint">No supplies. Equip potions, bombs, ropes, whetstones, or lockpicks on your belt in town.</span>`}</div></section>`;
 }
@@ -1933,7 +2034,7 @@ function vDelve(){
   let actions;
   if(F){
     const tag={elite:"Elite · ",mini:"Mini-boss · ",boss:"Boss · ",voss:`Phase ${F.phase} · ${VOSS_PHASE[F.phase]} · `}[F.kind]||"";
-    actions=`<div class="monster ${F.boss||F.kind==="elite"?"boss":""}"><b>${tag}${F.n}</b> <span class="sub">· hits for ~${F.atk}${F.boss?" · heavy blow every few turns":""}</span>
+    actions=`<div class="monster ${F.boss||F.kind==="elite"?"boss":""}"><b>${tag}${F.n}</b> <span class="sub">· <span class="mdmg">hits for ~${F.atk}</span>${F.boss?" · heavy blow every few turns":""}</span>
       <div class="bar hp"><i style="width:${Math.max(0,F.hp)/F.max*100}%"></i></div>
       ${F.wind?`<p class="warn">Heavy attack incoming! Guard to block most of it.</p>`:""}
       ${F.star?`<p class="warn">Starfire is gathering overhead. Guard!</p>`:""}
@@ -1967,10 +2068,10 @@ function vDelve(){
   <div class="card">
     <p class="event" style="margin:0">${R.event}</p>
     ${actions}
-    <p class="hint">${hint}${buff} If you faint here you lose everything found this run and ${Math.round(faintPct(R.floor)*100)}% of your gold.</p>
+    <p class="hint dhint">${hint}${buff} If you faint here you lose everything found this run and ${Math.round(faintPct(R.floor)*100)}% of your gold.</p>
   </div>
   ${usePanel()}
-  <section><h2>Pack <small>${R.bag.length}/${cap()} · worth ~${fmt(R.bag.reduce((a,k)=>a+val(k),0))}G</small></h2>
+  <section><h2>Pack <small id="packcap">${R.bag.length}/${cap()} · worth ~${fmt(R.bag.reduce((a,k)=>a+val(k),0))}G</small></h2>
     ${R.left?`<div class="leftbox"><span>Left behind: <b>${IT[R.left].n}</b> · ${val(R.left)}G</span><button class="btn gold sm" data-act="pickup" ${R.bag.length>=cap()?"disabled":""}>${R.bag.length>=cap()?"Drop something to take it":"Pick it up"}</button></div>`:""}
     <div class="bag">${R.bag.length?R.bag.map((k,i)=>`<button class="chip usebtn${IT[k].sec?" rare":""}${R.dropSel===i?" dropsel":""}" data-act="drop" data-i="${i}">${R.dropSel===i?`Drop ${IT[k].n}?`:`${IT[k].n} · ${val(k)}G`}</button>`).join(""):`<span class="hint">Empty so far.</span>`}${gotMats}</div>
     ${R.bag.length?`<p class="hint" style="margin-top:8px">Tap an item, then tap it again to drop it.</p>`:""}</section>
@@ -2051,7 +2152,7 @@ function render(){
     if((tab==="skills"&&!fl("skills"))||tab==="legacy")tab=tab==="legacy"?"journal":"town";
     app.innerHTML=`<header><h1>Dungeon Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():tab==="journal"?vJournal():vTown());
   }
-  tutCellarFocus();
+  applyHl();
   const r=document.getElementById("price");
   if(r)r.addEventListener("input",()=>{S.shop.pct=+r.value;const p=Math.max(1,Math.round(val(S.shop.cur.k)*S.shop.pct/100));
     document.getElementById("pv").textContent=fmt(p)+"G";document.getElementById("pp").textContent=S.shop.pct+"% of market"});
@@ -2059,7 +2160,9 @@ function render(){
 }
 
 app.addEventListener("click",e=>{
-  const b=e.target.closest("[data-act]");if(!b||b.disabled)return;
+  const b0=e.target.closest("[data-act]"),b=b0&&!b0.disabled?b0:null;
+  const hlDone=hlTap(b||e.target);
+  if(!b){if(hlDone){save();render();playNext()}return}
   const a=b.dataset.act;
   if(S.sound||S.music||a==="music")audioCtx();
   ({
@@ -2113,11 +2216,12 @@ app.addEventListener("click",e=>{
     resetYes:()=>{const s=S.sound;S=fresh();S.sound=s;confirmReset=false;save();render()},
     restart:()=>{const s=S.sound;S=fresh();S.sound=s;save();render()}
   })[a]?.();
+  if(hlDone){save();render();playNext()}
 });
 document.getElementById("ov").addEventListener("click",e=>{
   const b=e.target.closest("[data-act]");if(!b)return;
   if(S.sound||S.music)audioCtx();
-  if(b.dataset.act==="tipOk"){S.story.tipQ.shift();tipOpen=null;drawOv();save();render();playNext();return}
+  if(b.dataset.act==="tipOk"){const id=tipOpen;S.story.tipQ=S.story.tipQ.filter(x=>x!==id);tipOpen=null;if(TIPS[id]&&TIPS[id].hl)hlSet(id);drawOv();save();render();playNext();return}
   if(b.dataset.act==="scn")scnGo(b.dataset.go);
 });
 document.addEventListener("pointerdown",()=>{if(S.music&&!ac){audioCtx();musicUpdate()}},{once:true});
