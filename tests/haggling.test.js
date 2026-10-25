@@ -50,6 +50,11 @@ const out=await p.evaluate(()=>{const L=[];const log=(k,ok,x="")=>L.push((ok?"PA
   log("Read the Room rank 3 reads ~90%",readN/200>.8,Math.round(readN/2)+"%");
   S.skills={poker:2};let free=0,tot=0;for(let i=0;i<300;i++){c=force("haggler");S.shop.pct=Math.ceil(c.max/val(c.k)*100*1.15);offer();tot++;if(c.pat===4)free++;S.shop=null}
   log("Poker Face rank 2 saves patience ~50%",free/tot>.4&&free/tot<.6,Math.round(free/tot*100)+"%");
+  // 7. floating haggle results
+  S.skills={};c=force("haggler");S.shop.pct=Math.ceil(c.max/val(c.k)*100*1.15);offer();
+  let pop=document.getElementById("hagglePop");log("rejected offer shows a floating result",pop.classList.contains("show")&&/Counteroffer|Too high/.test(pop.textContent),pop.textContent);
+  c=S.shop.cur;sell(c.counter);pop=document.getElementById("hagglePop");
+  log("haggle sale shows the deal result",pop.classList.contains("show")&&/^Deal! \+\d+G$/.test(pop.textContent),pop.textContent);
   S.skills={};
   return L});
 console.log(out.join("\n"));
