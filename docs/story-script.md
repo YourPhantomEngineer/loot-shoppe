@@ -167,6 +167,18 @@ Opening entry:
 
 **Ladder (defined):** a tier 1 supply crafted from 2 Moss Fiber + 1 Scrap Iron. Equip it on the supply belt, then use it between encounters to descend exactly one normal dungeon floor without finding the stairs. The Ladder is consumed only after a successful descent. It cannot be used during combat or room events, on the deepest or secret floor, or to bypass a story-sealed floor.
 
+**Fire Bomb and Blasting Powder (defined):** a Fire Bomb deals a multiple of the player's attack, never less than the old floor-based blast (80% of that floor's ordinary monster's HP), and uses the player's turn. Whetstone and shrine bonuses don't apply. **Blasting Powder** is an upgrade in the Upgrades tab, available once the Apothecary is repaired. It has 4 ranks starting at 180G, with normal upgrade cost scaling. Each rank makes every Fire Bomb hit harder, including ones already made, and makes new ones cost more to craft:
+
+| Rank | Damage | Recipe |
+| --- | --- | --- |
+| 0 | 1.2× attack | 1 Scrap Iron + 1 Slime Gel |
+| 1 | 1.8× | 2 Scrap Iron + 2 Slime Gel |
+| 2 | 2.4× | 2 Scrap Iron + 2 Slime Gel + 1 Ore Chunk |
+| 3 | 3× | 2 Scrap Iron + 2 Slime Gel + 1 Ore Chunk + 1 Ember Core |
+| 4 | 3.6× | 3 Scrap Iron + 2 Slime Gel + 2 Ember Core + 1 Stardust |
+
+The bomb's damage shows on its supply button in a fight and in its item info. Blasting Powder resets with the other gear upgrades at a Grand Reopening.
+
 ## Scene 1.6: Upgrades
 
 **Trigger:** first time opening the Upgrades tab.

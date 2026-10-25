@@ -265,7 +265,7 @@ const TF=[1,2.6,6,14];      // gold and reward scaling by dungeon tier
 const HPF=[.95,1.45,2.15,3.1]; // monster HP scaling by tier (tuned so a fitting build wins each boss)
 const ATF=[.95,1.25,1.75,2.85]; // monster attack scaling by tier
 const RECIPES=[
- {out:"bomb",items:{},mats:{scrap:1,gel:1}},
+ {out:"bomb",items:{},get mats(){return BOMB[powder()].mats}},
  {out:"rope",items:{},mats:{fiber:3}},
  {out:"ladder",items:{},mats:{fiber:2,scrap:1}},
  {out:"pick",items:{},mats:{scrap:2}},
@@ -305,8 +305,23 @@ const UPG=[
  {k:"armor",n:"Reinforce Armor",d:l=>`Base HP ${hpAt(l)} → ${hpAt(l+1)}`,base:120},
  {k:"pack",n:"Bigger Pack",d:l=>`Carry ${capAt(l)} → ${capAt(l+1)} items`,base:90},
  {k:"belt",n:"Expand Supply Belt",d:l=>`Supply slots ${beltCapAt(l)} → ${beltCapAt(l+1)}`,base:150,max:4},
- {k:"sign",n:"Painted Sign",d:l=>`Customer budgets +${l*8}% → +${(l+1)*8}%`,base:200}
+ {k:"sign",n:"Painted Sign",d:l=>`Customer budgets +${l*8}% → +${(l+1)*8}%`,base:200},
+ {k:"powder",n:"Blasting Powder",d:l=>`Fire Bombs ${BOMB[l].m}× → ${BOMB[l+1].m}× your attack. Recipe becomes ${matList(BOMB[l+1].mats)}`,base:180,max:4,need:()=>built("apothecary"),needT:"Needs the Apothecary"}
 ];
+/* Fire Bombs scale with your attack, so they stay worth throwing. Each Blasting Powder rank makes every bomb hit harder
+   and makes new ones cost more to craft. Damage is never below the old floor-based amount. */
+const BOMB=[
+ {m:1.2,mats:{scrap:1,gel:1}},
+ {m:1.8,mats:{scrap:2,gel:2}},
+ {m:2.4,mats:{scrap:2,gel:2,ore:1}},
+ {m:3,mats:{scrap:2,gel:2,ore:1,ember:1}},
+ {m:3.6,mats:{scrap:3,gel:2,ember:2,dust:1}}];
+const powder=()=>Math.min(BOMB.length-1,S.gear.powder||0);
+const matList=m=>Object.entries(m).map(([k,n])=>`${n} ${MATS[k]}`).join(" + ");
+function bombDmg(){
+  const R=S.run,floorDmg=R?Math.round((10+R.floor*3)*hfOf(DUN[R.d])*.8):0;
+  return Math.max(floorDmg,Math.round(BOMB[powder()].m*dmg()));
+}
 const BR=[{k:"war",n:"Warrior"},{k:"scav",n:"Scavenger"},{k:"merc",n:"Merchant"}];
 const SK=[
  {k:"power",b:"war",n:"Power Strike",max:3,d:"+15% attack per rank"},
@@ -819,6 +834,7 @@ function recipeLock(r){
 }
 const gearCap=k=>["blade","armor","pack"].includes(k)&&!built("smithy")?3:10;
 const upLimit=u=>Math.min(u.max||10,gearCap(u.k));
+const upLocked=u=>!!(u.need&&!u.need());
 
 /* ---------- Special customer days ---------- */
 const collectorDay=()=>built("market")&&S.day%7===3;
@@ -1230,7 +1246,7 @@ function vossTurn(guard){
 
 /* ================= State ================= */
 const KEY="dungeon-loot-shoppe-v1",OLD_KEYS=["haggle-hollow-v1"];
-const fresh=()=>({day:1,gold:150,xp:0,inv:["herb","herb","dagger","quartz"],gear:{blade:0,armor:0,pack:0,belt:0,shelf:0,sign:0},
+const fresh=()=>({day:1,gold:150,xp:0,inv:["herb","herb","dagger","quartz"],gear:{blade:0,armor:0,pack:0,belt:0,shelf:0,sign:0,powder:0},
   trend:{weapon:1,armor:1,potion:1,trinket:1,gem:1},run:null,shop:null,over:null,sold:0,earned:0,sound:true,news:"",
   mats:{},skills:{},bosses:{},crafted:0,music:true,belt:[],legacy:{stars:0,perks:{},count:0,total:0},lifeStart:0,crew:[],staffs:{},keep:{},report:null,regs:{},story:Object.assign(newStory(),{queue:["1.1"]})});
 /* Merge a saved game over fresh defaults; story and crew are left out when the save predates them so migration can infer them. */
@@ -1239,7 +1255,7 @@ let S=fresh();
 try{let raw=localStorage.getItem(KEY);if(!raw)for(const k of OLD_KEYS){raw=localStorage.getItem(k);if(raw){localStorage.setItem(KEY,raw);break}}const s=JSON.parse(raw);if(s)S=loadState(s)}catch(e){}
 function migrate(){
   S.staffs=S.staffs||{};S.keep=S.keep||{};S.report=S.report||null;S.regs=S.regs||{};
-  S.gear=S.gear||{};if(S.gear.belt===undefined)S.gear.belt=2; // old saves keep the former four-slot belt
+  S.gear=S.gear||{};if(S.gear.belt===undefined)S.gear.belt=2;if(S.gear.powder===undefined)S.gear.powder=0; // old saves keep the former four-slot belt
   if(S.shop&&S.shop.cur&&!S.shop.cur.per){const c=S.shop.cur;c.per="bluffer";c.line="";c.mood=moodOf(c).k}
   migrateStory();
   S.legacy=S.legacy||{stars:0,perks:{},count:0,total:0};S.legacy.perks=S.legacy.perks||{};S.lifeStart=S.lifeStart||0;
@@ -1272,10 +1288,10 @@ const patMax=()=>3+sk("patience");
 const quickPct=()=>sk("quick")?.05+.1*sk("quick"):0;
 const quickPrice=k=>Math.max(1,Math.round(IT[k].b*quickPct()));
 const val=k=>Math.max(1,Math.round(IT[k].b*(S.trend[IT[k].c]||1)));
-const upCost=u=>Math.round(u.base*Math.pow(1.9,S.gear[u.k]));
+const upCost=u=>Math.round(u.base*Math.pow(1.9,S.gear[u.k]||0));
 const beltCapAt=l=>2+l;
 const beltCap=()=>beltCapAt(S.gear.belt||0);
-const canBuyUpgrade=u=>S.gear[u.k]<upLimit(u)&&S.gold>=upCost(u);
+const canBuyUpgrade=u=>!upLocked(u)&&(S.gear[u.k]||0)<upLimit(u)&&S.gold>=upCost(u);
 const week=()=>Math.ceil(S.day/7);
 const rentFor=w=>Math.round(250*Math.pow(w,1.8)/10)*10;
 const count=(arr,k)=>arr.filter(x=>x===k).length;
@@ -1759,7 +1775,7 @@ function useItem(src,i){
   else if(k==="whet"){R.atkB+=.3;m="You hone your blade: +30% attack for this delve.";sfx.craft()}
   else if(k==="rope"){m=`You yank the Escape Rope and vanish from the ${F.n}'s reach.`;if(F.kind==="boss"||F.kind==="voss")R.lair=true;R.fight=null;R.event=m;rlog(m);return save(),render()}
   else if(k==="bomb"){
-    const d=Math.round((10+R.floor*3)*hfOf(DUN[R.d])*.8);F.hp-=d;sfx.hit();m=`The Fire Bomb explodes for ${d} damage!`;
+    const d=bombDmg();F.hp-=d;sfx.hit();m=`The Fire Bomb explodes for ${d} damage!`;
     if(F.hp<=0)return winFight(m+" ");
     vossPhaseCheck();
   }
@@ -2045,12 +2061,14 @@ const portrait=(who,cls="")=>{const k=sprKey(who);return k?`<span class="spr ${c
 
 /* ---------- Item info: the (i) next to every item ---------- */
 const ITEM_USE={
- bomb:"Combat only. Throw it for heavy fire damage, more on deeper floors. Uses your turn.",
+ bomb:"",
  rope:"Combat only. Escape any fight at once, bosses included, without taking a hit.",
  whet:"Hone your blade for +30% attack for the rest of this delve. Stacks. In a fight it uses your turn.",
  pick:"Opens a locked chest every time. Without one you have to force it: a 55% chance, with a needle trap if it fails.",
  ladder:"Between fights, climb down one floor without finding the stairs. It doesn't work on the deepest or a secret floor, or past a sealed floor. It's used up only when it works."};
 function itemUse(k){
+  if(k==="bomb"){const pw=powder(),m=BOMB[pw].m;
+    return `Combat only. Deals <b>${fmt(bombDmg())} damage</b> ${S.run?"here":"at your current attack"} (${m}× your attack, never less than a deeper floor's blast). Uses your turn.${pw<BOMB.length-1?` Blasting Powder in the Upgrades tab makes every Fire Bomb hit harder (next rank: ${BOMB[pw+1].m}×), and new ones cost more to craft.`:" Your Blasting Powder is fully upgraded."}`}
   if(HEAL[k])return `Restores ${Math.round(HEAL[k]*100)}% of your max HP. Drink it from your belt or your pack whenever you're hurt; in a fight it uses your turn.`;
   return ITEM_USE[k]||"";
 }
@@ -2209,9 +2227,9 @@ function vUpg(){
   <div class="chips"><span class="chip">Attack ${dmg()}</span><span class="chip">Max HP ${maxHp()}</span><span class="chip">Pack ${cap()}</span><span class="chip">Belt ${beltCap()} slots</span><span class="chip">${custN()} customers a day</span></div>
   ${!built("smithy")?`<div class="card"><p class="hint"><b>Higher gear levels need the Smithy.</b> Defeat the Kobold Foreman in Chapter 3 to unlock the Smithy, then repair it to continue upgrading Sharpen Blade, Reinforce Armor, and Bigger Pack past level 3.</p></div>`:""}
   <section><h2>Gear &amp; shop upgrades</h2><div class="list">
-    ${UPG.map(u=>{const l=S.gear[u.k],c=upCost(u),limit=upLimit(u),max=l>=limit,capped=!max&&l>=gearCap(u.k);return `<button class="row" data-act="up" data-k="${u.k}" ${canBuyUpgrade(u)?"":"disabled"}>
-      <span><b>${u.n}</b> <span class="sub">Lv ${l}</span></span><span class="sub">${max?"Fully upgraded":capped?"Needs the Smithy for higher levels":u.d(l)}</span>
-      <span class="right coin">${max?"Max":capped?"Locked":fmt(c)+"G"}</span></button>`}).join("")}
+    ${UPG.map(u=>{const l=S.gear[u.k]||0,c=upCost(u),limit=upLimit(u),max=l>=limit,lock=upLocked(u),capped=!max&&l>=gearCap(u.k);return `<button class="row" data-act="up" data-k="${u.k}" ${canBuyUpgrade(u)?"":"disabled"}>
+      <span><b>${u.n}</b> <span class="sub">Lv ${l}</span></span><span class="sub">${max?"Fully upgraded":lock?u.needT:capped?"Needs the Smithy for higher levels":u.d(l)}</span>
+      <span class="right coin">${max?"Max":lock||capped?"Locked":fmt(c)+"G"}</span></button>`}).join("")}
   </div></section>`;
 }
 
@@ -2248,7 +2266,7 @@ function usePanel(){
   const R=S.run;
   const items=[...S.belt.map((k,i)=>({k,s:"belt",i})),...R.bag.map((k,i)=>({k,s:"bag",i})).filter(o=>HEAL[o.k])];
   return `<section id="usepanel"><h2>Supplies <small>${R.fight?"using one takes your turn":`belt ${S.belt.length}/${beltCap()}`}</small></h2>
-    <div class="chips">${items.length?items.map(o=>`<button class="chip usebtn" data-act="use" data-s="${o.s}" data-i="${o.i}"${dis(!canUse(o.k))}>${IT[o.k].n}${o.k==="ladder"?R.secretFloor||R.floor>=DUN[R.d].floors?" · deepest floor":floorSealed(R.d,R.floor+1)?" · path sealed":" · skip 1 floor":""}${o.s==="bag"?" (pack)":""}${ii(o.k)}</button>`).join("")
+    <div class="chips">${items.length?items.map(o=>`<button class="chip usebtn" data-act="use" data-s="${o.s}" data-i="${o.i}"${dis(!canUse(o.k))}>${IT[o.k].n}${o.k==="bomb"?` · ${fmt(bombDmg())} dmg`:""}${o.k==="ladder"?R.secretFloor||R.floor>=DUN[R.d].floors?" · deepest floor":floorSealed(R.d,R.floor+1)?" · path sealed":" · skip 1 floor":""}${o.s==="bag"?" (pack)":""}${ii(o.k)}</button>`).join("")
     :`<span class="hint">No supplies. Equip potions, bombs, ropes, ladders, whetstones, or lockpicks on your belt in town.</span>`}</div></section>`;
 }
 function vDelve(){
@@ -2406,7 +2424,7 @@ app.addEventListener("click",e=>{
     tab:()=>{tab=b.dataset.t;confirmReset=false;SE("tab",{t:tab});render();window.scrollTo(0,0)},
     shop:openShop,
     delve:()=>startDelve(+b.dataset.i),
-    up:()=>{const u=UPG.find(x=>x.k===b.dataset.k),c=upCost(u);if(S.gold>=c&&S.gear[u.k]<upLimit(u)){S.gold-=c;S.gear[u.k]++;sfx.loot();save();render()}},
+    up:()=>{const u=UPG.find(x=>x.k===b.dataset.k),c=upCost(u);if(canBuyUpgrade(u)){S.gold-=c;S.gear[u.k]=(S.gear[u.k]||0)+1;sfx.loot();save();render()}},
     craft:()=>craft(+b.dataset.i),
     ev:()=>evChoice(b.dataset.c), use:()=>useItem(b.dataset.s,+b.dataset.i),
     drop:()=>dropPick(+b.dataset.i), pickup:pickUp,
