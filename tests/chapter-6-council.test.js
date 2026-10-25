@@ -29,6 +29,11 @@ const r=await p.evaluate(()=>{const o={},ov=()=>document.querySelector('#ov:not(
   o.forgeLocked=fb().disabled&&/Still needed: 1 more Stardust/.test(document.getElementById("forge").textContent);
   S.mats.dust=4;render();o.forgeReady=!fb().disabled;fb().click();o.forged=!!S.story.items.weapon&&goalDone("c6weapon")&&S.mats.dust===0&&!S.story.items.shard1&&scn&&scn.id==="6.2";T.through();
   o.promptsOnce=["t_council","t_forge"].every(t=>!S.story.tipQ.includes(t));
+  // the forge stays in the Journal after the blade is made, marked done like a repaired building
+  tab="journal";render();const fs2=document.getElementById("forge");
+  o.forgeStays=!!fs2&&/Forged/.test(fs2.textContent)&&/✓/.test(fs2.textContent)&&!fs2.querySelector('[data-act=forge]');
+  // the delve screen shows the blade's attack bonus
+  startDelve(0);T.through();o.delveBuff=[...app.querySelectorAll('.buff')].some(e=>/Star-forged blade: attack \+50%/.test(e.textContent));
   return o});
 // a save already past the war council
 const after=await p.evaluate(()=>{save();return localStorage.getItem(KEY)});

@@ -1159,9 +1159,11 @@ TIPS.h_fest={hl:{sel:"#themes",tab:"journal",town:true}};
 const LOAN_HL={sel:"#loanrow",tab:"journal",town:true};
 TIPS.t_reopen1={w:"Wren",t:"Folk remember a good name. Spend your stars in the **Journal**, and pay off the startup loan there too.",hl:{sel:"#rep,#loanrow",tab:"journal",town:true}};
 
-/* Bram's forge: right under the Ledgers once the war council has met, until the blade is made. */
+/* Bram's forge: right under the Ledgers once the war council has met. Once the blade is made it stays, marked done like a repaired building. */
 function forgeSection(){
-  const st=S.story;if(!(st.ch>=6&&seen("6.1")&&!st.items.weapon))return "";
+  const st=S.story;
+  if(st.items.weapon)return `<section id="forge"><h2>Bram's forge</h2><div class="list"><div class="row"><span><b>Star-forged blade</b> <span class="crown">Forged</span></span><span class="sub">Two star-glass shards folded into steel. +50% attack, kept through every Grand Reopening.</span><span class="right">✓</span></div></div></section>`;
+  if(!(st.ch>=6&&seen("6.1")))return "";
   const shards=st.items.shard1&&st.items.shard2;
   const parts=[`<span class="${shards?"have":"need"}">2 star-glass shards</span>`,...Object.entries(WEAPON_MATS).map(([m,n])=>`<span class="${(S.mats[m]||0)>=n?"have":"need"}">${n} ${MATS[m]}</span> (${S.mats[m]||0})`)];
   const missing=[...(shards?[]:["the two star-glass shards"]),...Object.entries(WEAPON_MATS).filter(([m,n])=>(S.mats[m]||0)<n).map(([m,n])=>`${n-(S.mats[m]||0)} more ${MATS[m]}`)];
@@ -2367,7 +2369,7 @@ function vDelve(){
     :R.floor===D.floors&&!R.bossDone?`The ${D.boss} lurks somewhere on this floor.`
     :R.floor===Math.ceil(D.floors/2)&&!R.miniDone?`The ${MINI[R.d]} prowls this floor.`
     :"Deeper floors hold better loot and tougher monsters.";
-  const buff=R.atkB>1?`<span class="buff">Attack +${Math.round((R.atkB-1)*100)}%</span>`:"";
+  const buff=(S.story.items.weapon?`<span class="buff">Star-forged blade: attack +${Math.round(WEAPON_BONUS*100)}%</span>`:"")+(R.atkB>1?`<span class="buff">Attack +${Math.round((R.atkB-1)*100)}%</span>`:"");
   return `
   <header><h1>${D.n}</h1>${soundBtn()}</header>
   <div class="stats">
