@@ -17,6 +17,8 @@ const out=await p.evaluate(()=>{const L=[];const log=m=>L.push(m);
   T.delve(3);log("seen53="+seen("5.3"));T.mini();T.home();
   payDebt();T.through();log("seen55="+seen("5.5")+" paid="+S.story.debtPaid+" seal="+!!floorSealed(3,8));
   T.delve(3);T.boss();log("seen57="+seen("5.7")+" seen58="+seen("5.8")+" maribel="+fl("maribel"));T.home();
+  T.day();if(seen("6.1"))log("FAIL war council played before its button");
+  tab="journal";render();app.querySelector('[data-act=council]').click();T.through();
   log("ch="+S.story.ch+" seen61="+seen("6.1")+" hollow="+dunOpen(4));
   // weapon
   log("forge ok="+canForge());T.rich();forge();T.through();log("weapon="+!!S.story.items.weapon+" seen62="+seen("6.2")+" dmg="+dmg());

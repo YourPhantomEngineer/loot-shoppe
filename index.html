@@ -119,6 +119,7 @@ button.row[aria-disabled="true"]>*{opacity:.5}
 .ii:hover,.ii:focus-visible{color:var(--coin)}
 .mhp{display:block;margin-top:4px;font-size:.8rem;font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums}
 .buff{display:block;margin-top:6px;font-size:.78rem;font-weight:700;color:var(--coin)}
+.goalbtn{margin-top:8px}
 .chend{display:flex;flex-direction:column;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 .chend .hint{margin:0}
 .custhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
@@ -361,7 +362,7 @@ const dmgAt=l=>4+3*l, hpAt=l=>30+15*l, capAt=l=>6+2*l;
    s items: "narration" | ["note","letter text"] | ["Speaker","line","stage direction"].
    Every scene, tip and intro plays once; seen flags live in S.story. */
 const DEBT_PAYMENT=600, DEBT_PAYMENTS=4, STARTUP_LOAN=300;
-const newStory=()=>({ch:1,chDay:1,goals:{},seen:{},tips:{},flags:{tut2:1},hl:null,choices:{},built:{},items:{},hiredEver:{},
+const newStory=()=>({ch:1,chDay:1,goals:{},seen:{},tips:{},flags:{tut2:1,tut3:1},hl:null,choices:{},built:{},items:{},hiredEver:{},
   debtPaid:0,loan:0,reopens:0,journal:[],queue:[],tipQ:[]});
 const SCN={}, TIPS={}, CH=[null];
 const fl=k=>!!S.story.flags[k];
@@ -568,7 +569,8 @@ function hlLeave(toTown){
 function goalRows(c){
   return chGoals(c).filter(g=>!g.show||g.show()||goalDone(g.id)).map(g=>{
     const done=goalDone(g.id),lock=!done&&g.lock&&g.lock();
-    return `<li class="goal${done?" done":""}"><span class="gk">${done?"✓":lock?"✕":"○"}</span><span>${R_(g.t)}${lock?`<span class="sub"> · ${lock}</span>`:""}</span></li>`}).join("");
+    const btn=!done&&g.btn?g.btn():"";
+    return `<li class="goal${done?" done":""}"><span class="gk">${done?"✓":lock?"✕":"○"}</span><span>${R_(g.t)}${lock?`<span class="sub"> · ${lock}</span>`:""}${btn?`<br>${btn}`:""}</span></li>`}).join("");
 }
 function vJournal(){
   const st=S.story,C=CH[st.ch];
@@ -602,6 +604,13 @@ function migrateTut2(st){
   done("h_spire",st.seen["5.2"]);done("h_heart",st.seen["6.1"]);done("h_forge",st.seen["6.1"]);done("h_fest",st.built.festival);
   done("t_reopen1",st.reopens>0);
 }
+/* Saves from before the war-council button and the Spoon Man's visit. */
+function migrateTut3(st){
+  if(st.flags.tut3)return;st.flags.tut3=S.day;
+  if(st.built.market)st.flags.spoonDone=st.flags.spoonDone||S.day; // collectors have already been coming
+  if(st.seen["6.1"]){st.tips.t_council=st.tips.t_council||S.day;st.tips.t_forge=st.tips.t_forge||S.day}
+  else if(st.ch===6){st.queue=st.queue.filter(x=>x!=="6.1");tip("t_council")} // 6.1 now waits for its button
+}
 function migrateStory(){
   if(!S.crew)S.crew=S.hired?[S.hired]:[];
   delete S.hired;
@@ -611,7 +620,7 @@ function migrateStory(){
     for(let c=1;c<st.ch;c++)for(const g of chGoals(c))if(!st.goals[g.id])st.goals[g.id]=S.day;
     if(st.ch===1&&st.flags.ch1done)for(const g of chGoals(1))if(!st.goals[g.id])st.goals[g.id]=S.day;
     if(st.flags["ch"+st.ch+"ended"]&&CH[st.ch+1])startChapter(st.ch+1);
-    migrateTut2(st);
+    migrateTut2(st);migrateTut3(st);
     return;
   }
   const st=S.story=newStory();
@@ -824,6 +833,7 @@ function journalExtras(){
     ${loanLock&&due?`<p class="hint" style="margin-top:8px"><b class="who">Wren</b> “Clear the last loan first. One debt at a time.”</p>`:""}
     </section>`;
   }
+  h+=forgeSection();
   const avail=BUILD.filter(b=>st.ch>=b.ch||built(b.k));
   if(avail.length){
     h+=`<section><h2>Hollowmere <small>${custBase()} customers a day</small></h2><div class="list">${avail.map(b=>{
@@ -925,7 +935,7 @@ CH[4]={t:"What the Celestials Knew",
 SCN["4.1"]={title:"Market day",on:"repair",when:d=>d.k==="market",cards:[
  {s:["Stalls go up overnight. Bunting. A fiddler. Hollowmere smells like bread again.",["Pip","There's a man here who collects _spoons_. He has a spoon _bag_."],["Wren","Collectors. They pay stupid money for shiny things. Be nice to them."]],b:"Continue"}],
  done:()=>{toast("Customers: 6 → 8. Special customer days begin.");tip("h_collect")}};
-TIPS.i_coll={w:"Collector",t:"Is that a genuine cellar-moss trinket? I'll pay double. Don't tell my wife."};
+TIPS.i_coll={w:"The Spoon Man",t:"Good day! Any spoons? Silver, wooden, cursed, I'm not picky."};
 SCN["4.2"]={title:"Into the Ember Vault",on:"enter",when:d=>d.d===2,cards:[
  {s:[["Wren","I was here once. Ten years ago."],["Wren","Bring water. Bring more than you think."]],b:"Continue"}]};
 SCN["4.3"]={title:"The Ember Knight",on:"encounter",when:d=>d.n==="Ember Knight"&&S.story.ch===4,cards:[
@@ -1056,20 +1066,24 @@ SCN["5.8"]={title:"The theft",on:"defeat",when:d=>d.n==="Astral Wyrm"&&S.story.c
 
 /* ---------- Chapter 6: The Long Way Home ---------- */
 CH[6]={t:"The Long Way Home",wait:true,
- open:"Voss is under our feet. Somewhere below the cellar, below the mines, below everything. Maribel says we have days, not weeks.",
+ open:"Voss is under our feet. Somewhere below the cellar, below the mines, below everything. Maribel says we have days, not weeks. Wren's gathering everyone at the shop. When I'm ready, I'll call the war council from this journal.",
+ start:()=>tip("t_council"),
  goals:[
-  {id:"c6council",t:"Hold the war council",ok:()=>seen("6.1")},
-  {id:"c6weapon",t:()=>`Collect Bram's star-forged weapon (2 shards + ${Object.entries(WEAPON_MATS).map(([m,n])=>n+" "+MATS[m]).join(", ")})`,ok:()=>!!S.story.items.weapon},
+  {id:"c6council",t:"Hold the war council (tap its button on this goal in the Journal)",ok:()=>seen("6.1"),btn:()=>seen("6.1")||S.run||S.shop?"":`<button class="btn gold sm goalbtn" data-act="council">Hold the war council</button>`},
+  {id:"c6weapon",t:()=>`Collect Bram's star-forged weapon (2 shards + ${Object.entries(WEAPON_MATS).map(([m,n])=>n+" "+MATS[m]).join(", ")}; +50% attack; made at Bram's forge in the Journal, below Ledgers)`,ok:()=>!!S.story.items.weapon},
   {id:"c6exec",t:"Defeat the Celestial Executor in the Hollow Heart",ev:(ty,d)=>ty==="defeat"&&d.n==="Celestial Executor"},
   {id:"c6bottom",t:"Reach the bottom of the Hollow Heart",ev:(ty,d)=>ty==="floor"&&d.d===4&&d.floor===DUN[4].floors,lock:()=>S.story.items.weapon?"":"Sealed until Bram's weapon is collected"},
   {id:"c6voss",t:"Defeat Voss in the Hollow Heart",ev:(ty,d)=>ty==="defeat"&&d.n==="Voss"}
  ]};
-SCN["6.1"]={title:"The war council",on:"day",when:()=>S.story.ch===6,cards:[
+SCN["6.1"]={title:"The war council",cards:[ // played from the Hold the war council button on Goal 1
  {s:["The shop is crowded for the first time in ten years. Not with customers. With friends."],b:"Continue"},
  {s:[["Maribel","I saw his thoughts while he took the heart. He fell here, long before the town. His own kind cast him down.","wrapped in a blanket by the counter"],["Maribel","And the second star didn't fall on its own. He pulled it down. Fuel."],["Maribel","He burns worlds to travel. The star's power and the heat of the core, together, are enough to launch him home."],["Maribel","Before, he couldn't pass my ward or burn through the rock. With the heart, he can do both. That's how he went straight down."]],b:"And us?"},
  {s:[["Maribel","The blast would scorch the whole world. Every field, every forest, every living thing."],["Pip","...Even the spoon man?","quietly"],["Maribel","Even the spoon man."]],b:"Continue"},
  {s:[["Bram","Then we stop him. Give me those two shards. I'll forge something that can cut starlight."],["Marlo","The Consortium's vault key is still in my coat. Take whatever supplies you need."],["Old Greta","I'll keep the shop open. If the world ends, it ends with the lamp lit."],["Sable","I can feel him. I'll guide you down."],["Wren","And I'm coming. All the way, this time."]],b:"Continue"}],
- done:()=>{S.story.flags.hollow=S.day;toast("The cellar's deepest door opens. <b>The Hollow Heart</b> is unlocked.");tip("h_heart");tip("h_forge")}};
+ done:()=>{S.story.flags.hollow=S.day;toast("The cellar's deepest door opens. <b>The Hollow Heart</b> is unlocked.");tip("t_forge");tip("h_heart")}};
+TIPS.t_council={w:"Wren",t:"Everyone's coming to the shop. Open the **Journal** and call the war council when you're ready.",hl:{sel:"[data-act=council]",tab:"journal",town:true,stay:true},skip:()=>seen("6.1")};
+TIPS.t_forge={w:"Bram",t:"Bring me 6 Ember Core, 6 Ore Chunk and 4 Stardust, and I'll fold your two shards into a blade. When you've got it all, find me at **Bram's forge** in the Journal, under the Ledgers.",hl:{sel:"#forge",tab:"journal",town:true},skip:()=>!!S.story.items.weapon};
+function holdCouncil(){if(S.story.ch!==6||seen("6.1")||S.run||S.shop)return;queue("6.1");playNext()}
 SCN["6.2"]={title:"The star-forged weapon",on:"weapon",cards:[
  {s:[["Bram","Two shards, folded into steel. It's warm. Like holding a hand."],["Maribel","That's the star. It remembers us. It wants him stopped too."],["Maribel","There's a little of its light left in me. Not much. I'm saving it for the end."]],b:"Continue"}],
  done:()=>tip("t_ready")};
@@ -1136,13 +1150,18 @@ TIPS.h_fest={hl:{sel:"#themes",tab:"journal",town:true}};
 const LOAN_HL={sel:"#loanrow",tab:"journal",town:true};
 TIPS.t_reopen1={w:"Wren",t:"Folk remember a good name. Spend your stars in the **Journal**, and pay off the startup loan there too.",hl:{sel:"#rep,#loanrow",tab:"journal",town:true}};
 
+/* Bram's forge: right under the Ledgers once the war council has met, until the blade is made. */
+function forgeSection(){
+  const st=S.story;if(!(st.ch>=6&&seen("6.1")&&!st.items.weapon))return "";
+  const shards=st.items.shard1&&st.items.shard2;
+  const parts=[`<span class="${shards?"have":"need"}">2 star-glass shards</span>`,...Object.entries(WEAPON_MATS).map(([m,n])=>`<span class="${(S.mats[m]||0)>=n?"have":"need"}">${n} ${MATS[m]}</span> (${S.mats[m]||0})`)];
+  const missing=[...(shards?[]:["the two star-glass shards"]),...Object.entries(WEAPON_MATS).filter(([m,n])=>(S.mats[m]||0)<n).map(([m,n])=>`${n-(S.mats[m]||0)} more ${MATS[m]}`)];
+  return `<section id="forge"><h2>Bram's forge</h2><div class="list"><div class="row">
+    <span><b>Star-forged blade</b></span><span class="sub">${parts.join(" + ")}<br>${missing.length?`Still needed: ${missing.join(", ")}.`:"Everything's here."} +50% attack. Needed to reach the bottom of the Hollow Heart.</span>
+    <span class="right"><button class="btn gold sm" data-act="forge" ${canForge()?"":"disabled"}>Forge</button></span></div></div></section>`;
+}
 function journalExtras2(){
   const st=S.story;let h="";
-  if(st.ch>=6&&seen("6.1")&&!st.items.weapon){
-    const parts=[`<span class="${st.items.shard1&&st.items.shard2?"have":"need"}">2 star-glass shards</span>`,...Object.entries(WEAPON_MATS).map(([m,n])=>`<span class="${(S.mats[m]||0)>=n?"have":"need"}">${n} ${MATS[m]}</span> (${S.mats[m]||0})`)];
-    h+=`<section><h2>Bram's forge</h2><div class="list"><button class="row" data-act="forge" ${canForge()?"":"disabled"}>
-      <span><b>Star-forged blade</b></span><span class="sub">${parts.join(" + ")}<br>+50% attack. Needed to reach the bottom of the Hollow Heart.</span><span class="right">Collect</span></button></div></section>`;
-  }
   if(typeof reopenSection==="function")h+=reopenSection();
   if(built("festival"))h+=`<section id="themes"><h2>Shop colors <small>Festival Grounds</small></h2><div class="list">${THEMES.map(t=>`<button class="row" data-act="theme" data-k="${t.k}" ${(S.theme||"")===t.k?"disabled":""}><span><b>${t.n}</b></span><span class="sub">${t.d}</span><span class="right">${(S.theme||"")===t.k?"In use":"Use"}</span></button>`).join("")}</div></section>`;
   return h;
@@ -1927,10 +1946,11 @@ const cName=c=>c.reg?c.reg.replace(/^the /,"The "):"The "+CUST[c.t].n.toLowerCas
 const moodK=c=>c.mood||moodOf(c).k;
 function openShop(){hlLeave(false);S.shop={left:custN(),cur:null,combo:0,today:0,log:[],pct:S.shop?.pct||130,served:0,back:[],regsToday:[]};SE("shopOpen");nextCust();save();render()}
 function slog(m){S.shop.log.unshift(m);S.shop.log=S.shop.log.slice(0,6)}
-function makeCustomer(C,k){
+function makeCustomer(C,k,forceReg){
   const P=S.shop;let reg=null;
   const pool=(REGS[C.k]||[]).filter(n=>!P.regsToday.includes(n));
-  if(pool.length&&Math.random()<.35){reg=pick(pool);P.regsToday.push(reg)}
+  if(forceReg){reg=forceReg;P.regsToday.push(reg)}
+  else if(pool.length&&Math.random()<.35){reg=pick(pool);P.regsToday.push(reg)}
   const R=reg?regRec(reg):null,per=R?R.p:pickPersona(),Pz=PERSONA[per];
   const max=Math.max(1,Math.round(val(k)*rnd(...C.bud)*signB()*Pz.maxMul*(1+.05*(R?R.trust:0))));
   const pat=Pz.pat+sk("patience");
@@ -1947,12 +1967,15 @@ function nextCust(){
   const P=S.shop;P.cur=null;P.back=P.back||[];P.regsToday=P.regsToday||[];
   while(P.left>0){
     P.left--;P.served++;
-    const C=pickCust();
+    // The first collector after the Market Square opens is always the Spoon Man (once he finds something he wants).
+    const spoon=CUST.find(c=>c.k==="coll"),spoonNext=!fl("spoonDone")&&spoon.need()&&forSale().some(k=>spoon.cats.includes(IT[k].c));
+    let C=pickCust();if(spoonNext&&C.k==="coll")C=spoon;
     const m=forSale().filter(k=>!C.cats||C.cats.includes(IT[k].c));
     if(!m.length){slog(`A ${C.n.toLowerCase()} browsed but found nothing they wanted.`);continue}
     const rel=m.filter(x=>IT[x].sec);
     const k=C.k==="schol"&&rel.length?pick(rel):C.k==="noble"?m.reduce((a,b)=>val(b)>val(a)?b:a):pick(m);
-    P.cur=makeCustomer(C,k);
+    const first=spoonNext&&C===spoon;if(first)S.story.flags.spoonDone=S.day;
+    P.cur=makeCustomer(C,k,first?"the Spoon Man":null);
     SE("customer",{type:C.k,mood:P.cur.mood,reg:!!P.cur.reg});
     return;
   }
@@ -2070,7 +2093,7 @@ Object.assign(SPR,{
   enforcer:foeSpr({d:"#856514",g:"#c99b28",y:"#ffe16a",h:"#fff1ad",b:"#3f5da8",B:"#6e8ad0",e:"#2b3052",w:"#f8fbff"},[
     ".......y........",".....yygyy......","....yghhgy......","...yghwyhgy.....","...gheeeehg.....","..bghhyhhygb....",".bbgghhhhggbb...","bbbygghhggybbbb.","bbbygghhggybbbb.",".bbgghhhhggbb...","..bggggggggb....","..bbggggggggbb..","..bbggbbbbggbb..","...bbb....bbb...","..bbb......bbb..",".bbb........bbb."])
 });
-const SPR_OF={"Wren":"wren","Maribel":"maribel","Pip":"pip","Marlo":"marlo","Old Greta":"greta","Bram":"bram","Sable":"sable","Voss":"voss",
+const SPR_OF={"The Spoon Man":"coll","Wren":"wren","Maribel":"maribel","Pip":"pip","Marlo":"marlo","Old Greta":"greta","Bram":"bram","Sable":"sable","Voss":"voss",
   "Ember Knight":"knight","Kobold Foreman":"kobold","Celestial Executor":"executor","Village Kid":"kid","Townsfolk":"town","Adventurer":"adv",
   "Collector":"coll","Noble":"noble","Traveler":"trav","Craftsperson":"craft","Scholar":"schol",
   "Cellar Rat":"rat","Slime":"slime","Moss Beetle":"beetle","Cave Bat":"bat","Kobold Miner":"miner","Rock Crab":"crab",
@@ -2467,7 +2490,7 @@ app.addEventListener("click",e=>{
     drop:()=>dropPick(+b.dataset.i), pickup:pickUp,
     equip:()=>equip(b.dataset.k), unequip:()=>unequip(+b.dataset.i), secret:secretStairs,
     learn:()=>learn(b.dataset.k),
-    info:()=>{infoK=b.dataset.k;drawOv()}, nextCh:nextChapter, sleep:sleepNight,
+    info:()=>{infoK=b.dataset.k;drawOv()}, nextCh:nextChapter, sleep:sleepNight, council:holdCouncil,
     payDebt, repair:()=>repair(b.dataset.k), forge, theme:()=>{S.theme=b.dataset.k;applyTheme();save();render()},
     hire:()=>hire(b.dataset.k), fireAsk:()=>{confirmFire=b.dataset.k;render()}, fireNo:()=>{confirmFire=null;render()}, fireDo:()=>fire(b.dataset.k),
     keep:()=>{const k=b.dataset.k;S.keep[k]=!isKept(k);save();render()},

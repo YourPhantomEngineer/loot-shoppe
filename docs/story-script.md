@@ -601,9 +601,11 @@ Opening entry:
 
 **Special customer days (defined):** every seventh day (days 3, 10, 17…) is a **collector day** at the Market Square: +2 customers, with collectors and nobles four times as likely to walk in. Market Today announces it.
 
-**New customer intro, first collector:**
+**New customer intro, first collector (always the Spoon Man, a Collector regular):**
 
-> **Collector:** "Is that a genuine cellar-moss trinket? I'll pay double. Don't tell my wife."
+> **The Spoon Man:** "Good day! Any spoons? Silver, wooden, cursed, I'm not picky."
+
+**Spoon Man timing (interpretation):** he's the first collector to walk in once the Market Square is repaired, on the first shop day when a collector visits and gems or trinkets are For sale. Collectors only buy those, so he waits until there's something on the shelf for him. Before then, no other collector takes his place. Saves that already had the Market Square before this change skip his intro, because collectors were already visiting.
 
 ## Scene 4.2: Into the Ember Vault
 
@@ -1035,19 +1037,21 @@ Opening entry:
 
 ## Journal: Chapter 6 goals
 
-1. Hold the war council
-2. Collect Bram's star-forged weapon (2 shards + 6 Ember Core, 6 Ore Chunk, 4 Stardust; +50% attack)
+1. Hold the war council (tap its button on this goal in the Journal)
+2. Collect Bram's star-forged weapon (2 shards + 6 Ember Core, 6 Ore Chunk, 4 Stardust; +50% attack; made at Bram's forge in the Journal, below Ledgers)
 3. Defeat the Celestial Executor in the Hollow Heart
 4. Reach the bottom of the Hollow Heart
 5. Defeat Voss in the Hollow Heart
 
 Opening entry:
 
-> *Voss is under our feet. Somewhere below the cellar, below the mines, below everything. Maribel says we have days, not weeks.*
+> *Voss is under our feet. Somewhere below the cellar, below the mines, below everything. Maribel says we have days, not weeks. Wren's gathering everyone at the shop. When I'm ready, I'll call the war council from this journal.*
+
+→ **Tutorial prompt** (highlighting the Journal tab, then the **Hold the war council** button on Goal 1): Wren: "Everyone's coming to the shop. Open the **Journal** and call the war council when you're ready."
 
 ## Scene 6.1: The war council
 
-**Trigger:** first day of Chapter 6.
+**Trigger:** tapping the Hold the war council button on Goal 1 in the Journal.
 
 **CARD 1** (narration)
 
@@ -1091,6 +1095,8 @@ Opening entry:
 
 → **The cellar's deepest door opens. The Hollow Heart unlocks (highlighting the Hollow Heart), and Bram's forge appears in the Journal (highlighting the Bram's forge row).**
 
+→ **Tutorial prompt** (highlighting **Bram's forge** in the Journal, below Ledgers): Bram: "Bring me 6 Ember Core, 6 Ore Chunk and 4 Stardust, and I'll fold your two shards into a blade. When you've got it all, find me at **Bram's forge** in the Journal, under the Ledgers."
+
 ## Scene 6.2: The star-forged weapon
 
 **Trigger:** Goal 2 complete.
@@ -1103,7 +1109,7 @@ Opening entry:
 
 **Wren tip:** "Nobody's ready for this. Go anyway."
 
-**Collecting the weapon:** a "Bram's forge" row appears in the Journal after the war council. It uses up both shards and the materials, and the blade stays through every Grand Reopening.
+**Collecting the weapon:** a "Bram's forge" row appears in the Journal, below Ledgers, after the war council. It lists the materials still needed and shows a Forge button once they're all in hand. It uses up both shards and the materials, and the blade stays through every Grand Reopening.
 
 ## Scene 6.3: Into the Hollow Heart
 
