@@ -134,6 +134,19 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 .rlog li{color:var(--fg)}
 .staffcard{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
 .row.locked{opacity:.55}
+.town-view{display:flex;flex-direction:column;gap:14px}
+.town-section{--town-accent:var(--copper);position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0) 54%),var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;box-shadow:inset 3px 0 0 var(--town-accent),0 4px 0 rgba(5,14,16,.22)}
+.town-section::before{content:"";position:absolute;inset:0 0 auto;height:2px;background:var(--town-accent);opacity:.72}
+.town-section h2{color:var(--town-accent);border-bottom:1px solid var(--line);padding:0 2px 10px;margin:0 0 12px}
+.town-market{--town-accent:var(--coin)}
+.town-expedition{--town-accent:var(--copper)}
+.town-staff{--town-accent:var(--good)}
+.town-supplies{--town-accent:var(--arcane)}
+.town-stock{--town-accent:var(--coin)}
+.town-utility{--town-accent:var(--muted)}
+.town-action{padding:4px;border:1px solid var(--copper);border-radius:11px;background:rgba(224,144,79,.09);box-shadow:0 4px 0 rgba(5,14,16,.22)}
+.town-action .big{box-shadow:inset 0 1px rgba(255,255,255,.18)}
+.town-ledger{border:1px dashed var(--line);border-radius:8px;padding:9px 12px;text-align:center;background:rgba(5,14,16,.12)}
 html[data-shop="festival"]{--bg:#2a1418;--panel:#3a1d22;--line:#58303a;--copper:#ee6f5a;--coin:#f7c95a;--muted:#c49ea0}
 html[data-shop="starlight"]{--bg:#0f1530;--panel:#18204a;--line:#2a3468;--copper:#9fb7f0;--coin:#e4e9f7;--muted:#9aa6cf}
 .ov[hidden]{display:none}
@@ -1983,38 +1996,38 @@ function vTown(){
   const chips=CATS.map(c=>{const p=Math.round(S.trend[c]*100);return `<span class="chip ${p>=108?"up":p<=92?"down":""}">${CATN[c]} ${p}%</span>`}).join("");
   const inv=groupInv(S.inv),eq=groupInv(S.inv.filter(k=>HEAL[k]||IT[k].c==="supply"));
   const saleN=forSale().length;
-  return `
+  return `<div class="town-view">
   ${reportCard()}
-  <section id="mkt"><h2>Market today</h2><div class="chips">${chips}</div>${dayNews()?`<p class="hint" style="margin-top:8px;color:var(--coin)">${dayNews()}</p>`:""}${S.news?`<p class="hint" style="margin-top:8px">${S.news}</p>`:""}</section>
-  <button class="big" data-act="shop" ${saleN?"":"disabled"}>Open the shop<small>${saleN?`Up to ${custN()} customers · ${saleN} item${saleN===1?"":"s"} for sale · uses the day`:S.inv.length?"Everything in stock is marked Keep. Mark something For sale first.":"Your shelves are empty. Go delving first."}</small></button>
-  <section><h2>Go delving <small>${S.crew.length?`${nameList(S.crew.map(k=>ST(k).n))} mind${S.crew.length>1?"":"s"} the shop`:"uses the day"}</small></h2><div class="list">
+  <section id="mkt" class="town-section town-market"><h2>Market today</h2><div class="chips">${chips}</div>${dayNews()?`<p class="hint" style="margin-top:8px;color:var(--coin)">${dayNews()}</p>`:""}${S.news?`<p class="hint" style="margin-top:8px">${S.news}</p>`:""}</section>
+  <div class="town-action"><button class="big" data-act="shop" ${saleN?"":"disabled"}>Open the shop<small>${saleN?`Up to ${custN()} customers · ${saleN} item${saleN===1?"":"s"} for sale · uses the day`:S.inv.length?"Everything in stock is marked Keep. Mark something For sale first.":"Your shelves are empty. Go delving first."}</small></button></div>
+  <section class="town-section town-expedition"><h2>Go delving <small>${S.crew.length?`${nameList(S.crew.map(k=>ST(k).n))} mind${S.crew.length>1?"":"s"} the shop`:"uses the day"}</small></h2><div class="list">
     ${DUN.map((d,i)=>{const open=dunOpen(i);if(d.hidden&&!open)return "";return `<button class="row" data-act="delve" data-i="${i}" ${open?"":"disabled"}>
       <span><b>${d.n}</b>${S.bosses[i]?`<span class="crown">Boss beaten</span>`:""}</span><span class="sub">${open?`${d.floors} floors · boss: ${d.boss}`:DUN_LOCK[i]}</span>
       <span class="right">${open?"Enter":"Locked"}</span></button>`}).join("")}
   </div></section>
   ${staffSection()}
-  <section id="belt"><h2>Supply belt <small>${S.belt.length}/${BELT} · tap to unequip</small></h2>
+  <section id="belt" class="town-section town-supplies"><h2>Supply belt <small>${S.belt.length}/${BELT} · tap to unequip</small></h2>
     <div class="chips">${S.belt.length?S.belt.map((k,i)=>`<button class="chip usebtn on" data-act="unequip" data-i="${i}">${IT[k].n}</button>`).join(""):`<span class="hint">Empty. Supplies on your belt come with you into every dungeon.</span>`}</div>
     ${eq.length?`<div class="chips" style="margin-top:8px">${eq.map(([k,n])=>`<button class="chip usebtn" data-act="equip" data-k="${k}" ${S.belt.length>=BELT?"disabled":""}>+ ${IT[k].n}${n>1?` ×${n}`:""}</button>`).join("")}</div>`:`<p class="hint" style="margin-top:8px">Craft bombs, ropes, whetstones, and lockpicks in the Workshop. Potions in stock can go on your belt too.</p>`}
   </section>
-  <section><h2>Stock <small>${S.inv.length} item${S.inv.length===1?"":"s"}</small></h2>
+  <section class="town-section town-stock"><h2>Stock <small>${S.inv.length} item${S.inv.length===1?"":"s"}</small></h2>
     ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}<span class="cat">${IT[k].c}</span></span><span class="sub">${built("obs")&&LORE[k]?`<i class="lore">${LORE[k]}</i><br>`:""}Market value ${val(k)}G · <button class="tag${isKept(k)?" keep":""}" data-act="keep" data-k="${k}">${isKept(k)?"Keep":"For sale"}</button></span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
     ${inv.length?`<p class="hint" style="margin-top:8px">Only items marked For sale can be offered to customers or sold by staff. Tap a tag to switch it.</p>`:""}
     ${sk("quick")&&inv.length?`<p class="hint" style="margin-top:8px">Quick Sale pays ${Math.round(quickPct()*100)}% of base value instantly and doesn't use the day.</p>`:""}
   </section>
-  <p class="hint">Sold ${fmt(S.sold)} items for ${fmt(S.earned)}G · crafted ${fmt(S.crafted)}. Progress is saved in this browser.</p>
-  <section><h2>Save code <small>back up or move your progress</small></h2>
+  <p class="hint town-ledger">Sold ${fmt(S.sold)} items for ${fmt(S.earned)}G · crafted ${fmt(S.crafted)}. Progress is saved in this browser.</p>
+  <section class="town-section town-utility"><h2>Save code <small>back up or move your progress</small></h2>
     <div class="btns"><button class="btn alt" data-act="exportSave">Copy save code</button><button class="btn alt" data-act="importOpen">Load a save code</button></div>
     ${saveBox==="export"?`<label class="lbl" for="exportCode" style="margin-top:10px">Your save code</label><textarea id="exportCode" class="code" readonly autocapitalize="off" autocorrect="off" spellcheck="false">${saveCode}</textarea>`:""}
     ${saveBox==="import"?`<label class="lbl" for="importCode" style="margin-top:10px">Paste a save code. This replaces your current progress.</label><textarea id="importCode" class="code" placeholder="LS1:..." autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"></textarea>
       <div class="btns" style="margin-top:8px"><button class="btn" data-act="importDo">Load this save</button><button class="btn alt" data-act="saveClose">Cancel</button></div>`:""}
     ${saveMsg?`<p class="hint" style="margin-top:8px">${saveMsg}</p>`:""}
   </section>
-  <section><h2>Game updates <small>get the newest version</small></h2>
+  <section class="town-section town-utility"><h2>Game updates <small>get the newest version</small></h2>
     <div class="btns"><button class="btn alt" data-act="updateGame">Check for updates</button></div>
     <p class="hint" style="margin-top:8px">Saves your progress, then reloads the game with the latest version. Use this if you play from your Home Screen.</p>
   </section>
-  ${confirmReset?`<div class="confirm">Start over from day 1? This erases everything.<div class="btns"><button class="btn danger" data-act="resetYes">Erase all</button><button class="btn alt" data-act="resetNo">Keep playing</button></div></div>`:`<button class="ghost" data-act="reset" style="align-self:center">Start over</button>`}`;
+  ${confirmReset?`<div class="confirm">Start over from day 1? This erases everything.<div class="btns"><button class="btn danger" data-act="resetYes">Erase all</button><button class="btn alt" data-act="resetNo">Keep playing</button></div></div>`:`<button class="ghost" data-act="reset" style="align-self:center">Start over</button>`}</div>`;
 }
 
 function reportCard(){
@@ -2040,7 +2053,7 @@ function staffSection(){
     </div>`}).join("");
   const others=STAFF.filter(s=>!S.crew.includes(s.k));
   const wage=staffPayroll();
-  return `<section id="staff"><h2>Shop staff <small>${S.crew.length?`${fmt(wage)}G a delve day`:"hire help for delve days"}</small></h2>
+  return `<section id="staff" class="town-section town-staff"><h2>Shop staff <small>${S.crew.length?`${fmt(wage)}G a delve day`:"hire help for delve days"}</small></h2>
     ${S.crew.length>1?`<p class="hint">Team payroll penalty: ${staffMultText(S.crew.length)} total wages. Each shopkeeper after the first multiplies the whole payroll by another 1.5×.</p>`:""}
     ${cards}
     ${others.length?`<div class="list">${others.map(s=>{const open=s.need();return open?`<button class="row" data-act="hire" data-k="${s.k}" ${built("tavern")||s.k==="pip"?"":"disabled"}>
