@@ -18,7 +18,11 @@ Progress saves on your device. Use **Copy save code** on the Town tab to back up
 - `sw.js` — service worker that lets the game run offline
 - `manifest.webmanifest` — app name, icon and Home Screen settings
 - `icons/` — app icons
+- `docs/story-script.md` — the story script
+- `tests/` — browser tests (`npm install`, then `npm test`)
 
-When you change `index.html`, bump the `CACHE` version in `sw.js` so installed copies pick up the new icons and files.
+## Contributing
+
+Read [AGENTS.md](AGENTS.md) first. It covers the ground rules, how the code is laid out, keeping the story script in sync, tests and releases. It's written for AI agents and people alike.
 
 © All rights reserved.

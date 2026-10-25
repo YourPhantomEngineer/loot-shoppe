@@ -1,0 +1,30 @@
+const {chromium}=require('playwright');const fs=require('fs');
+(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:390,height:900}});const e=[];p.on('pageerror',x=>e.push(x.message));
+await p.route(/fonts\.(googleapis|gstatic)/,r=>r.abort());
+await p.goto('file://'+require('path').join(__dirname,'..','index.html'));
+await p.addScriptTag({content:fs.readFileSync(require('path').join(__dirname,'helpers.js'),'utf8')});
+const out=await p.evaluate(()=>{const L=[];const log=m=>L.push(m);const C=1; // decline optional hires
+  T.toCh3();log("ch="+S.story.ch+" goals="+T.goals()+" cust="+custN());
+  T.rich();
+  log("smithy early ok="+canBuild(BLD("smithy"))+" bomb lock="+recipeLock(RECIPES.find(r=>r.out==="bomb"))+" gearcap="+gearCap("blade"));
+  repair("tavern");T.through(C);log("tavern seen31="+seen("3.1")+" crew="+S.crew+" met_marlo="+fl("met_marlo")+" cust="+custN());
+  T.delve(1);log("seen32="+seen("3.2"));T.mini();T.boss();T.home();
+  log("after mine goals="+T.goals()+" shard1="+!!S.story.items.shard1+" seen35="+seen("3.5")+" crew="+S.crew);
+  T.day();log("greta idle seen="+seen("3.5i"));
+  T.rich();repair("smithy");T.through();repair("apothecary");T.through();payDebt();T.through();
+  log("ch="+S.story.ch+" cust="+custN()+" vault="+dunOpen(2)+" gearcap="+gearCap("blade")+" bomb lock="+recipeLock(RECIPES.find(r=>r.out==="bomb")));
+  T.rich();repair("market");T.through();
+  T.delve(2);log("seen42="+seen("4.2"));T.mini();T.home();log("seen43b="+seen("4.3b"));
+  T.day();log("seen44="+seen("4.4")+" mutual="+fl("mutual")+" marlo title="+R_(ST("marlo").title));
+  T.day();log("seen45="+seen("4.5"));
+  T.delve(2);T.boss();T.home();log("seen46b="+seen("4.6b")+" seen47="+seen("4.7")+" seen48="+seen("4.8")+" crew="+S.crew+" shard2="+!!S.story.items.shard2);
+  T.rich();repair("watch");T.through();payDebt();T.through();
+  log("ch="+S.story.ch+" cust="+custN()+" goals ch4 all="+chComplete(4));
+  log("seen="+Object.keys(S.story.seen).join(","));
+  log("staff need="+STAFF.map(s=>s.k+":"+s.need()).join(" ")+" hiredEver="+JSON.stringify(S.story.hiredEver));
+  // collector day
+  S.day=10;log("collector day="+collectorDay()+" custN="+custN());
+  return L});
+console.log(out.join("\n"));console.log("errors",e);
+await p.evaluate(()=>{tab="town";S.day=10;render()});await p.screenshot({path:'town4.png',fullPage:true});
+await b.close()})();

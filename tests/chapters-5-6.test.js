@@ -1,0 +1,33 @@
+const {chromium}=require('playwright');const fs=require('fs');
+(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:390,height:900}});const e=[];p.on('pageerror',x=>e.push(x.message));
+await p.route(/fonts\.(googleapis|gstatic)/,r=>r.abort());
+await p.goto('file://'+require('path').join(__dirname,'..','index.html'));
+await p.addScriptTag({content:fs.readFileSync(require('path').join(__dirname,'helpers.js'),'utf8')});
+const out=await p.evaluate(()=>{const L=[];const log=m=>L.push(m);
+  T.toCh3();T.rich();repair("tavern");T.through(1);T.delve(1);T.mini();T.boss();T.home();T.day();
+  T.rich();repair("smithy");T.through();repair("apothecary");T.through();payDebt();T.through();
+  T.rich();repair("market");T.through();T.delve(2);T.mini();T.home();T.day();T.day();T.delve(2);T.boss();T.home();T.through(1);
+  T.rich();repair("watch");T.through();payDebt();T.through();
+  log("ch="+S.story.ch+" spire="+dunOpen(3));
+  // Ch5
+  log("seal summit="+!!floorSealed(3,8));
+  S.xp=xpFor(10);addXp(1);T.through();log("lv10 goal="+goalDone("c5lv10")+" spire="+dunOpen(3)+" seen52="+seen("5.2"));
+  T.day();log("seen52 after day="+seen("5.2"));
+  T.rich();repair("obs");T.through();log("obs cust="+custN()+" seen51="+seen("5.1"));
+  T.delve(3);log("seen53="+seen("5.3"));T.mini();T.home();
+  payDebt();T.through();log("seen55="+seen("5.5")+" paid="+S.story.debtPaid+" seal="+!!floorSealed(3,8));
+  T.delve(3);T.boss();log("seen57="+seen("5.7")+" seen58="+seen("5.8")+" maribel="+fl("maribel"));T.home();
+  log("ch="+S.story.ch+" seen61="+seen("6.1")+" hollow="+dunOpen(4));
+  // weapon
+  log("forge ok="+canForge());T.rich();forge();T.through();log("weapon="+!!S.story.items.weapon+" seen62="+seen("6.2")+" dmg="+dmg());
+  T.delve(4);log("seen63="+seen("6.3"));T.mini();log("exec goal="+goalDone("c6exec"));
+  const R=S.run;R.floor=5;R.stairs=true;R.nextMod=null;R.hp=99999;descend();T.through();
+  log("floor="+R.floor+" seen65="+seen("6.5")+" fight="+(R.fight&&R.fight.n));T.win();T.through();
+  log("vossDone="+fl("vossDone")+" seen67="+seen("6.7"));T.home();
+  log("epi="+seen("epi")+" ended="+!!S.story.ended+" cust="+custN()+" festival="+built("festival")+" boss name="+DUN[4].boss);
+  log("ch6 goals="+T.goals());
+  log("journal kinds="+S.story.journal.map(j=>j.kind).join(","));
+  return L});
+console.log(out.join("\n"));console.log("errors",e);
+await p.evaluate(()=>{S.theme="festival";tab="journal";render()});await p.screenshot({path:'end.png',fullPage:true});
+await b.close()})();

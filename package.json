@@ -1,0 +1,11 @@
+{
+  "name": "dungeon-loot-shoppe",
+  "private": true,
+  "description": "Browser game. The game itself has no build step or dependencies; this file is only for the tests.",
+  "scripts": {
+    "test": "node tests/run.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.40.0"
+  }
+}

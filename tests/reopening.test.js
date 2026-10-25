@@ -1,0 +1,42 @@
+const {chromium}=require('playwright');const fs=require('fs');
+(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:390,height:900}});const e=[];p.on('pageerror',x=>e.push(x.message));
+await p.route(/fonts\.(googleapis|gstatic)/,r=>r.abort());
+await p.goto('file://'+require('path').join(__dirname,'..','index.html'));
+await p.addScriptTag({content:fs.readFileSync(require('path').join(__dirname,'helpers.js'),'utf8')});
+const out=await p.evaluate(()=>{const L=[];const log=m=>L.push(m);
+  const cycle=(label)=>{
+    T.rich();S.skills={power:1};S.belt=["bomb"];S.gear.blade=3;S.inv.push("ruby");
+    const before=T.snap();const seenBefore=Object.keys(S.story.seen).length;
+    T.reopen();const after=T.snap();
+    const reopenScenes=T.seenLog.slice(-4).join(",");
+    log(label+": before "+JSON.stringify(before));
+    log(label+": after  "+JSON.stringify(after));
+    const lk=T.lockedTry();log(label+": while loan unpaid -> pay changed="+lk.paidChanged+" reopened="+lk.reopened+" tip="+lk.tip);
+    T.payOff();log(label+": loan repaid="+S.story.loan+" journal last="+S.story.journal.slice(-1)[0].text.slice(0,40));
+  };
+  T.toCh3();log("Ch2 done? ch="+S.story.ch);
+  // Ch2 reopening: need to be in ch2 — rebuild: start a new game and stop after the well (well completes ch2), so use ch3 for 'after well' first
+  cycle("Ch3");
+  T.rich();repair("tavern");T.through(1);T.delve(1);T.mini();T.boss();T.home();T.day();T.rich();repair("smithy");T.through();repair("apothecary");T.through();payDebt();T.through();
+  cycle("Ch4");
+  T.rich();repair("market");T.through();T.delve(2);T.mini();T.home();T.day();T.day();
+  const loanLabelCh4=loanLender();
+  T.delve(2);T.boss();T.home();T.through(1);T.rich();repair("watch");T.through();payDebt();T.through();
+  cycle("Ch5");
+  log("Ch5 lender="+S.story.loanFrom+" (before 4.4 it was "+loanLabelCh4+")");
+  S.xp=xpFor(10)+5;SE("level",{lvl:10});T.through();T.day();T.rich();repair("obs");T.through();
+  log("Ch5 spire after reopen, level "+lvl()+": open="+dunOpen(3));
+  T.delve(3);T.mini();T.home();payDebt();T.through();T.delve(3);S.xp=xpFor(12);T.boss();T.home();
+  cycle("Ch6");
+  log("Ch6 spire still open at level "+lvl()+": "+dunOpen(3)+", hollow="+dunOpen(4));
+  T.rich();forge();T.through();T.delve(4);T.mini();const R=S.run;R.floor=5;R.stairs=true;R.nextMod=null;descend();T.through();T.win();T.through();T.home();
+  log("ended="+!!S.story.ended);
+  cycle("After ending");
+  log("reopenEnd seen="+seen("reopenEnd")+" reopens="+S.story.reopens);
+  // a second reopening after the ending must not replay reopenEnd
+  T.rich();const sl=T.seenLog.length;T.reopen();log("second post-ending reopen scenes="+T.seenLog.slice(sl).join(","));
+  log("scenes replayed? 2.6 seen once: "+S.story.seen["2.6"]+" chapter="+S.story.ch);
+  return L});
+console.log(out.join("\n"));console.log("errors",e);
+await p.evaluate(()=>{tab="journal";render()});await p.screenshot({path:'reopen.png',fullPage:true});
+await b.close()})();

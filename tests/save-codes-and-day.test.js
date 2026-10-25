@@ -1,0 +1,11 @@
+const {chromium}=require('playwright');
+(async()=>{const b=await chromium.launch();const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.goto('file://'+require('path').join(__dirname,'..','index.html'));
+const r=await p.evaluate(()=>{while(document.querySelector("#ov button"))document.querySelector("#ov button").click();
+  S.gold=4321;save();const code="ls1:"+btoa(unescape(encodeURIComponent(JSON.stringify(S))));S.gold=1;
+  saveBox="import";render();const t=document.getElementById("importCode");t.value=code.slice(0,40)+"\n "+code.slice(40);
+  app.querySelector("[data-act=importDo]").click();const gold=S.gold;
+  const before=!!app.querySelector(".daypop");startDelve(0);while(document.querySelector("#ov button"))document.querySelector("#ov button").click();
+  leaveDungeon();while(document.querySelector("#ov button"))document.querySelector("#ov button").click();
+  const after=app.querySelector(".daypop")?.outerHTML.slice(0,80);return {gold,msg:saveMsg,before,after}});
+console.log(JSON.stringify(r),errs);await b.close()})();
