@@ -48,7 +48,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--coin);outline-o
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .stat{background:var(--panel);border-radius:6px;padding:10px;min-width:0}
 .lbl{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
-.stat b{font-family:var(--display);font-size:1.15rem;font-variant-numeric:tabular-nums;display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat b{font-family:var(--display);font-size:1.15rem;font-variant-numeric:tabular-nums;display:block;margin-top:2px;white-space:nowrap;overflow:hidden}
 .xpstat .lbl{font-size:.62rem;letter-spacing:.06em;white-space:nowrap}.xpstat b{font-size:.82rem;letter-spacing:-.02em}
 .coin{color:var(--coin)}
 .bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:6px}
@@ -2367,6 +2367,16 @@ function vOver(){
   </div>`;
 }
 
+/* Shrink big pixel-font numbers to fit their box on narrow phones instead of cutting them off. */
+function fitText(){
+  for(const el of app.querySelectorAll(".stat b,.offerbox b,.price b,.big-num")){
+    el.style.fontSize="";let fs=parseFloat(getComputedStyle(el).fontSize),n=0;
+    const room=()=>el.parentElement.clientWidth-parseFloat(getComputedStyle(el.parentElement).paddingLeft)-parseFloat(getComputedStyle(el.parentElement).paddingRight);
+    while(el.scrollWidth>Math.max(el.clientWidth,room())+.5&&fs>9&&n<20){fs-=1;el.style.fontSize=fs+"px";n++}
+  }
+}
+addEventListener("resize",()=>fitText());
+try{document.fonts.ready.then(()=>fitText());document.fonts.addEventListener("loadingdone",()=>fitText())}catch(e){}
 function render(){
   if(S.over)app.innerHTML=vOver();
   else if(S.run)app.innerHTML=vDelve();
@@ -2375,10 +2385,10 @@ function render(){
     if((tab==="skills"&&!fl("skills"))||tab==="legacy")tab=tab==="legacy"?"journal":"town";
     app.innerHTML=`<header><h1>Dungeon Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():tab==="journal"?vJournal():vTown());
   }
-  applyHl();
+  applyHl();fitText();
   const r=document.getElementById("price");
   if(r)r.addEventListener("input",()=>{S.shop.pct=+r.value;const p=Math.max(1,Math.round(val(S.shop.cur.k)*S.shop.pct/100));
-    document.getElementById("pv").textContent=fmt(p)+"G";document.getElementById("pp").textContent=S.shop.pct+"% of market"});
+    document.getElementById("pv").textContent=fmt(p)+"G";fitText();document.getElementById("pp").textContent=S.shop.pct+"% of market"});
   musicUpdate();applyTheme();
 }
 
