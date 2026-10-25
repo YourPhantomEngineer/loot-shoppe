@@ -30,6 +30,28 @@ Script conventions:
 - "(highlighting the X)" means X gets the pulsing outline after the prompt's **Got it** (see "How highlights work" at the top of the script).
 - Every speaking character has a pixel portrait. A new speaking character needs one (see "Portraits").
 
+## Several agents at once
+
+More than one agent (several Claude sessions, ChatGPT/Codex) may be changing the game at the same time.
+
+- **Fetch first, every time.** Run `git pull --rebase origin main` before you start a change and again right before you push. If the rebase brings in someone else's work, run the tests again before pushing.
+- **Keep changes small and finish them.** One feature or fix per commit or pull request. Don't leave half-done work on `main`.
+- **Bump the cache on top of the latest number.** If someone else bumped `CACHE` in `sw.js` while you worked, take the next number after theirs when you resolve the conflict.
+- **Don't undo other agents' work.** If something another agent did looks wrong, say so to the owner instead of quietly reverting it.
+- **Commit messages say what changed for the player**, so the other agents can follow the log.
+
+### Claude sessions
+
+Claude sessions can do two things other agents can't:
+
+- **Edit the master story doc.** The script lives at https://claude.ai/artifact/EjkBh5p6FSvwhqCTwAcFCd. Before editing, read what changed since you last looked. Mirror any changes the owner made there into the game. After editing it, export it as Markdown and overwrite `docs/story-script.md` in the same commit, so the two never drift apart. If `docs/story-script.md` changed in the repo (another agent's pull request), carry those edits into the master doc.
+- **Update the claude.ai preview** at https://claude.ai/artifact/Jo4j1N5C4Hoph9DhGYK3Cf after a release. Build it from `index.html` as follows:
+  1. Take everything between `<body>` and the closing service-worker `<script>`.
+  2. Put these three lines in front of it: `<title>Dungeon Loot Shoppe</title>`, `<meta name="claude:viewport-fit-sides" content="cover">`, and the Google Fonts `<link>` from `index.html`'s head.
+  3. Publish that to the same artifact URL.
+
+Claude sessions push to `main` directly (the owner asked for changes to go live), after `git pull --rebase` and a full `npm test`.
+
 ## Files
 
 | Path | What it is |
