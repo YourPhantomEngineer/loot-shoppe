@@ -1,0 +1,14 @@
+const {chromium}=require('playwright');
+(async()=>{const b=await chromium.launch();const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.goto('file://'+require('path').join(__dirname,'..','index.html'));
+const r=await p.evaluate(()=>{while(document.querySelector('#ov button'))document.querySelector('#ov button').click();
+  S.staffs={};
+  const payrolls=[['pip'],['pip','marlo'],['pip','marlo','greta'],['pip','marlo','greta','sable']].map(staffPayroll);
+  const mults=[1,2,3,4].map(staffWageMult);
+  S.crew=['pip','marlo','greta','sable'];S.gold=5000;S.inv=Array(20).fill('sword');S.keep={sword:false};
+  const shift=staffShift(),panel=staffSection();
+  return {payrolls,mults,shiftWage:shift.wage,panelTotal:/2,093G a delve day/.test(panel),panelPenalty:/3.38× total wages/.test(panel)};
+});
+const ok=JSON.stringify(r.payrolls)===JSON.stringify([15,90,450,2093])&&JSON.stringify(r.mults)===JSON.stringify([1,1.5,2.25,3.375])&&r.shiftWage===2093&&r.panelTotal&&r.panelPenalty;
+if(errs.length||!ok)throw new Error(JSON.stringify({r,errs}));
+console.log(JSON.stringify(r));await b.close()})();
