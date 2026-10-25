@@ -36,28 +36,20 @@ Opening entry:
 
 > The bell over the door still works. Nothing else does.
 >
-> **\[Continue\]**
-
-**CARD 2** (narration)
-
 > Dust everywhere but the floor. An empty stockroom. A journal with your name on the first page, in Aunt Maribel's handwriting.
 >
 > **\[Read it\]**
 
-**CARD 3** (Maribel's note)
+**CARD 2** (Maribel's note)
 
 > *"If you're reading this, the shop is yours. Keep the doors open. Keep the lamp lit. And whatever anyone offers, don't sell the cellar."*
 >
 > **\[Continue\]**
 
-**CARD 4** (narration)
+**CARD 3**
 
 > The door creaks. A woman with one hand and no patience looks you over.
 >
-> **\[Continue\]**
-
-**CARD 5**
-
 > **Wren:** "You're Maribel's kin. Good. I'm Wren. I adventured with her for twenty years."
 >
 > **Wren:** "The shop's got no stock, and the cellar's got rats the size of goats. Let's fix one of those problems."
@@ -82,7 +74,7 @@ Opening entry:
 
 **Wren tips** (one-time pop-ups the player dismisses with Got it):
 
-- **First combat (highlighting Attack, Guard and Flee):** "Attack if you can win. Guard if it hits hard. Flee if your gut says flee."
+- **First combat (highlighting Attack, Guard and Flee):** "Attack deals damage; if the enemy survives, it hits back. Guard means you don't attack that turn, but the enemy deals about 70% less damage. Flee might fail, giving the enemy a free hit."
 - **First enemy hit (highlighting the enemy's damage number):** "That number's a rough guess at its damage. Plan around it."
 - **First loot (highlighting your pack space):** "Everything has a price. Mind your pack space."
 - **First supply-belt use (highlighting the supply belt):** "A supply costs your turn. Use it before you need it, not after."

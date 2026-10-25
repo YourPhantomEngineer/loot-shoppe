@@ -636,11 +636,9 @@ CH[1]={t:"Dust and Doorbells",wait:true,
   {id:"c1lv2",t:"Reach Level 2",ok:()=>lvl()>=2,show:()=>goalDone("c1f1")}
  ]};
 SCN["1.1"]={title:"Arrival",cards:[
- {s:["The bell over the door still works. Nothing else does."],b:"Continue"},
- {s:["Dust everywhere but the floor. An empty stockroom. A journal with your name on the first page, in Aunt Maribel's handwriting."],b:"Read it"},
+ {s:["The bell over the door still works. Nothing else does.","Dust everywhere but the floor. An empty stockroom. A journal with your name on the first page, in Aunt Maribel's handwriting."],b:"Read it"},
  {s:[["note","\"If you're reading this, the shop is yours. Keep the doors open. Keep the lamp lit. And whatever anyone offers, don't sell the cellar.\""]],b:"Continue"},
- {s:["The door creaks. A woman with one hand and no patience looks you over."],b:"Continue"},
- {s:[["Wren","You're Maribel's kin. Good. I'm Wren. I adventured with her for twenty years."],["Wren","The shop's got no stock, and the cellar's got rats the size of goats. Let's fix one of those problems."]],b:"Let's go"}],
+ {s:["The door creaks. A woman with one hand and no patience looks you over.",["Wren","You're Maribel's kin. Good. I'm Wren. I adventured with her for twenty years."],["Wren","The shop's got no stock, and the cellar's got rats the size of goats. Let's fix one of those problems."]],b:"Let's go"}],
  done:()=>{jrnl(CH[1].open,"open");tab="town";tip("t_journal");tip("h_cellar")}};
 SCN["1.2"]={title:"First delve",on:"enter",when:d=>d.d===0,cards:[
  {s:[["Wren","Delving takes the whole day. Go deep for better loot, but every floor bites harder."],["Wren","Faint down there and you lose everything you found, plus some of your coin. The deeper you fall, the more it costs."]],b:"Into the cellar"}]};
@@ -667,7 +665,7 @@ TIPS.t_upg={w:"Wren",t:"Coin's for spending too. See what the **Upgrades** tab h
 TIPS.t_beltgo={w:"Wren",t:"Put it on your belt before you head down.",ch:1,hl:{sel:"#belt",tab:"town",town:true}};
 TIPS.h_skills={ch:1,hl:tabHl("skills")};
 TIPS.t_pay={w:"Wren",t:"When you've coin to spare, pay the Celestials from the **Journal** tab. Every bit off the balance is a bit they can't hold over you.",ch:1,hl:{sel:"[data-act=payDebt]",tab:"journal",town:true}};
-TIPS.t_combat={w:"Wren",t:"Attack if you can win. Guard if it hits hard. Flee if your gut says flee.",ch:1,hl:{sel:"[data-act=attack],[data-act=guard],[data-act=flee]"}};
+TIPS.t_combat={w:"Wren",t:"Attack deals damage; if the enemy survives, it hits back. Guard means you don't attack that turn, but the enemy deals about 70% less damage. Flee might fail, giving the enemy a free hit.",ch:1,hl:{sel:"[data-act=attack],[data-act=guard],[data-act=flee]"}};
 TIPS.t_hit={w:"Wren",t:"That number's a rough guess at its damage. Plan around it.",ch:1,hl:{sel:".mdmg"}};
 TIPS.t_loot={w:"Wren",t:"Everything has a price. Mind your pack space.",ch:1,hl:{sel:"#packcap"}};
 TIPS.t_belt={w:"Wren",t:"A supply costs your turn. Use it before you need it, not after.",ch:1,hl:{sel:"#usepanel"}};
