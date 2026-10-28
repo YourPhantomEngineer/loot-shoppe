@@ -21,6 +21,13 @@ const r=await p.evaluate(()=>{const o={};T.through();
   // crafting from the goods tab still works and stays on that tab
   const before=S.inv.length;app.querySelector(`[data-act=craft][data-i="${RECIPES.findIndex(x=>x.out==="sword")}"]`).click();
   o.craftWorks=S.inv.includes("sword")&&wtab==="goods";
+  // Ready only: hides everything that can't be crafted now, is remembered, and survives a Grand Reopening
+  app.querySelector('[data-act=wtab][data-w=supply]').click();app.querySelector('[data-act=readyOnly]').click();
+  const rd=rows();o.readyOnlyHides=S.readyOnly===true&&rd.length>0&&rd.every(k=>canCraft(RECIPES.find(x=>x.out===k)))&&app.querySelector('[data-act=readyOnly]').getAttribute('aria-pressed')==="true";
+  S.mats={};S.inv=[];render();o.emptyNote=rows().length===0&&/Turn off Ready only/.test(app.textContent);
+  o.saved=JSON.parse(localStorage.getItem(KEY)).readyOnly===true;
+  S.story.built.well=1;S.story.loan=0;doReopen();o.keptOnReopen=S.readyOnly===true;
+  render();app.querySelector('[data-act=readyOnly]')?.click()||(tab="work",render(),app.querySelector('[data-act=readyOnly]').click());o.offAgain=S.readyOnly===false;
   return o});
 await b.close();
 console.log(JSON.stringify(r));const bad=Object.entries(r).filter(([k,v])=>v!==true).map(([k])=>k);

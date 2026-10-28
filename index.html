@@ -142,6 +142,7 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 .branch h3 small{font:600 .75rem var(--body);color:var(--muted)}
 .pips{letter-spacing:2px;color:var(--coin)}
 .wtabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+.wbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px}.wbar .ghost{flex-shrink:0}
 .wgroup{font:700 .72rem var(--body);text-transform:uppercase;letter-spacing:.1em;color:var(--copper);margin:16px 0 4px}
 .code{display:block;width:100%;box-sizing:border-box;min-height:84px;margin-top:6px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px;font:12px/1.4 ui-monospace,monospace;word-break:break-all;resize:vertical;-webkit-user-select:text;user-select:text}
 .starnum{font-family:var(--display);font-size:1.6rem;color:var(--coin);display:block}
@@ -1279,7 +1280,7 @@ function doReopen(){
   const st=S.story;if(st.loan>0||!built("well"))return;
   const g=starsNow(),L=S.legacy;L.stars+=g;L.total+=g;L.count++;
   const keep={legacy:L,sound:S.sound,music:S.music,sold:S.sold,earned:S.earned,crafted:S.crafted,story:st,
-    crew:S.crew,staffs:S.staffs,keep:S.keep,regs:S.regs,theme:S.theme,day:S.day+1,trend:S.trend};
+    crew:S.crew,staffs:S.staffs,keep:S.keep,regs:S.regs,theme:S.theme,readyOnly:S.readyOnly,day:S.day+1,trend:S.trend};
   S=Object.assign(fresh(),keep);
   const cash=loanCash(),owed=loanOwed();
   S.inv=[];S.lifeStart=S.earned;S.gold=cash+250*pk("fortune");
@@ -2428,14 +2429,15 @@ function vWork(){
         <span class="right coin">${val(r.out)}G</span></button>`};
   const ready=t=>recs.filter(x=>wtabOf(x.r.out)===t&&canCraft(x.r)).length;
   const wt=(k,n)=>`<button role="tab" aria-selected="${wtab===k}" data-act="wtab" data-w="${k}">${n}${ready(k)?`<span class="dot">${ready(k)}</span>`:""}</button>`;
-  const groups=WGROUPS[wtab].map(([n,f])=>{const g=recs.filter(x=>f(x.r.out));return g.length?`<h3 class="wgroup">${n}</h3><div class="list">${g.map(row).join("")}</div>`:""}).join("");
+  const groups=WGROUPS[wtab].map(([n,f])=>{const g=recs.filter(x=>f(x.r.out)&&(!S.readyOnly||canCraft(x.r)));return g.length?`<h3 class="wgroup">${n}</h3><div class="list">${g.map(row).join("")}</div>`:""}).join("");
   return `
   <section><h2>Materials <small>crafting doesn't use the day</small></h2>
     <div class="chips">${mats.length?mats.map(([k,n])=>`<span class="chip mat">${MATS[k]} ×${n}</span>`).join(""):`<span class="hint">Defeat monsters and search walls in dungeons to gather materials.</span>`}</div></section>
   <section id="recipes"><h2>Recipes</h2>
     <div class="tabs wtabs" role="tablist" aria-label="Recipe type">${wt("supply","Supplies")}${wt("goods","Trade goods")}</div>
-    <p class="hint" style="margin-top:8px">${wtab==="supply"?"Things you use: drink them or carry them on your supply belt into the dungeons.":"Things you sell: stock for your shelves and your staff."}</p>
-    ${groups||`<p class="hint">No recipes here yet.</p>`}
+    <div class="wbar"><p class="hint">${wtab==="supply"?"Things you use: drink them or carry them on your supply belt into the dungeons.":"Things you sell: stock for your shelves and your staff."}</p>
+      <button class="ghost" data-act="readyOnly" aria-pressed="${!!S.readyOnly}">Ready only</button></div>
+    ${groups||`<p class="hint">${S.readyOnly?"Nothing here you can craft right now. Turn off Ready only to see every recipe.":"No recipes here yet."}</p>`}
     <p class="hint" style="margin-top:8px">More recipes appear as you unlock deeper dungeons.</p></section>`;
 }
 
@@ -2650,7 +2652,7 @@ app.addEventListener("click",e=>{
     info:()=>{infoK=b.dataset.k;drawOv()}, nextCh:nextChapter, sleep:sleepNight, council:holdCouncil,
     payDebt, repair:()=>repair(b.dataset.k), forge, theme:()=>{S.theme=b.dataset.k;applyTheme();save();render()},
     hire:()=>hire(b.dataset.k), fireAsk:()=>{confirmFire=b.dataset.k;render()}, fireNo:()=>{confirmFire=null;render()}, fireDo:()=>fire(b.dataset.k),
-    wtab:()=>{wtab=b.dataset.w;render()},
+    wtab:()=>{wtab=b.dataset.w;render()}, readyOnly:()=>{S.readyOnly=!S.readyOnly;save();render()},
     staffCat:()=>{const k=b.dataset.k,c=b.dataset.c,cur=staffCats(k),n=cur.includes(c)?cur.filter(x=>x!==c):[...cur,c];
       if(!n.length){toast(`${ST(k).n} needs at least one thing to sell.`);return}
       const rec=staffRec(k);if(n.length===STAFF_CATS.length)delete rec.cats;else rec.cats=STAFF_CATS.filter(x=>n.includes(x));save();render()},
