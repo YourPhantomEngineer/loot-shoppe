@@ -2458,8 +2458,8 @@ function vWork(){
   <section id="recipes"><h2>Recipes</h2>
     <div class="tabs wtabs" role="tablist" aria-label="Recipe type">${wt("supply","Supplies")}${wt("goods","Trade goods")}</div>
     <div class="wbar"><p class="hint">${wtab==="supply"?"Things you use: drink them or carry them on your supply belt into the dungeons.":"Things you sell: stock for your shelves and your staff."}</p>
-      <button class="tgl" role="switch" data-act="readyOnly" aria-checked="${!!S.readyOnly}"><span>Show Only Craftable</span><i aria-hidden="true"></i></button></div>
-    ${groups||`<p class="hint">${S.readyOnly?"Nothing here you can craft right now. Turn off Show Only Craftable to see every recipe.":"No recipes here yet."}</p>`}
+      <button class="tgl" role="switch" data-act="readyOnly" aria-checked="${!!S.readyOnly}"><span>Show only craftable</span><i aria-hidden="true"></i></button></div>
+    ${groups||`<p class="hint">${S.readyOnly?"Nothing here you can craft right now. Turn off Show only craftable to see every recipe.":"No recipes here yet."}</p>`}
     <p class="hint" style="margin-top:8px">More recipes appear as you unlock deeper dungeons.</p></section>`;
 }
 
