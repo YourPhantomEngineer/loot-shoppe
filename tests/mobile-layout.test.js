@@ -10,5 +10,5 @@ const r=await p.evaluate(()=>{while(document.querySelector('#ov button'))documen
   const sections=[...document.querySelectorAll('.town-section')];
   const unframed=sections.filter(el=>{const s=getComputedStyle(el);return s.borderTopStyle==='none'||s.backgroundColor==='rgba(0, 0, 0, 0)'}).map(el=>el.querySelector('h2')?.textContent.trim());
   return {small,overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,townSections:sections.length,unframed,xpProgress}});
-if(errs.length||r.small.length||r.overflow>0||r.townSections<6||r.unframed.length||r.xpProgress.label!=='XP · Lv 2→3'||r.xpProgress.text!=='50 / 75'||r.xpProgress.now!=='50'||r.xpProgress.max!=='75'||r.xpProgress.aria!=='25 XP to level 3')throw new Error(JSON.stringify({r,errs}));
+if(errs.length||r.small.length||r.overflow>0||r.townSections<5||r.unframed.length||r.xpProgress.label!=='XP · Lv 2→3'||r.xpProgress.text!=='50 / 75'||r.xpProgress.now!=='50'||r.xpProgress.max!=='75'||r.xpProgress.aria!=='25 XP to level 3')throw new Error(JSON.stringify({r,errs}));
 console.log(JSON.stringify(r));await b.close()})();

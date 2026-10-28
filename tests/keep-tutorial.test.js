@@ -1,4 +1,4 @@
-// Chapter 1: back from the first delve, Wren explains For sale and Keep between the Market Today tip and the
+// Chapter 1: back from the first dungeon run, Wren explains For sale and Keep between the Market Today tip and the
 // Open the shop prompt, highlighting the buttons on the first Stock item. Saves already past that moment skip it.
 const {chromium}=require('playwright');const fs=require('fs');const path=require('path');
 (async()=>{const b=await chromium.launch();const errs=[];const H=fs.readFileSync(path.join(__dirname,'helpers.js'),'utf8');

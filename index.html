@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dungeon Loot Shoppe</title>
-<meta name="description" content="A cozy dungeon-delving shopkeeping game. Explore dungeons for loot, then haggle it away in your shop.">
+<meta name="description" content="A cozy dungeon-crawling shopkeeping game. Explore dungeons for loot, then haggle it away in your shop.">
 <meta name="theme-color" content="#0f2326">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -43,6 +43,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--coin);outline-o
 .tabs button{border:0;background:none;color:var(--muted);font:700 .78rem var(--body);padding:9px 1px;min-height:44px;border-radius:6px;cursor:pointer;position:relative}
 .tabs button[aria-selected="true"]{background:var(--line);color:var(--fg)}
 .tabs button{position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.76rem!important}
+@media (max-width:379px){.tabs.many{grid-template-columns:repeat(3,minmax(0,1fr))!important}} /* small phones: five or six tabs wrap to two rows */
 .tabs .dot{position:absolute;top:1px;right:1px;margin:0;min-width:15px;line-height:15px;font-size:.62rem;padding:0 4px}
 .dot{display:inline-block;vertical-align:1px;min-width:18px;padding:0 5px;border-radius:9px;background:var(--coin);color:#2a2008;font-size:.7rem;margin-left:4px;line-height:18px}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -732,15 +733,15 @@ SCN["1.1"]={title:"Arrival",cards:[
  {s:[["note","\"If you're reading this, the shop is yours. Keep the doors open. Keep the lamp lit. And whatever anyone offers, don't sell the cellar.\""]],b:"Continue"},
  {s:["The door creaks. A woman with one hand and no patience looks you over.",["Wren","You're Maribel's kin. Good. I'm Wren. I adventured with her for twenty years."],["Wren","The shop's got no stock, and the cellar's got rats the size of goats. Let's fix one of those problems."]],b:"Let's go"}],
  done:()=>{jrnl(CH[1].open,"open");tab="town";tip("t_journal");tip("h_cellar")}};
-SCN["1.2"]={title:"First delve",on:"enter",when:d=>d.d===0,cards:[
- {s:[["Wren","Delving takes the whole day. Go deep for better loot, but every floor bites harder."],["Wren","Faint down there and you lose everything you found, plus some of your coin. The deeper you fall, the more it costs."]],b:"Into the cellar"}]};
+SCN["1.2"]={title:"First dungeon run",on:"enter",when:d=>d.d===0,cards:[
+ {s:[["Wren","A trip into the dungeons takes the whole day. Go deep for better loot, but every floor bites harder."],["Wren","Faint down there and you lose everything you found, plus some of your coin. The deeper you fall, the more it costs."]],b:"Into the cellar"}]};
 SCN["1.3"]={title:"Back from the cellar",on:"day",when:d=>d.fromDelve,cards:[
  {s:[["Wren","Not bad. Loot's no good in a sack, though. Open the shop and let the customers come to you."]],b:"Continue"}],
  done:()=>{tip("t_market");tip("t_keep");tip("h_shop")}};
 SCN["1.4"]={title:"First shop day",on:"shopOpen",cards:[
  {s:[["Wren","Only three customers a day while the town's like this."],["Wren","They'll make an offer. Their mood tells you how far you can push."]],b:"Open the doors"}]};
 SCN["1.5"]={title:"The Workshop",on:"tab",when:d=>d.t==="work",cards:[
- {s:[["Wren","Maribel's workbench. She could make a rope out of rumors."],["Wren","Materials from the cellar can be used to craft new items to sell and the supplies you craft can be equipped on your supply belt (in Town Tab) to carry with you when you go delving."]],b:"Continue"}]};
+ {s:[["Wren","Maribel's workbench. She could make a rope out of rumors."],["Wren","Materials from the cellar can be used to craft new items to sell and the supplies you craft can be equipped on your supply belt (in Town Tab) to carry with you into the Dungeons."]],b:"Continue"}]};
 SCN["1.6"]={title:"Upgrades",on:"tab",when:d=>d.t==="upg",cards:[
  {s:[["Wren","Gear and Shop upgrades can be purchased here. Sharpen your blades, buy bigger packs, add loops to your supply belt. Fix the town to unlock new upgrades."]],b:"Continue"}]};
 SCN["1.7"]={title:"The letter",on:"day",when:()=>S.story.ch===1&&fl("ch1done")&&S.day>S.story.flags.ch1done,cards:[
@@ -750,7 +751,7 @@ SCN["1.7"]={title:"The letter",on:"day",when:()=>S.story.ch===1&&fl("ch1done")&&
  {s:[["Wren","We pay it. Bit by bit. But you'll need to get tougher first."],["Wren","Out back. There's a training yard under all those weeds."]],b:"Follow her"}],
  done:()=>{endChapter();tip("h_skills");tip("t_pay")}};
 TIPS.t_journal={w:"Wren",t:"Maribel's journal is yours now. Your goals are in the **Journal** tab. Check it whenever you're not sure what's next.",ch:1,hl:tabHl("journal")};
-TIPS.h_cellar={ch:1,hl:{sel:'[data-act=delve][data-i="0"]',tab:"town",town:true,stay:true,call:"Tap <b>Mossy Cellar</b> to enter the dungeon."},skip:()=>fl("cellar1")};
+TIPS.h_cellar={ch:1,hl:{sel:'[data-act=delve][data-i="0"]',tab:"dun",town:true,stay:true,call:"Tap <b>Mossy Cellar</b> to enter the dungeon."},skip:()=>fl("cellar1")};
 TIPS.h_shop={ch:1,hl:{sel:"[data-act=shop]",tab:"town",town:true,stay:true},skip:()=>S.sold>0};
 TIPS.t_work={w:"Wren",t:"Maribel's workbench is in the **Workshop** tab. Go make something.",ch:1,hl:tabHl("work")};
 TIPS.t_upg={w:"Wren",t:"Coin's for spending too. See what the **Upgrades** tab has.",ch:1,hl:tabHl("upg")};
@@ -1212,7 +1213,7 @@ function tipHooks3(type,d){
 }
 function loreCheck(){if(fl("hlLore")&&S.inv.some(k=>LORE[k])){delete S.story.flags.hlLore;tip("h_lore")}}
 /* Highlights for things the story unlocks */
-const dunHl=i=>({sel:`[data-act=delve][data-i="${i}"]`,tab:"town",town:true,stay:true});
+const dunHl=i=>({sel:`[data-act=delve][data-i="${i}"]`,tab:"dun",town:true,stay:true});
 TIPS.h_well={hl:{sel:"[data-act=repair][data-k=well]",tab:"journal",town:true}};
 TIPS.h_reopen={hl:{sel:"[data-act=reopen]",tab:"journal",town:true}};
 TIPS.h_mine={hl:dunHl(1)};
@@ -1660,7 +1661,7 @@ function pickCust(){
   return pool[pool.length-1];
 }
 function hire(k,quiet){const s=ST(k);if(!s||!s.need()||S.crew.includes(k))return;S.crew.push(k);S.story.hiredEver[k]=true;confirmFire=null;
-  if(!quiet){sfx.coin();toast(`<b>${s.n}</b> joins your staff and will mind the shop on days you go delving.`)}SE("hire",{k});save();render()}
+  if(!quiet){sfx.coin();toast(`<b>${s.n}</b> joins your staff and will mind the shop on days you're in the Dungeons.`)}SE("hire",{k});save();render()}
 let confirmFire=null;
 function fire(k){const s=ST(k);S.crew=S.crew.filter(x=>x!==k);confirmFire=null;toast(`${s?s.n:"Your shopkeeper"} heads back to the Tavern hire board.`);save();render()}
 const nameList=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
@@ -1847,12 +1848,12 @@ function evChoice(c){
   }
   else if(E.type==="shrine"&&c==="offer"){
     const d=Math.min(R.hp-1,Math.round(maxHp()*.2));R.hp-=d;R.atkB+=.25;R.ev=null;
-    R.event=`You offer ${d} HP. Power surges through your blade: +25% attack for this delve.`;sfx.lvl();
+    R.event=`You offer ${d} HP. Power surges through your blade: +25% attack for this dungeon run.`;sfx.lvl();
   }
   else if(E.type==="fountain"&&c==="drink"){
     const r=Math.random();R.ev=null;
     if(r<.4){R.hp=maxHp();R.event="The water is pure. You're fully healed!";sfx.heal()}
-    else if(r<.7){R.atkB+=.15;R.event="The water burns pleasantly. +15% attack for this delve.";sfx.lvl()}
+    else if(r<.7){R.atkB+=.15;R.event="The water burns pleasantly. +15% attack for this dungeon run.";sfx.lvl()}
     else{const d=hurtPct(.2);R.event=`The water is foul! You lose ${d} HP.`;sfx.hurt()}
   }
   else if(E.type==="sleeper"){
@@ -1962,7 +1963,7 @@ function useItem(src,i){
   if(k==="ladder")return src==="belt"&&descend(true);
   arr.splice(i,1);let m;SE("belt",{k});
   if(HEAL[k]){const h=Math.max(1,Math.round(maxHp()*HEAL[k]));R.hp=Math.min(maxHp(),R.hp+h);m=`You drink the ${IT[k].n} and recover ${h} HP.`;sfx.heal()}
-  else if(isWhet(k)){const b=WHET[whetRank(k)].b;R.atkB+=b;R.whetUsed=k;m=`You hone your blade with the ${IT[k].n}: +${Math.round(b*100)}% attack for this delve.`;sfx.craft()}
+  else if(isWhet(k)){const b=WHET[whetRank(k)].b;R.atkB+=b;R.whetUsed=k;m=`You hone your blade with the ${IT[k].n}: +${Math.round(b*100)}% attack for this dungeon run.`;sfx.craft()}
   else if(k==="rope"){m=`You yank the Escape Rope and vanish from the ${F.n}'s reach.`;if(F.kind==="boss"||F.kind==="voss")R.lair=true;R.fight=null;R.event=m;rlog(m);return save(),render()}
   else if(isBomb(k)){
     const d=bombDmg(k);F.hp-=d;sfx.hit();m=`The ${IT[k].n} explodes for ${d} damage!`;
@@ -2260,7 +2261,7 @@ const ITEM_USE={
  ladder:"Between fights, climb down one floor without finding the stairs. It doesn't work on the deepest or a secret floor, or past a sealed floor. It's used up only when it works."};
 function itemUse(k){
   if(isWhet(k)){const r=whetRank(k),nx=WHET[r+1];
-    return `Hone your blade for <b>+${Math.round(WHET[r].b*100)}% attack</b> for the rest of this delve. Only one whetstone of any kind works per delve, so carry spares for later delves. In a fight it uses your turn.${nx?` Stronger whetstones: each rank of Master Grindstone in the Upgrades tab unlocks the next recipe (next: ${IT[nx.k].n}, +${Math.round(nx.b*100)}%).`:" The finest edge there is."}`}
+    return `Hone your blade for <b>+${Math.round(WHET[r].b*100)}% attack</b> for the rest of this dungeon run. Only one whetstone of any kind works per run, so carry spares for later runs. In a fight it uses your turn.${nx?` Stronger whetstones: each rank of Master Grindstone in the Upgrades tab unlocks the next recipe (next: ${IT[nx.k].n}, +${Math.round(nx.b*100)}%).`:" The finest edge there is."}`}
   if(isBomb(k)){const r=bombRank(k),nx=BOMB[r+1];
     return `Combat only. Deals <b>${fmt(bombDmg(k))} damage</b> ${S.run?"here":"at your current attack"} (${BOMB[r].m}× your attack, never less than a deeper floor's blast). Uses your turn.${nx?` Stronger bombs: each rank of Blasting Powder in the Upgrades tab unlocks the next recipe (next: ${IT[nx.k].n}, ${nx.m}×).`:" The strongest bomb there is."}`}
   if(HEAL[k])return `Restores ${Math.round(HEAL[k]*100)}% of your max HP. Drink it from your belt or your pack whenever you're hurt; in a fight it uses your turn.`;
@@ -2270,7 +2271,7 @@ function itemWhere(k){
   const it=IT[k],out=[],dn=t=>DUN.map((d,i)=>({d,i})).filter(({d,i})=>d.t===t&&(!d.hidden||dunOpen(i))).map(({d})=>"the "+d.n);
   const list=a=>a.length>1?a.slice(0,-1).join(", ")+" or "+a.at(-1):a[0];
   if(it.sec)out.push(`Found only on the secret floor of ${list(dn(it.t))}, past the boss's lair.`);
-  else if(it.c==="supply"){if(k!=="ladder"&&(!isBomb(k)||k==="bomb")&&(!isWhet(k)||k==="whet"))out.push("Dropped by bosses and mini-bosses, and sold by peddlers you meet while delving.")}
+  else if(it.c==="supply"){if(k!=="ladder"&&(!isBomb(k)||k==="bomb")&&(!isWhet(k)||k==="whet"))out.push("Dropped by bosses and mini-bosses, and sold by peddlers you meet in the Dungeons.")}
   else if(!it.craft){
     const near=[...dn(it.t-1),...dn(it.t+1)];
     out.push(`Found in ${list(dn(it.t))}${near.length?`, and now and then in ${list(near)}`:""}.`);
@@ -2290,7 +2291,7 @@ function infoCard(k){
     <span class="ovtitle">${it.n}</span>
     <p class="sub" style="margin:0">${it.c==="supply"?"Supply":it.c[0].toUpperCase()+it.c.slice(1)} · market value ${val(k)}G</p>
     ${use?`<p style="margin:0">${use}</p>`:""}
-    ${eq?`<p class="hint" style="margin:0">Equip it on your supply belt in town to take it delving.</p>`:""}
+    ${eq?`<p class="hint" style="margin:0">Equip it on your supply belt in town to take it into the Dungeons.</p>`:""}
     ${itemWhere(k).map(l=>`<p style="margin:0">${l}</p>`).join("")}
     ${built("obs")&&LORE[k]?`<p class="hint" style="margin:0"><i>${LORE[k]}</i></p>`:""}
     <div class="btns"><button class="btn gold" data-act="infoOk">Got it</button></div></div>`;
@@ -2306,10 +2307,11 @@ function tabs(){
   const p=pts(),c=RECIPES.filter(canCraft).length,u=UPG.filter(canBuyUpgrade).length;
   const t=(k,n,badge)=>`<button role="tab" aria-selected="${tab===k}" data-act="tab" data-t="${k}">${n}${badge?`<span class="dot">${badge}</span>`:""}</button>`;
   const jn=chGoals(S.story.ch).filter(g=>!goalDone(g.id)&&(!g.show||g.show())).length;
-  const list=[t("town","Town"),t("work","Workshop",c),t("upg","Upgrades",u)];
+  const list=[t("town","Town"),t("dun","Dungeons"),t("work","Workshop",c),t("upg","Upgrades",u)];
   if(fl("skills"))list.push(t("skills","Skills",p));
   if(seen("1.1"))list.push(t("journal","Journal"));
-  return `<div class="tabs" role="tablist" style="grid-template-columns:repeat(${list.length},minmax(0,1fr))">${list.join("")}</div>`;
+  const cols=list.length>5?Math.ceil(list.length/2):list.length; // six tabs sit in two rows of three so no label is cut off
+  return `<div class="tabs${list.length>=5?" many":""}" role="tablist" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${list.join("")}</div>`;
 }
 let shownDay=null,dayPopAt=0;
 /* When the day changes, the Day box pops. Re-renders during the animation pick it up where it was. */
@@ -2335,12 +2337,7 @@ function vTown(){
   return `<div class="town-view">
   ${reportCard()}
   <section id="mkt" class="town-section town-market"><h2>Market today</h2><div class="chips">${chips}</div>${dayNews()?`<p class="hint" style="margin-top:8px;color:var(--coin)">${dayNews()}</p>`:""}${S.news?`<p class="hint" style="margin-top:8px">${S.news}</p>`:""}</section>
-  <div class="town-action"><button class="big" data-act="shop" ${saleN?"":"disabled"}>Open the shop<small>${saleN?`Up to ${custN()} customers · ${saleN} item${saleN===1?"":"s"} for sale · uses the day`:S.inv.length?"Everything in stock is marked Keep. Mark something For sale first.":"Your shelves are empty. Go delving first."}</small></button></div>
-  <section class="town-section town-expedition"><h2>Go delving <small>${S.crew.length?`${nameList(S.crew.map(k=>ST(k).n))} mind${S.crew.length>1?"":"s"} the shop`:"uses the day"}</small></h2><div class="list">
-    ${DUN.map((d,i)=>{const open=dunOpen(i);if(d.hidden&&!open)return "";return `<button class="row" data-act="delve" data-i="${i}" ${open?"":"disabled"}>
-      <span><b>${d.n}</b>${S.bosses[i]?`<span class="crown">Boss beaten</span>`:""}</span><span class="sub">${open?`${d.floors} floors · boss: ${d.boss}`:DUN_LOCK[i]}</span>
-      <span class="right">${open?"Enter":"Locked"}</span></button>`}).join("")}
-  </div></section>
+  <div class="town-action"><button class="big" data-act="shop" ${saleN?"":"disabled"}>Open the shop<small>${saleN?`Up to ${custN()} customers · ${saleN} item${saleN===1?"":"s"} for sale · uses the day`:S.inv.length?"Everything in stock is marked Keep. Mark something For sale first.":"Your shelves are empty. Visit the Dungeons first."}</small></button></div>
   ${staffSection()}
   <section id="belt" class="town-section town-supplies"><h2>Supply belt <small>${S.belt.length}/${beltCap()} · tap to unequip</small></h2>
     <div class="chips">${S.belt.length?S.belt.map((k,i)=>`<button class="chip usebtn on" data-act="unequip" data-i="${i}">${IT[k].n}${ii(k)}</button>`).join(""):`<span class="hint">Empty. Supplies on your belt come with you into every dungeon.</span>`}</div>
@@ -2391,7 +2388,7 @@ function staffSection(){
     </div>`}).join("");
   const others=STAFF.filter(s=>!S.crew.includes(s.k));
   const wage=staffPayroll();
-  return `<section id="staff" class="town-section town-staff"><h2>Shop staff <small>${S.crew.length?`${fmt(wage)}G a delve day`:"hire help for delve days"}</small></h2>
+  return `<section id="staff" class="town-section town-staff"><h2>Shop staff <small>${S.crew.length?`${fmt(wage)}G a dungeon day`:"hire help for dungeon days"}</small></h2>
     ${S.crew.length>1?`<p class="hint">Team payroll penalty: ${staffMultText(S.crew.length)} total wages. Each shopkeeper after the first multiplies the whole payroll by another 1.5×.</p>`:""}
     ${cards}
     ${others.length?`<div class="list">${others.map(s=>{const open=s.need();return open?`<button class="row" data-act="hire" data-k="${s.k}" ${built("tavern")||s.k==="pip"?"":"disabled"}>
@@ -2401,6 +2398,15 @@ function staffSection(){
   </section>`;
 }
 
+function vDungeons(){
+  return `<div class="town-view">
+  <section class="town-section town-expedition"><h2>Dungeons <small>${S.crew.length?`${nameList(S.crew.map(k=>ST(k).n))} mind${S.crew.length>1?"":"s"} the shop`:"uses the day"}</small></h2><div class="list">
+    ${DUN.map((d,i)=>{const open=dunOpen(i);if(d.hidden&&!open)return "";return `<button class="row" data-act="delve" data-i="${i}" ${open?"":"disabled"}>
+      <span><b>${d.n}</b>${S.bosses[i]?`<span class="crown">Boss beaten</span>`:""}</span><span class="sub">${open?`${d.floors} floors · boss: ${d.boss}`:DUN_LOCK[i]}</span>
+      <span class="right">${open?"Enter":"Locked"}</span></button>`}).join("")}
+  </div></section>
+</div>`;
+}
 function vWork(){
   const mats=Object.entries(S.mats).filter(([,n])=>n>0);
   const ut=unlockedTier();
@@ -2462,7 +2468,7 @@ function usePanel(){
   const R=S.run;
   const items=[...S.belt.map((k,i)=>({k,s:"belt",i})),...R.bag.map((k,i)=>({k,s:"bag",i})).filter(o=>HEAL[o.k])];
   return `<section id="usepanel"><h2>Supplies <small>${R.fight?"using one takes your turn":`belt ${S.belt.length}/${beltCap()}`}</small></h2>
-    <div class="chips">${items.length?items.map(o=>`<button class="chip usebtn" data-act="use" data-s="${o.s}" data-i="${o.i}"${dis(!canUse(o.k))}>${IT[o.k].n}${isBomb(o.k)?` · ${fmt(bombDmg(o.k))} dmg`:""}${isWhet(o.k)?R.whetUsed?" · used this delve":` · +${Math.round(WHET[whetRank(o.k)].b*100)}% attack`:""}${o.k==="ladder"?R.secretFloor||R.floor>=DUN[R.d].floors?" · deepest floor":floorSealed(R.d,R.floor+1)?" · path sealed":" · skip 1 floor":""}${o.s==="bag"?" (pack)":""}${ii(o.k)}</button>`).join("")
+    <div class="chips">${items.length?items.map(o=>`<button class="chip usebtn" data-act="use" data-s="${o.s}" data-i="${o.i}"${dis(!canUse(o.k))}>${IT[o.k].n}${isBomb(o.k)?` · ${fmt(bombDmg(o.k))} dmg`:""}${isWhet(o.k)?R.whetUsed?" · used this run":` · +${Math.round(WHET[whetRank(o.k)].b*100)}% attack`:""}${o.k==="ladder"?R.secretFloor||R.floor>=DUN[R.d].floors?" · deepest floor":floorSealed(R.d,R.floor+1)?" · path sealed":" · skip 1 floor":""}${o.s==="bag"?" (pack)":""}${ii(o.k)}</button>`).join("")
     :`<span class="hint">No supplies. Equip potions, bombs, ropes, ladders, whetstones, or lockpicks on your belt in town.</span>`}</div></section>`;
 }
 function vDelve(){
@@ -2599,7 +2605,7 @@ function render(){
   else if(S.shop)app.innerHTML=vShop();
   else{
     if((tab==="skills"&&!fl("skills"))||tab==="legacy")tab=tab==="legacy"?"journal":"town";
-    app.innerHTML=`<header><h1>Dungeon Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():tab==="journal"?vJournal():vTown());
+    app.innerHTML=`<header><h1>Dungeon Loot Shoppe</h1>${soundBtn()}</header>${topStats()}${tabs()}`+(tab==="dun"?vDungeons():tab==="work"?vWork():tab==="upg"?vUpg():tab==="skills"?vSkills():tab==="journal"?vJournal():vTown());
   }
   applyHl();fitText();
   const r=document.getElementById("price");

@@ -6,13 +6,13 @@ Oct 24, 2026 · @Boss
 
 **How prompts appear:** every tutorial prompt, Wren tip, new-customer intro, decline line and idle line pops up as a card over the game. Play pauses until the player taps **Got it**, so no prompt can be missed. When several are waiting, they show one after another. Scene cards work the same way, with the buttons written in each scene.
 
-**How highlights work:** when a prompt says "(highlighting the X)", X gets a pulsing gold outline after the player taps **Got it**. Tabs, dungeons and the Open the Shop button keep their outline until the player taps them. Everything else (combat buttons, the mood badge, panels like Market Today) shows its outline until the player's next tap. If X is on another tab, that tab is outlined first. Only one highlight shows at a time, and the next waiting prompt appears once it's done. Prompts about the town wait until the player is back in town. If the player goes delving or opens the shop while a tab or dungeon is still outlined, its outline comes back on returning to town; other town highlights end there.
+**How highlights work:** when a prompt says "(highlighting the X)", X gets a pulsing gold outline after the player taps **Got it**. Tabs, dungeons and the Open the Shop button keep their outline until the player taps them. Everything else (combat buttons, the mood badge, panels like Market Today) shows its outline until the player's next tap. If X is on another tab, that tab is outlined first. Only one highlight shows at a time, and the next waiting prompt appears once it's done. Prompts about the town wait until the player is back in town. If the player enters a dungeon or opens the shop while a tab or dungeon is still outlined, its outline comes back on returning to town; other town highlights end there.
 
 **Portraits:** every speaking character has a 16×16 pixel-art portrait beside their lines and tips. So does every customer type, on the shop customer card (regulars use their type's portrait). Staff also have portraits on their staff cards and hire rows. Looks, for anyone adding scenes: Wren (brown hair with a grey streak and ponytail, scar, green cloak), Maribel (long silver hair, plum shawl), Pip (messy ginger hair, freckles, apron, broom), Marlo (slick black hair, mustache, blue vest with gold), Old Greta (white bun, glasses, green shawl), Bram (bald, black beard, soot, leather apron), Sable (dark hood, pale skin, silver eyes), Voss (white hair, gold cracks in pale skin, blue-and-gold coat with a star), Ember Knight (blackened helm, burning visor), Kobold Foreman (hard hat, red scales, safety vest), Celestial Executor (gold armor, star seal for a face). A new speaking character needs a portrait added to match.
 
 **Ending a chapter:** finishing every goal doesn't move the story on by itself. Wren tells the player, and a button on the Journal's chapter card starts the next one, so the player chooses when.
 
-- **Chapter 1:** Wren tip (highlighting the Journal tab, then the Sleep until morning button): "That's everything for now. Get some sleep. Open the **Journal** and turn in for the night; Chapter 2 starts in the morning." The Journal card says "Every goal is done. Chapter 2 begins in the morning." with a **Sleep until morning** button that ends the day. The letter (Scene 1.7) arrives the next morning. Ending the day any other way (a delve or a shop day) also works.
+- **Chapter 1:** Wren tip (highlighting the Journal tab, then the Sleep until morning button): "That's everything for now. Get some sleep. Open the **Journal** and turn in for the night; Chapter 2 starts in the morning." The Journal card says "Every goal is done. Chapter 2 begins in the morning." with a **Sleep until morning** button that ends the day. The letter (Scene 1.7) arrives the next morning. Ending the day any other way (a dungeon run or a shop day) also works.
 - **Chapters 2–5:** Wren tip (highlighting the Journal tab, then the Start Chapter button): "That's every goal this chapter. Open the **Journal** and start the next one when you're ready." The Journal card shows **Start Chapter N: Title**. Tapping it writes the chapter-complete entry, applies the chapter's unlocks and starts the next chapter.
 - **Chapter 6:** no button. The epilogue plays on its own when the player gets home after Voss.
 
@@ -20,13 +20,15 @@ Oct 24, 2026 · @Boss
 
 **Item info:** every item shows a small (i). Tapping it opens a card with the item's type and market value, what it does (for potions and supplies), where it's found (which dungeon, rarer in neighboring ones, secret floors, boss and mini-boss drops, dungeon peddlers) and its Workshop recipe.
 
-**Delve buffs** (like the Whetstone's or the shrine's attack bonus) show under the HP bar at the top of the delve screen.
+**Dungeon buffs** (like the Whetstone's or the shrine's attack bonus) show under the HP bar at the top of the dungeon screen.
 
 **Enemy HP:** in a fight, the enemy's HP shows as numbers under its health bar ("HP 7 / 12").
 
+**Dungeons tab:** the dungeon list has its own **Dungeons** tab, right after Town (Town, Dungeons, Workshop, Upgrades, Skills, Journal). A prompt that highlights a dungeon outlines the Dungeons tab first. The supply belt and Shop staff stay on the Town tab. Player-facing text says "dungeons" or "dungeon run", never "delve" or "delving".
+
 # Chapter 1: Dust and Doorbells
 
-**Chapter goal:** teach the core loop (delve → sell → haggle → craft) and introduce Wren, Maribel, and the Celestials.
+**Chapter goal:** teach the core loop (dungeons → sell → haggle → craft) and introduce Wren, Maribel, and the Celestials.
 
 **Unlocks at chapter end:** Skills tab (Wren's training yard).
 
@@ -74,13 +76,13 @@ Opening entry:
 
 → **Tutorial prompt** (highlighting the Journal tab): Wren: "Maribel's journal is yours now. Your goals are in the **Journal** tab. Check it whenever you're not sure what's next." It stays up until the player taps the Journal tab, then the Mossy Cellar prompt appears.
 
-→ **Tutorial prompt** (on the Town screen, highlighting the Mossy Cellar): "Tap **Mossy Cellar** to enter the dungeon." It stays up until the player taps it.
+→ **Tutorial prompt** (highlighting the Dungeons tab, then the Mossy Cellar): "Tap **Mossy Cellar** to enter the dungeon." It stays up until the player taps it.
 
-## Scene 1.2: First delve
+## Scene 1.2: First dungeon run
 
 **Trigger:** first time pressing Enter on the Mossy Cellar.
 
-> **Wren:** "Delving takes the whole day. Go deep for better loot, but every floor bites harder."
+> **Wren:** "A trip into the dungeons takes the whole day. Go deep for better loot, but every floor bites harder."
 >
 > **Wren:** "Faint down there and you lose everything you found, plus some of your coin. The deeper you fall, the more it costs."
 >
@@ -102,9 +104,9 @@ Opening entry:
 - *A faint glitter in the moss, gone when you look closer.*
 - *The air smells like rain and old pennies.*
 
-## Scene 1.3: Back from the first delve
+## Scene 1.3: Back from the first dungeon run
 
-**Trigger:** returning to town after the first delve.
+**Trigger:** returning to town after the first dungeon run.
 
 > **Wren:** "Not bad. Loot's no good in a sack, though. Open the shop and let the customers come to you."
 >
@@ -159,7 +161,7 @@ Opening entry:
 
 > **Wren:** "Maribel's workbench. She could make a rope out of rumors."
 >
-> **Wren:** "Materials from the cellar can be used to craft new items to sell and the supplies you craft can be equipped on your supply belt (in Town Tab) to carry with you when you go delving."
+> **Wren:** "Materials from the cellar can be used to craft new items to sell and the supplies you craft can be equipped on your supply belt (in Town Tab) to carry with you into the Dungeons."
 >
 > **\[Continue\]**
 
@@ -183,7 +185,7 @@ Opening entry:
 
 Market values: 45G, 90G, 150G, 260G and 450G. A bomb's damage shows on its supply button in a fight and in its item info. Blasting Powder resets with the other gear upgrades at a Grand Reopening.
 
-**Whetstones and Master Grindstone (defined):** there are five kinds of whetstone. Each gives a fixed attack bonus for the rest of the delve and uses the player's turn in a fight. The player can carry as many as they like, but **only one whetstone of any kind works per delve**. Once one is used, the rest show "used this delve" until the next delve. **Master Grindstone** is an upgrade in the Upgrades tab, available once the Smithy is repaired. It has 4 ranks starting at 180G, with normal upgrade cost scaling. Each rank unlocks the next, costlier whetstone recipe, and the Workshop shows the next locked one as a teaser. Bosses, mini-bosses and dungeon peddlers only ever give plain Whetstones. Master Grindstone resets with the other gear upgrades at a Grand Reopening.
+**Whetstones and Master Grindstone (defined):** there are five kinds of whetstone. Each gives a fixed attack bonus for the rest of the dungeon run and uses the player's turn in a fight. The player can carry as many as they like, but **only one whetstone of any kind works per dungeon run**. Once one is used, the rest show "used this run" until the next dungeon run. **Master Grindstone** is an upgrade in the Upgrades tab, available once the Smithy is repaired. It has 4 ranks starting at 180G, with normal upgrade cost scaling. Each rank unlocks the next, costlier whetstone recipe, and the Workshop shows the next locked one as a teaser. Bosses, mini-bosses and dungeon peddlers only ever give plain Whetstones. Master Grindstone resets with the other gear upgrades at a Grand Reopening.
 
 | Whetstone | Attack bonus | Recipe | Market value |
 | --- | --- | --- | --- |
@@ -315,7 +317,7 @@ Opening entry:
 
 > **Pip:** "I'll sell everything! Well. Two things a day. Maybe."
 
-**Wren tip (first delve with Pip hired):** "Hired hands sell while you're below. Less than you would, but better than an empty shelf."
+**Wren tip (first dungeon run with Pip hired):** "Hired hands sell while you're below. Less than you would, but better than an empty shelf."
 
 ## Scene 2.3: The Rat Matriarch
 
@@ -1111,7 +1113,7 @@ Opening entry:
 
 **Wren tip:** "Nobody's ready for this. Go anyway."
 
-**Collecting the weapon:** a "Bram's forge" row appears in the Journal, below Ledgers, after the war council. It lists the materials still needed and shows a Forge button once they're all in hand. It uses up both shards and the materials, and the blade stays through every Grand Reopening. After forging, the row stays in the Journal, marked Forged with a check, the way repaired buildings are. While delving, "Star-forged blade:" shows under the HP bar with "Attack +50%" on the line below. Any other attack bonus (Whetstone, shrine) shows beneath it as "Other:" with its own "Attack +X%" line; without the blade, that bonus shows as just "Attack +X%".
+**Collecting the weapon:** a "Bram's forge" row appears in the Journal, below Ledgers, after the war council. It lists the materials still needed and shows a Forge button once they're all in hand. It uses up both shards and the materials, and the blade stays through every Grand Reopening. After forging, the row stays in the Journal, marked Forged with a check, the way repaired buildings are. In the dungeons, "Star-forged blade:" shows under the HP bar with "Attack +50%" on the line below. Any other attack bonus (Whetstone, shrine) shows beneath it as "Other:" with its own "Attack +X%" line; without the blade, that bonus shows as just "Attack +X%".
 
 ## Scene 6.3: Into the Hollow Heart
 
@@ -1297,10 +1299,10 @@ Opening entry:
 
 | Type | Goal |
 | --- | --- |
-| Delve | Defeat 15 monsters in any dungeon |
-| Delve | Reach floor 4 of \[a random dungeon\] |
-| Delve | Defeat any boss (Echo of Voss counts) |
-| Delve | Find a hidden stairway |
+| Dungeon | Defeat 15 monsters in any dungeon |
+| Dungeon | Reach floor 4 of \[a random dungeon\] |
+| Dungeon | Defeat any boss (Echo of Voss counts) |
+| Dungeon | Find a hidden stairway |
 | Shop | Sell 10 items |
 | Shop | Haggle 5 sales above market value |
 | Shop | Earn 2,000G from sales in one day |
@@ -1312,7 +1314,7 @@ Opening entry:
 
 → **Tutorial prompt** (highlighting the Journal tab, then the Storyline Complete! card): Wren: "Story's done. The shop isn't. There's always more to do. Check the **Journal**."
 
-**Settled while building:** "type" means the Type column, so one Delve, one Shop and one Craft goal are always active; a finished goal is replaced by a different goal of the same type. Counts and the floor scale with the tier (the floor stops at that dungeon's deepest floor), and gold targets round to the nearest 50G. A goal's reward uses the tier it was given at. Sales by staff and Quick Sale count toward selling and daily earnings; haggling and collector goals count only sales you make at the counter. Saves that finished the game before this update start with three tier-1 goals and see Wren's prompt once.
+**Settled while building:** "type" means the Type column, so one Dungeon, one Shop and one Craft goal are always active; a finished goal is replaced by a different goal of the same type. Counts and the floor scale with the tier (the floor stops at that dungeon's deepest floor), and gold targets round to the nearest 50G. A goal's reward uses the tier it was given at. Sales by staff and Quick Sale count toward selling and daily earnings; haggling and collector goals count only sales you make at the counter. Saves that finished the game before this update start with three tier-1 goals and see Wren's prompt once.
 
 # Grand Reopening
 
@@ -1502,7 +1504,7 @@ Regulars whose style you already know are shown as known, whatever your skills.
 
 **Optional hires:** Marlo, Old Greta, and Sable can each be declined. Anyone not on staff stays in town (on the Tavern hire board, hireable later) and still appears in every story scene, walking in from the Tavern or the street. Only idle lines and shop sales need them on staff (one exception: Greta's Voss idle line plays at the counter either way). Pip is the one required hire, since he's part of the Chapter 2 tutorial.
 
-**Several staff at once (interpretation):** the script has more than one person "on staff", so hired staff work as a team. On each delve day each staff member serves their own customers, selling up to their own daily limit. Staff aren't bound by the shop's customers a day: that base only limits the player's own shop days. Each staff member sees at most 2 customers beyond their daily limit who balk at the price or find nothing they want. Each sale goes to a staff member picked at random from those still under their limit, weighted toward later hires and higher levels: Pip 1, Marlo 2, Old Greta 3, Sable 4, plus 1 for each level above 1 (so at equal levels they sell about 10/20/30/40% of items, and a level 5 Pip outsells a level 1 Sable). Better sellers also talk customers into more: a customer's budget stretches by 6% per hire after Pip and 3% per staff level, so the pricier staff don't lose most of their customers. One shopkeeper costs their normal wage; each shopkeeper after the first multiplies the entire team's payroll by another 1.5× (1× / 1.5× / 2.25× / 3.375× for one through four staff).
+**Several staff at once (interpretation):** the script has more than one person "on staff", so hired staff work as a team. On each dungeon day each staff member serves their own customers, selling up to their own daily limit. Staff aren't bound by the shop's customers a day: that base only limits the player's own shop days. Each staff member sees at most 2 customers beyond their daily limit who balk at the price or find nothing they want. Each sale goes to a staff member picked at random from those still under their limit, weighted toward later hires and higher levels: Pip 1, Marlo 2, Old Greta 3, Sable 4, plus 1 for each level above 1 (so at equal levels they sell about 10/20/30/40% of items, and a level 5 Pip outsells a level 1 Sable). Better sellers also talk customers into more: a customer's budget stretches by 6% per hire after Pip and 3% per staff level, so the pricier staff don't lose most of their customers. One shopkeeper costs their normal wage; each shopkeeper after the first multiplies the entire team's payroll by another 1.5× (1× / 1.5× / 2.25× / 3.375× for one through four staff).
 
 **What each shopkeeper sells (defined):** each staff card has a **Sells** row with the Market Today categories (Weapons, Armor, Potions, Trinkets, Gems) plus Supplies. All are on by default; tapping one turns it off or back on, and at least one always stays on. A shopkeeper only sells items marked For sale in their chosen categories, and the choice stays until the player changes it. If nothing For sale fits any shopkeeper's categories, the staff take the day off and no wages are paid.
 
@@ -1539,8 +1541,8 @@ Regulars whose style you already know are shown as known, whatever your skills.
 
 - **"Clear Floor 1"** means finding the stairs down on floor 1 of the Mossy Cellar.
 - **Chapter 1 goal reveals:** the script says when Goals 1 and 2 appear. In the game, Goal 3 appears after the first shop day, Goal 4 after the first sale or Workshop visit, and Goal 5 once Goal 1 is done.
-- **The letter (Scene 1.7)** arrives at the start of the next day, as the script says. Settled: it waits for the next morning in town, so it never interrupts a delve or a sale, and the overnight pause gives it weight.
-- **Several staff at once** each serve their own customers on a delve day, up to their own daily limits, not the shop's customers a day (see the Town building summary).
+- **The letter (Scene 1.7)** arrives at the start of the next day, as the script says. Settled: it waits for the next morning in town, so it never interrupts a dungeon run or a sale, and the overnight pause gives it weight.
+- **Several staff at once** each serve their own customers on a dungeon day, up to their own daily limits, not the shop's customers a day (see the Town building summary).
 - **"Hold the war council"** completes when Scene 6.1 plays. Bram's weapon is collected from the Journal.
 - **Reaching floor 6 of the Hollow Heart** plays Scene 6.5, and its last Fight button starts the Voss battle.
 - **Voss's Phase 1 enforcers** are extra hits, because combat is one enemy at a time.

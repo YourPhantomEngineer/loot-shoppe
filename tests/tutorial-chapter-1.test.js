@@ -20,7 +20,7 @@ const out=await p.evaluate(()=>{
   const tapBlank=()=>{L.push("  tap blank");app.querySelector("header h1")?.click();drain()};
   drain();                       // 1.1 + Journal prompt
   tapHl();                       // Journal tab
-  tapHl();                       // Town tab (Mossy Cellar is on Town)
+  tapHl();                       // Dungeons tab (Mossy Cellar is on Dungeons)
   tapHl();                       // Mossy Cellar
   let g=0;const want=()=>["t_combat","t_hit","t_loot","t_floor"].every(t=>S.story.tips[t]);
   while(S.run&&g<300){S.run.hp=Math.max(S.run.hp,60);
@@ -52,7 +52,7 @@ const out=await p.evaluate(()=>{
   S.inv.push("herb");render();L.push("  tap equip herb");tap("[data-act=equip][data-k=herb]");
   tapBlank();
   L.push("-- second delve for the belt");
-  tap('[data-act=delve][data-i="0"]');
+  tap('[data-act=tab][data-t="dun"]');tap('[data-act=delve][data-i="0"]');
   g=0;while(S.run&&!S.story.tips.t_belt&&g<300){
     if(S.run.fight){S.run.hp=Math.min(S.run.hp,10);const u=app.querySelector("#usepanel [data-act=use]:not([disabled]):not([aria-disabled=true])");if(u){L.push("  tap use belt");u.click();drain();continue}tap("[data-act=attack]")}
     else if(S.run.ev)tap("[data-act=ev]:last-child");else tap("[data-act=explore]");

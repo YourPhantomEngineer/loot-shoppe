@@ -1,4 +1,4 @@
-// Only one whetstone works per delve; spares stay on the belt for the next one.
+// Only one whetstone works per dungeon run; spares stay on the belt for the next one.
 // Master Grindstone (needs the Smithy) unlocks stronger kinds, each with its own bonus and recipe.
 const {chromium}=require('playwright');const fs=require('fs');const path=require('path');
 (async()=>{const b=await chromium.launch();const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
@@ -7,7 +7,7 @@ await p.addScriptTag({content:fs.readFileSync(path.join(__dirname,'helpers.js'),
 const r=await p.evaluate(()=>{const o={};T.through();S.gear.belt=4;S.belt=["whet","whet","whet"];startDelve(0);T.through();
   const chip=()=>[...app.querySelectorAll('#usepanel [data-act=use]')].find(c=>/Whetstone/.test(c.textContent));
   render();chip().click();T.through();o.first=S.run.atkB===1.3&&S.belt.length===2;
-  render();const c=chip();o.secondBlocked=c.getAttribute("aria-disabled")==="true"&&/used this delve/.test(c.textContent);
+  render();const c=chip();o.secondBlocked=c.getAttribute("aria-disabled")==="true"&&/used this run/.test(c.textContent);
   c.click();T.through();useItem("belt",0);o.stillOne=S.run.atkB===1.3&&S.belt.length===2;
   leaveDungeon();T.through();startDelve(0);T.through();render();chip().click();T.through();o.nextDelve=S.run.atkB===1.3&&S.belt.length===1;
   // tiers
