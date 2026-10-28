@@ -144,6 +144,8 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 .starnum{font-family:var(--display);font-size:1.6rem;color:var(--coin);display:block}
 .tag{font:600 .7rem var(--body);text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--good);color:var(--good);background:none;border-radius:999px;padding:2px 8px;min-height:44px;margin-left:4px;cursor:pointer}
 .tag.keep{border-color:var(--muted);color:var(--muted)}
+.keeppick{display:inline-flex;gap:4px;margin-left:4px;vertical-align:middle}.keeppick .tag{margin:0;border-color:var(--line);color:var(--muted)}
+.keeppick .tag[aria-pressed="true"]{background:var(--good);border-color:var(--good);color:#0f2326}.keeppick .tag.keep[aria-pressed="true"]{background:var(--coin);border-color:var(--coin);color:#2a2008}
 .report{border:1px solid var(--coin)}
 .rlog li{color:var(--fg)}
 .staffcard{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
@@ -1617,6 +1619,8 @@ const staffMultText=n=>(Math.round(staffWageMult(n)*100)/100)+"×";
 const keepsByDefault=k=>!!HEAL[k]||IT[k].c==="supply";
 const isKept=k=>S.keep[k]!==undefined?!!S.keep[k]:keepsByDefault(k);
 const forSale=()=>S.inv.filter(k=>!isKept(k));
+/* Two buttons per item; the active one is filled in. */
+const keepPick=k=>{const kept=isKept(k),n=IT[k].n;return `<span class="keeppick" role="group" aria-label="${n}"><button class="tag" data-act="keep" data-k="${k}" data-v="0" aria-pressed="${!kept}">For sale</button><button class="tag keep" data-act="keep" data-k="${k}" data-v="1" aria-pressed="${kept}">Keep</button></span>`};
 const THIEF_TARGETS=["pip","marlo"];
 const catchChance=k=>{const L=staffLvl(k);return Math.min(.9,.1+.15*(Math.min(L,5)-1)+.002*Math.max(0,L-5))};
 const custW=c=>c.w*(typeof dayWeight==="function"?dayWeight(c):1);
@@ -2312,8 +2316,8 @@ function vTown(){
     ${eq.length?`<div class="chips" style="margin-top:8px">${eq.map(([k,n])=>`<button class="chip usebtn" data-act="equip" data-k="${k}"${dis(S.belt.length>=beltCap())}>+ ${IT[k].n}${n>1?` ×${n}`:""}${ii(k)}</button>`).join("")}</div>`:`<p class="hint" style="margin-top:8px">Craft bombs, ropes, ladders, whetstones, and lockpicks in the Workshop. Potions in stock can go on your belt too.</p>`}
   </section>
   <section class="town-section town-stock"><h2>Stock <small>${S.inv.length} item${S.inv.length===1?"":"s"}</small></h2>
-    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}${ii(k)}<span class="cat">${IT[k].c}</span></span><span class="sub">${built("obs")&&LORE[k]?`<i class="lore">${LORE[k]}</i><br>`:""}Market value ${val(k)}G · <button class="tag${isKept(k)?" keep":""}" data-act="keep" data-k="${k}">${isKept(k)?"Keep":"For sale"}</button></span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
-    ${inv.length?`<p class="hint" style="margin-top:8px">Only items marked For sale can be offered to customers or sold by staff. Tap a tag to switch it.</p>`:""}
+    ${inv.length?`<div class="list">${inv.map(([k,n])=>`<div class="row"><span><b>${IT[k].n}</b>${n>1?` ×${n}`:""}${ii(k)}<span class="cat">${IT[k].c}</span></span><span class="sub">${built("obs")&&LORE[k]?`<i class="lore">${LORE[k]}</i><br>`:""}Market value ${val(k)}G · ${keepPick(k)}</span>${sk("quick")?`<span class="right"><button class="btn gold sm" data-act="quick" data-k="${k}">Sell ${fmt(quickPrice(k))}G</button></span>`:`<span class="right coin">${val(k)}G</span>`}</div>`).join("")}</div>`:`<p class="hint">Nothing in stock yet.</p>`}
+    ${inv.length?`<p class="hint" style="margin-top:8px">Only items marked For sale can be offered to customers or sold by staff.</p>`:""}
     ${sk("quick")&&inv.length?`<p class="hint" style="margin-top:8px">Quick Sale pays ${Math.round(quickPct()*100)}% of base value instantly and doesn't use the day.</p>`:""}
   </section>
   <p class="hint town-ledger">Sold ${fmt(S.sold)} items for ${fmt(S.earned)}G · crafted ${fmt(S.crafted)}. Progress is saved in this browser.</p>
@@ -2593,7 +2597,7 @@ app.addEventListener("click",e=>{
     info:()=>{infoK=b.dataset.k;drawOv()}, nextCh:nextChapter, sleep:sleepNight, council:holdCouncil,
     payDebt, repair:()=>repair(b.dataset.k), forge, theme:()=>{S.theme=b.dataset.k;applyTheme();save();render()},
     hire:()=>hire(b.dataset.k), fireAsk:()=>{confirmFire=b.dataset.k;render()}, fireNo:()=>{confirmFire=null;render()}, fireDo:()=>fire(b.dataset.k),
-    keep:()=>{const k=b.dataset.k;S.keep[k]=!isKept(k);save();render()},
+    keep:()=>{const k=b.dataset.k,v=b.dataset.v==="1";if(isKept(k)===v)return;S.keep[k]=v;save();render()},
     reportOk:()=>{S.report=null;save();render()},
     raiseYes:()=>{const k=S.report.raise,rec=staffRec(k);rec.wageB+=.2;rec.rateB+=.05;toast(`${ST(k).n} beams. <b>+5% prices</b>, wage now ${fmt(staffWage(k))}G.`);sfx.coin();S.report=null;save();render()},
     raiseNo:()=>{toast(`${ST(S.report.raise).n} sighs and gets back to work.`);S.report=null;save();render()},
