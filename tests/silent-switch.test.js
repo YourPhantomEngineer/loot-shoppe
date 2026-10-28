@@ -23,6 +23,16 @@ await q.click('[data-act=music]');
 r.silentEl=await q.evaluate(()=>!!silentEl&&silentEl.loop&&/^blob:/.test(silentEl.src)&&silentEl.hasAttribute("playsinline"));
 await q.click('[data-act=music]');
 r.silentPausedWhenOff=await q.evaluate(()=>silentEl.paused);
+// Newer iPhone Safari (has audioSession): both the playback session and the silent element
+const ctx2=await b.newContext({userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'});
+const n=await ctx2.newPage();n.on('pageerror',e=>errs.push(e.message));
+await n.addInitScript(()=>{navigator.audioSession={type:"auto"}});
+await n.goto(url);await n.evaluate(()=>localStorage.clear());await n.reload();
+await n.evaluate(()=>{scn=null;tipOpen=null;S.music=false;S.sound=false;render();drawOv()});
+await n.click('[data-act=music]');
+r.newIphoneBoth=await n.evaluate(()=>navigator.audioSession.type==="playback"&&!!silentEl&&silentEl.loop);
+await n.click('[data-act=music]');
+r.newIphoneReleased=await n.evaluate(()=>navigator.audioSession.type==="auto"&&silentEl.paused);
 // Desktop browsers without audioSession get no extra element
 const d=await b.newPage();await d.addInitScript(()=>{try{delete Navigator.prototype.audioSession}catch(e){}});
 await d.goto(url);await d.evaluate(()=>{scn=null;tipOpen=null;S.music=false;render();drawOv()});await d.click('[data-act=music]');

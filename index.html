@@ -1434,12 +1434,12 @@ const sfx={
   lvl:()=>[523,659,784,1047].forEach((f,i)=>tone(f,i*.08,.22,"triangle",.1))
 };
 
-/* iPhones mute Web Audio when the ring/silent switch is on silent, unless the page plays as media.
-   Newer Safari takes navigator.audioSession.type="playback"; older iOS gets the same effect from a looping
-   silent <audio> element started on a tap. Either way the music plays like a video would, despite the switch. */
+/* iPhones mute Web Audio when the ring/silent switch (or Action button) is on silent, unless the page plays as media.
+   Safari 16.4+ takes navigator.audioSession.type="playback", but that alone doesn't unmute every iPhone, so iPhones
+   and iPads also play a looping silent <audio> element started on a tap. Together the music plays like a video would. */
 let silentEl=null;
 function audioPlayback(){
-  try{if(navigator.audioSession){if(navigator.audioSession.type!=="playback")navigator.audioSession.type="playback";return}}catch(e){}
+  try{if(navigator.audioSession&&navigator.audioSession.type!=="playback")navigator.audioSession.type="playback"}catch(e){}
   if(!/iP(hone|ad|od)/.test(navigator.userAgent)&&!(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))return;
   try{
     if(!silentEl){
