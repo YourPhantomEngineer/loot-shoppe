@@ -110,9 +110,11 @@ Opening entry:
 >
 > **\[Continue\]**
 
-→ Goal 2 appears, with a tutorial prompt (highlighting the Open the Shop button) until the player taps it. It follows the Market Today tip below, so the panel is pointed out before the player leaves town.
+→ Goal 2 appears, with a tutorial prompt (highlighting the Open the Shop button) until the player taps it. It follows the Market Today tip and the For sale and Keep tip below, so both are pointed out before the player leaves town.
 
 **Wren tip (Market Today, highlighting the Market Today panel):** "Prices shift daily. Green means folk want it."
+
+**Wren tip (For sale and Keep, highlighting the For sale and Keep buttons on the first item in Stock):** "Everything in your **Stock** has two buttons, **For sale** and **Keep**. Tap one to choose. Anything on Keep stays in the back and won't go out on the floor, so no customer will ever ask for it. Potions and supplies start on Keep, so you don't sell what you need down there."
 
 ## Scene 1.4: First shop day
 

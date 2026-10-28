@@ -374,7 +374,7 @@ const LOAN_CASH={2:500,3:1500,4:4000,5:10000,6:15000};
 const loanRate=()=>seen("4.4")?.25:.5;
 const loanCash=()=>LOAN_CASH[S.story.ended?6:Math.min(6,Math.max(2,S.story.ch))];
 const loanOwed=()=>Math.round(loanCash()*(1+loanRate()));
-const newStory=()=>({ch:1,chDay:1,goals:{},seen:{},tips:{},flags:{tut2:1,tut3:1,tut4:1},hl:null,choices:{},built:{},items:{},hiredEver:{},
+const newStory=()=>({ch:1,chDay:1,goals:{},seen:{},tips:{},flags:{tut2:1,tut3:1,tut4:1,tut5:1},hl:null,choices:{},built:{},items:{},hiredEver:{},
   debtPaid:0,loan:0,reopens:0,journal:[],queue:[],tipQ:[]});
 const SCN={}, TIPS={}, CH=[null];
 const fl=k=>!!S.story.flags[k];
@@ -629,6 +629,8 @@ function migrateTut4(st){
   if(!st.flags.tut4){st.flags.tut4=S.day;if(st.ended){egStart();tip("t_endless")}}
   else if(st.ended&&!st.endless)egStart();
 }
+/* Saves from before the For sale / Keep prompt: anyone already past Scene 1.3 has seen the shop tutorial. */
+function migrateTut5(st){if(st.flags.tut5)return;st.flags.tut5=S.day;if(st.seen["1.3"])st.tips.t_keep=st.tips.t_keep||S.day}
 function migrateStory(){
   if(!S.crew)S.crew=S.hired?[S.hired]:[];
   delete S.hired;
@@ -638,7 +640,7 @@ function migrateStory(){
     for(let c=1;c<st.ch;c++)for(const g of chGoals(c))if(!st.goals[g.id])st.goals[g.id]=S.day;
     if(st.ch===1&&st.flags.ch1done)for(const g of chGoals(1))if(!st.goals[g.id])st.goals[g.id]=S.day;
     if(st.flags["ch"+st.ch+"ended"]&&CH[st.ch+1])startChapter(st.ch+1);
-    migrateTut2(st);migrateTut3(st);migrateTut4(st);
+    migrateTut2(st);migrateTut3(st);migrateTut4(st);migrateTut5(st);
     return;
   }
   const st=S.story=newStory();
@@ -734,7 +736,7 @@ SCN["1.2"]={title:"First delve",on:"enter",when:d=>d.d===0,cards:[
  {s:[["Wren","Delving takes the whole day. Go deep for better loot, but every floor bites harder."],["Wren","Faint down there and you lose everything you found, plus some of your coin. The deeper you fall, the more it costs."]],b:"Into the cellar"}]};
 SCN["1.3"]={title:"Back from the cellar",on:"day",when:d=>d.fromDelve,cards:[
  {s:[["Wren","Not bad. Loot's no good in a sack, though. Open the shop and let the customers come to you."]],b:"Continue"}],
- done:()=>{tip("t_market");tip("h_shop")}};
+ done:()=>{tip("t_market");tip("t_keep");tip("h_shop")}};
 SCN["1.4"]={title:"First shop day",on:"shopOpen",cards:[
  {s:[["Wren","Only three customers a day while the town's like this."],["Wren","They'll make an offer. Their mood tells you how far you can push."]],b:"Open the doors"}]};
 SCN["1.5"]={title:"The Workshop",on:"tab",when:d=>d.t==="work",cards:[
@@ -762,6 +764,7 @@ TIPS.t_belt={w:"Wren",t:"Combat supplies cost your turn. Ladders work between fi
 TIPS.t_room={w:"Wren",t:"The cellar's strange since the star fell. Not all strange is bad.",ch:1};
 TIPS.t_floor={w:"Wren",t:"Push deeper, or head up with what you've got. No shame in a short day.",ch:1,hl:{sel:"[data-act=descend],[data-act=leave]"}};
 TIPS.t_market={w:"Wren",t:"Prices shift daily. Green means folk want it.",ch:1,hl:{sel:"#mkt",tab:"town",town:true}};
+TIPS.t_keep={w:"Wren",t:"Everything in your **Stock** has two buttons, **For sale** and **Keep**. Tap one to choose. Anything on Keep stays in the back and won't go out on the floor, so no customer will ever ask for it. Potions and supplies start on Keep, so you don't sell what you need down there.",ch:1,hl:{sel:".keeppick",tab:"town",town:true,first:true}};
 const MOOD_HL={sel:".custhead .mood"};
 TIPS.t_eager={w:"Wren",t:"That one wants it bad. Push.",ch:1,hl:MOOD_HL};
 TIPS.t_keen={w:"Wren",t:"Interested. A little push won't hurt.",ch:1,hl:MOOD_HL};

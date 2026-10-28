@@ -32,6 +32,8 @@ const out=await p.evaluate(()=>{
   L.push("-- floor 1 done, heading home");
   tap("[data-act=leave]");       // Return to town -> 1.3 -> Market prompt
   tapBlank();                    // any tap ends the Market Today highlight
+  if(!S.story.tips.t_keep)L.push("!! no For sale / Keep prompt");
+  if(app.querySelector(".keeppick.hl"))tapBlank(); // For sale / Keep buttons on the first Stock item
   S.inv.push("dagger","dagger","ring");render();
   tapHl();                       // Open the shop
   let guard=0;const haggled={done:false};
