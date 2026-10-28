@@ -1,7 +1,7 @@
 // Dungeon Loot Shoppe offline support.
 // The game page is fetched fresh when online (so updates arrive right away)
 // and served from the cache when offline. Icons and sound files are cached on install, fonts as they load.
-const CACHE = "dungeon-loot-shoppe-v74";
+const CACHE = "dungeon-loot-shoppe-v75";
 const CORE = ["./", "index.html", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png", "icons/apple-touch-icon.png?v=2", "icons/icon-192.png?v=2",
   "sounds/coin-purse.mp3"];

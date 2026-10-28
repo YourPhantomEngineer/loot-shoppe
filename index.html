@@ -1432,7 +1432,6 @@ function tone(f,t0,d,type,v,f2){
   g.gain.setValueAtTime(.0001,s);g.gain.exponentialRampToValueAtTime(v||.1,s+.01);g.gain.exponentialRampToValueAtTime(.0001,s+d);
   o.connect(g).connect(ac.destination);o.start(s);o.stop(s+d+.03);
 }
-/* A short burst of filtered noise: coin clinks, whooshes, sparkle. */
 /* Recorded sound effects, for the few sounds code can't fake. Files live in sounds/ and are cached for offline play
    by sw.js. Each loads once audio starts; until it has (or if it can't), the generated sound plays instead. */
 const SOUNDS={purse:"sounds/coin-purse.mp3"};
@@ -1449,6 +1448,7 @@ function playFile(k,t0=0,v=1){
   const src=ac.createBufferSource(),g=ac.createGain();src.buffer=SBUF[k];g.gain.value=v;
   src.connect(g).connect(ac.destination);src.start(ac.currentTime+t0);return true;
 }
+/* A short burst of filtered noise: coin clinks, whooshes, sparkle. */
 function noise(t0,d,v,f,q,f2){
   if(!S.sound)return;
   if(!audioCtx())return;
