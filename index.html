@@ -2670,17 +2670,18 @@ document.getElementById("ov").addEventListener("click",e=>{
   if(b.dataset.act==="scn")scnGo(b.dataset.go);
 });
 document.addEventListener("pointerdown",()=>{if(S.music&&!ac){audioCtx();musicUpdate()}},{once:true});
-/* A very short buzz on every button tap, on phones only (touch screens). Android uses the Vibration API; iPhone
-   Safari has none, but tapping the label of a hidden switch-style checkbox gives a light haptic tick (iOS 18+). */
-let hapEl=null;
+/* A very short buzz on every button tap, on phones only (touch screens). iPhones never vibrate for web pages, but
+   clicking the label of a switch-style checkbox gives a light haptic tick, so iPhones always use that (even if a
+   navigator.vibrate exists there). It follows the ios-haptics approach: a fresh hidden label each time, removed after. */
+const isIOS=()=>/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform));
 function haptic(){
   if(!matchMedia("(pointer:coarse)").matches)return;
-  if(navigator.vibrate){navigator.vibrate(10);return}
-  if(!/iP(hone|ad|od)/.test(navigator.userAgent)&&!(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform)))return;
-  if(!hapEl){hapEl=document.createElement("label");hapEl.setAttribute("aria-hidden","true");
-    hapEl.style.cssText="position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none";
-    const i=document.createElement("input");i.type="checkbox";i.setAttribute("switch","");i.tabIndex=-1;hapEl.appendChild(i);document.body.appendChild(hapEl)}
-  hapEl.click();
+  if(isIOS()){
+    const l=document.createElement("label"),i=document.createElement("input");
+    l.setAttribute("aria-hidden","true");l.style.display="none";i.type="checkbox";i.setAttribute("switch","");l.appendChild(i);
+    document.head.appendChild(l);l.click();l.remove();return;
+  }
+  if(navigator.vibrate)navigator.vibrate(10);
 }
 document.addEventListener("click",e=>{
   const b=e.target.closest&&e.target.closest("button,[data-act]");

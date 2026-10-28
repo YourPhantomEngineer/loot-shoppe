@@ -16,17 +16,20 @@ await p.tap('#dis',{force:true});
 r.disabledNoBuzz=await p.evaluate(()=>window.__vib.length===1);
 await p.evaluate(()=>document.querySelector('#app').click());
 r.nonButtonNoBuzz=await p.evaluate(()=>window.__vib.length===1);
-// iPhone (no Vibration API): hidden switch checkbox label gets tapped
-const i=await b.newContext({...devices['iPhone 13']});await i.addInitScript(()=>{try{delete Navigator.prototype.vibrate}catch(e){}});
-const q=await open(i);
-const before=await q.evaluate(()=>S.sound);
-await q.tap('[data-act=sound]');
-r.iphoneSwitch=await q.evaluate(()=>!!hapEl&&hapEl.querySelector('input[switch]')!==null&&getComputedStyle(hapEl).pointerEvents==='none');
-r.iphoneButtonStillWorks=await q.evaluate(b=>S.sound!==b,before);
+// iPhone: always the switch-checkbox tick, even if navigator.vibrate exists; the label is removed afterwards
+const spy=()=>{window.__sw=0;const c=HTMLLabelElement.prototype.click;HTMLLabelElement.prototype.click=function(){if(this.querySelector('input[switch]'))window.__sw++;return c.call(this)}};
+for(const [name,keepVib] of [['iphone',false],['iphoneWithVibrate',true]]){
+  const i=await b.newContext({...devices['iPhone 13']});await i.addInitScript(spy);
+  await i.addInitScript(keepVib?stub:()=>{try{delete Navigator.prototype.vibrate}catch(e){}});
+  const q=await open(i);const before=await q.evaluate(()=>S.sound);
+  await q.tap('[data-act=sound]');
+  r[name+'Tick']=await q.evaluate(k=>window.__sw===1&&!document.querySelector('input[switch]')&&(!k||window.__vib.length===0),keepVib);
+  r[name+'ButtonStillWorks']=await q.evaluate(b=>S.sound!==b,before);
+}
 // Desktop: nothing
 const d=await b.newContext();await d.addInitScript(stub);
 const w=await open(d);await w.click('[data-act=sound]');
-r.desktopNoBuzz=await w.evaluate(()=>window.__vib.length===0&&!hapEl);
+r.desktopNoBuzz=await w.evaluate(()=>window.__vib.length===0);
 await b.close();
 const bad=Object.entries(r).filter(([k,v])=>v!==true).map(([k])=>k);
 console.log(JSON.stringify(r));if(bad.length||errs.length){console.log("FAIL",bad.join(", "),"errors:",errs);process.exit(1)}
