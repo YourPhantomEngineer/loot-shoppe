@@ -1434,6 +1434,29 @@ function noise(t0,d,v,f,q,f2){
   g.gain.setValueAtTime(.0001,s);g.gain.exponentialRampToValueAtTime(v,s+Math.min(.01,d/3));g.gain.exponentialRampToValueAtTime(.0001,s+d);
   src.connect(bp).connect(g).connect(ac.destination);src.start(s);src.stop(s+d+.03);
 }
+/* Coins poured into a leather purse. Each coin is a burst of noise ringing through a few high, narrow resonances
+   (a thin metal disk's modes), damped fast by the leather, so it clinks like metal rather than chiming like a bell.
+   Under the clatter: the leather rustles and the purse thumps as it takes the weight. P tunes it (see PURSE). */
+const PURSE={coins:18,pour:.42,lo:4200,hi:7800,ring:.06,leather:1,bright:11000};
+function coinPurse(c,out,t0,P=PURSE){
+  const nb=n=>{const b=c.createBuffer(1,Math.max(1,Math.round(c.sampleRate*n)),c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return b};
+  const env=(g,t,v,a,d)=>{g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+a);g.gain.exponentialRampToValueAtTime(.0001,t+d)};
+  const lp=c.createBiquadFilter();lp.type="lowpass";lp.frequency.value=Math.min(P.bright,c.sampleRate*.45);lp.connect(out);
+  const burst=(t,d,type,f,q,v,a,dec,dest)=>{const s=c.createBufferSource(),fl=c.createBiquadFilter(),g=c.createGain();s.buffer=nb(d);fl.type=type;fl.frequency.value=f;fl.Q.value=q;
+    env(g,t,v,a,dec);s.connect(fl).connect(g).connect(dest||lp);s.start(t);s.stop(t+dec+.03)};
+  const nyq=c.sampleRate*.45;
+  const coin=(t,f,v)=>{
+    burst(t,.006,"highpass",3000,.7,v*.9,.001,.008); // the strike
+    for(const [m,a] of [[1,1],[1.59,.7],[2.14,.5],[2.65,.35]]){const fr=f*m;if(fr>nyq)continue;
+      burst(t,.004,"bandpass",fr,40+Math.random()*30,v*a*3.2,.001,P.ring*(1.2-m*.15)*(.7+Math.random()*.6))} // the metal rings, briefly
+  };
+  // the leather: a low thump as the coins land, a rustle through the pour, a soft settle at the end
+  const L=P.leather;
+  burst(t0,.2,"lowpass",160,.8,.22*L,.006,.18);burst(t0+.03,.25,"bandpass",420,1,.06*L,.01,.22);
+  for(let k=0;k<10;k++){const t=t0+Math.random()*P.pour;burst(t,.06,"bandpass",900+Math.random()*900,1.2,.03*L*(.5+Math.random()),.01,.05+Math.random()*.04)}
+  let t=t0;for(let i=0;i<P.coins;i++){t+=Math.random()*P.pour/P.coins*2*(i<4?.4:1);coin(t,P.lo+Math.random()*(P.hi-P.lo),.06*(.55+Math.random()*.45)*(i<P.coins-3?1:.6))}
+  burst(t+.02,.15,"lowpass",220,.8,.08*L,.008,.12);burst(t+.03,.12,"bandpass",1100,1,.025*L,.01,.1);
+}
 const sfx={
   step:()=>tone(220,0,.06,"triangle",.06,180),
   loot:()=>{tone(784,0,.08,"square",.05);tone(1175,.07,.12,"square",.05)},
@@ -1451,8 +1474,7 @@ const sfx={
   // HP restored: a soft rising shimmer
   heal:()=>{tone(392,0,.4,"sine",.05,784);[659,880,1175].forEach((f,i)=>tone(f,.08+i*.08,.26,"sine",.045));noise(.05,.35,.012,7000,.8)},
   // gold found: a coin purse jingling (t0 delays it behind another sound)
-  purse:(t0=0)=>{for(let i=0;i<7;i++){const t=t0+i*.035+Math.random()*.03;tone(2300+Math.random()*1500,t,.07,"triangle",.035);noise(t,.04,.05,5200+Math.random()*2500,6)}
-    noise(t0,.14,.03,3000,1.2)},
+  purse:(t0=0)=>{if(S.sound&&audioCtx())coinPurse(ac,ac.destination,ac.currentTime+t0)},
   // extras: a critical hit rings out; a clean escape whooshes away
   crit:()=>{tone(1568,0,.18,"triangle",.06,2093);noise(0,.12,.04,6000,3)},
   whoosh:()=>noise(0,.3,.08,600,1.4,2600)

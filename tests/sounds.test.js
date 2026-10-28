@@ -22,6 +22,10 @@ const r=await p.evaluate(()=>{const o={};T.through();S.sound=true;
   const rnd0=Math.random;makeFight("Cellar Rat","mob");R.fight.hp=1e6;Math.random=()=>0;c=heard(attack);o.crit=c.includes("crit");
   c=heard(flee);Math.random=rnd0;o.fleeWhoosh=c.includes("whoosh")&&!S.run.fight;
   return o});
+// the coin purse renders as real sound: a shower of clinks lasting a fraction of a second
+r.purseRenders=await p.evaluate(async()=>{const sr=22050,c=new OfflineAudioContext(1,sr,sr);coinPurse(c,c.destination,0);
+  const d=(await c.startRendering()).getChannelData(0);let pk=0,last=0;for(let i=0;i<d.length;i++){const a=Math.abs(d[i]);pk=Math.max(pk,a);if(a>.002)last=i}
+  return pk>.03&&last/sr>.25&&last/sr<.9});
 await b.close();
 const bad=Object.entries(r).filter(([k,v])=>v!==true).map(([k])=>k);
 console.log(JSON.stringify(r));if(bad.length||errs.length){console.log("FAIL",bad.join(", "),"errors:",errs);process.exit(1)}
