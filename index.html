@@ -383,7 +383,7 @@ const LOAN_CASH={2:500,3:1500,4:4000,5:10000,6:15000};
 const loanRate=()=>seen("4.4")?.25:.5;
 const loanCash=()=>LOAN_CASH[S.story.ended?6:Math.min(6,Math.max(2,S.story.ch))];
 const loanOwed=()=>Math.round(loanCash()*(1+loanRate()));
-const newStory=()=>({ch:1,chDay:1,goals:{},seen:{},tips:{},flags:{tut2:1,tut3:1,tut4:1,tut5:1},hl:null,choices:{},built:{},items:{},hiredEver:{},
+const newStory=()=>({ch:1,chDay:1,goals:{},seen:{},tips:{},flags:{tut2:1,tut3:1,tut4:1,tut5:1,tut6:1},hl:null,choices:{},built:{},items:{},hiredEver:{},
   debtPaid:0,loan:0,reopens:0,journal:[],queue:[],tipQ:[]});
 const SCN={}, TIPS={}, CH=[null];
 const fl=k=>!!S.story.flags[k];
@@ -640,6 +640,8 @@ function migrateTut4(st){
 }
 /* Saves from before the For sale / Keep prompt: anyone already past Scene 1.3 has seen the shop tutorial. */
 function migrateTut5(st){if(st.flags.tut5)return;st.flags.tut5=S.day;if(st.seen["1.3"])st.tips.t_keep=st.tips.t_keep||S.day}
+/* Saves from before the pack-space prompt: anyone who already found loot has had the first-loot tip. */
+function migrateTut6(st){if(st.flags.tut6)return;st.flags.tut6=S.day;if(st.tips.t_loot)st.tips.t_pack=st.tips.t_pack||S.day}
 function migrateStory(){
   if(!S.crew)S.crew=S.hired?[S.hired]:[];
   delete S.hired;
@@ -649,7 +651,7 @@ function migrateStory(){
     for(let c=1;c<st.ch;c++)for(const g of chGoals(c))if(!st.goals[g.id])st.goals[g.id]=S.day;
     if(st.ch===1&&st.flags.ch1done)for(const g of chGoals(1))if(!st.goals[g.id])st.goals[g.id]=S.day;
     if(st.flags["ch"+st.ch+"ended"]&&CH[st.ch+1])startChapter(st.ch+1);
-    migrateTut2(st);migrateTut3(st);migrateTut4(st);migrateTut5(st);
+    migrateTut2(st);migrateTut3(st);migrateTut4(st);migrateTut5(st);migrateTut6(st);
     return;
   }
   const st=S.story=newStory();
@@ -768,7 +770,8 @@ TIPS.h_skills={ch:1,hl:tabHl("skills")};
 TIPS.t_pay={w:"Wren",t:"When you've coin to spare, pay the Celestials from the **Journal** tab. Every bit off the balance is a bit they can't hold over you.",ch:1,hl:{sel:"[data-act=payDebt]",tab:"journal",town:true}};
 TIPS.t_combat={w:"Wren",t:"Attack deals damage; if the enemy survives, it hits back. Guard means you don't attack that turn, but the enemy deals about 70% less damage. Flee might fail, giving the enemy a free hit.",ch:1,hl:{sel:"[data-act=attack],[data-act=guard],[data-act=flee]"}};
 TIPS.t_hit={w:"Wren",t:"That number's a rough guess at its damage. Plan around it.",ch:1,hl:{sel:".mdmg"}};
-TIPS.t_loot={w:"Wren",t:"Everything has a price. Mind your pack space.",ch:1,hl:{sel:"#packcap"}};
+TIPS.t_loot={w:"Wren",t:"Loot, eh? Mind your pack space.",ch:1,hl:{sel:"#packcap"}};
+TIPS.t_pack={w:"Wren",t:"Your pack only holds so much. The number by **Pack** shows how full it is. **Bigger Pack** in the Upgrades tab lets you carry more. Tap an item twice to drop it and make room.",ch:1,hl:{sel:".bag"}};
 TIPS.t_belt={w:"Wren",t:"Combat supplies cost your turn. Ladders work between fights to skip a floor. Use supplies before you need them, not after.",ch:1,hl:{sel:"#usepanel"}};
 TIPS.t_room={w:"Wren",t:"The cellar's strange since the star fell. Not all strange is bad.",ch:1};
 TIPS.t_floor={w:"Wren",t:"Push deeper, or head up with what you've got. No shame in a short day.",ch:1,hl:{sel:"[data-act=descend],[data-act=leave]"}};
@@ -839,6 +842,7 @@ const INTRO={adv:"i_adv",town:"i_town",trav:"i_trav",craft:"i_craft",coll:"i_col
 tipHooks=function(type,d){
   const T={combat:"t_combat",hit:"t_hit",loot:"t_loot",belt:"t_belt",roomEvent:"t_room",stairs:"t_floor",walk:"t_walk"}[type];
   if(T)tip(T);
+  if(type==="loot")tip("t_pack"); // right after Wren's first-loot line
   if(type==="customer"){if(MOOD_TIP[d.mood])tip(MOOD_TIP[d.mood]);if(INTRO[d.type])tip(INTRO[d.type])}
   const c1=S.story.ch===1;
   if(type==="sale"){tip("t_sale1");if(c1)tip("t_work");if(d.above&&d.haggled){tip("t_above");if(c1)tip("t_upg")}}

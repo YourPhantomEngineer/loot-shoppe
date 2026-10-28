@@ -92,7 +92,8 @@ Opening entry:
 
 - **First combat (highlighting Attack, Guard and Flee):** "Attack deals damage; if the enemy survives, it hits back. Guard means you don't attack that turn, but the enemy deals about 70% less damage. Flee might fail, giving the enemy a free hit."
 - **First enemy hit (highlighting the enemy's damage number):** "That number's a rough guess at its damage. Plan around it."
-- **First loot (highlighting your pack space):** "Everything has a price. Mind your pack space."
+- **First loot (highlighting your pack space):** "Loot, eh? Mind your pack space."
+- **Right after, on pack space (highlighting the items in your pack):** "Your pack only holds so much. The number by **Pack** shows how full it is. **Bigger Pack** in the Upgrades tab lets you carry more. Tap an item twice to drop it and make room."
 - **First supply-belt use (highlighting the supply belt):** "Combat supplies cost your turn. Ladders work between fights to skip a floor. Use supplies before you need them, not after."
 - **First room event:** "The cellar's strange since the star fell. Not all strange is bad."
 - **First floor cleared (highlighting the Descend and Return to town buttons):** "Push deeper, or head up with what you've got. No shame in a short day."
