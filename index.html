@@ -2645,6 +2645,22 @@ document.getElementById("ov").addEventListener("click",e=>{
   if(b.dataset.act==="scn")scnGo(b.dataset.go);
 });
 document.addEventListener("pointerdown",()=>{if(S.music&&!ac){audioCtx();musicUpdate()}},{once:true});
+/* A very short buzz on every button tap, on phones only (touch screens). Android uses the Vibration API; iPhone
+   Safari has none, but tapping the label of a hidden switch-style checkbox gives a light haptic tick (iOS 18+). */
+let hapEl=null;
+function haptic(){
+  if(!matchMedia("(pointer:coarse)").matches)return;
+  if(navigator.vibrate){navigator.vibrate(10);return}
+  if(!/iP(hone|ad|od)/.test(navigator.userAgent)&&!(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform)))return;
+  if(!hapEl){hapEl=document.createElement("label");hapEl.setAttribute("aria-hidden","true");
+    hapEl.style.cssText="position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none";
+    const i=document.createElement("input");i.type="checkbox";i.setAttribute("switch","");i.tabIndex=-1;hapEl.appendChild(i);document.body.appendChild(hapEl)}
+  hapEl.click();
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest("button,[data-act]");
+  if(b&&!b.disabled&&b.getAttribute("aria-disabled")!=="true")try{haptic()}catch(err){}
+},true);
 document.addEventListener("visibilitychange",()=>{
   if(!ac)return;
   if(document.hidden){ac.suspend();if(silentEl)silentEl.pause()}else{audioPlayback();ac.resume();M.next=ac.currentTime+.08}
