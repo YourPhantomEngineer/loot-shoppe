@@ -1434,7 +1434,7 @@ function tone(f,t0,d,type,v,f2){
 }
 /* Recorded sound effects, for the few sounds code can't fake. Files live in sounds/ and are cached for offline play
    by sw.js. Each loads once audio starts; until it has (or if it can't), the generated sound plays instead. */
-const SOUNDS={purse:"sounds/coin-purse.mp3"};
+const SOUNDS={}; // none in use right now; add as {purse:"sounds/coin-purse.mp3"}
 const SBUF={};let sLoading=false;
 function loadSounds(){
   if(sLoading||!ac||typeof fetch!=="function")return;sLoading=true;
@@ -1475,8 +1475,7 @@ const sfx={
   kill:()=>{tone(659,0,.1,"triangle",.09);tone(988,.08,.2,"triangle",.09);tone(1976,.08,.14,"sine",.025)},
   // HP restored: a soft rising shimmer
   heal:()=>{tone(392,0,.4,"sine",.05,784);[659,880,1175].forEach((f,i)=>tone(f,.08+i*.08,.26,"sine",.045));noise(.05,.35,.012,7000,.8)},
-  // gold found: coins poured into a leather pouch (recording), or a generated jingle if the file isn't loaded;
-  // t0 delays it behind another sound
+  // gold found: a coin purse jingling (a recording plays instead if SOUNDS has one for "purse"); t0 delays it behind another sound
   purse:(t0=0)=>{if(playFile("purse",t0,.3))return;for(let i=0;i<7;i++){const t=t0+i*.035+Math.random()*.03;tone(2300+Math.random()*1500,t,.07,"triangle",.035);noise(t,.04,.05,5200+Math.random()*2500,6)}
     noise(t0,.14,.03,3000,1.2)},
   // extras: a critical hit rings out; a clean escape whooshes away
