@@ -142,7 +142,12 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 .branch h3 small{font:600 .75rem var(--body);color:var(--muted)}
 .pips{letter-spacing:2px;color:var(--coin)}
 .wtabs{grid-template-columns:repeat(2,minmax(0,1fr))}
-.wbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px}.wbar .ghost{flex-shrink:0}
+.wbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px}.wbar .tgl{flex-shrink:0}
+.tgl{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 2px;background:none;border:0;color:var(--muted);font:700 .85rem var(--body);cursor:pointer}
+.tgl i{position:relative;width:40px;height:24px;border-radius:12px;background:var(--line);transition:background .2s}
+.tgl i::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--fg);transition:transform .2s}
+.tgl[aria-checked="true"]{color:var(--coin)}.tgl[aria-checked="true"] i{background:var(--coin)}.tgl[aria-checked="true"] i::after{transform:translateX(16px);background:#2a2008}
+@media (prefers-reduced-motion:reduce){.tgl i,.tgl i::after{transition:none}}
 .wgroup{font:700 .72rem var(--body);text-transform:uppercase;letter-spacing:.1em;color:var(--copper);margin:16px 0 4px}
 .code{display:block;width:100%;box-sizing:border-box;min-height:84px;margin-top:6px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px;font:12px/1.4 ui-monospace,monospace;word-break:break-all;resize:vertical;-webkit-user-select:text;user-select:text}
 .starnum{font-family:var(--display);font-size:1.6rem;color:var(--coin);display:block}
@@ -2436,8 +2441,8 @@ function vWork(){
   <section id="recipes"><h2>Recipes</h2>
     <div class="tabs wtabs" role="tablist" aria-label="Recipe type">${wt("supply","Supplies")}${wt("goods","Trade goods")}</div>
     <div class="wbar"><p class="hint">${wtab==="supply"?"Things you use: drink them or carry them on your supply belt into the dungeons.":"Things you sell: stock for your shelves and your staff."}</p>
-      <button class="ghost" data-act="readyOnly" aria-pressed="${!!S.readyOnly}">Ready only</button></div>
-    ${groups||`<p class="hint">${S.readyOnly?"Nothing here you can craft right now. Turn off Ready only to see every recipe.":"No recipes here yet."}</p>`}
+      <button class="tgl" role="switch" data-act="readyOnly" aria-checked="${!!S.readyOnly}"><span>Craftable</span><i aria-hidden="true"></i></button></div>
+    ${groups||`<p class="hint">${S.readyOnly?"Nothing here you can craft right now. Turn off Craftable to see every recipe.":"No recipes here yet."}</p>`}
     <p class="hint" style="margin-top:8px">More recipes appear as you unlock deeper dungeons.</p></section>`;
 }
 
