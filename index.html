@@ -1420,6 +1420,17 @@ function tone(f,t0,d,type,v,f2){
   g.gain.setValueAtTime(.0001,s);g.gain.exponentialRampToValueAtTime(v||.1,s+.01);g.gain.exponentialRampToValueAtTime(.0001,s+d);
   o.connect(g).connect(ac.destination);o.start(s);o.stop(s+d+.03);
 }
+/* A short burst of filtered noise: coin clinks, whooshes, sparkle. */
+function noise(t0,d,v,f,q,f2){
+  if(!S.sound)return;
+  if(!audioCtx())return;
+  const s=ac.currentTime+t0,n=Math.max(1,Math.round(ac.sampleRate*d)),buf=ac.createBuffer(1,n,ac.sampleRate),ch=buf.getChannelData(0);
+  for(let i=0;i<n;i++)ch[i]=Math.random()*2-1;
+  const src=ac.createBufferSource(),bp=ac.createBiquadFilter(),g=ac.createGain();src.buffer=buf;
+  bp.type="bandpass";bp.frequency.setValueAtTime(f,s);if(f2)bp.frequency.exponentialRampToValueAtTime(f2,s+d);bp.Q.value=q||1;
+  g.gain.setValueAtTime(.0001,s);g.gain.exponentialRampToValueAtTime(v,s+Math.min(.01,d/3));g.gain.exponentialRampToValueAtTime(.0001,s+d);
+  src.connect(bp).connect(g).connect(ac.destination);src.start(s);src.stop(s+d+.03);
+}
 const sfx={
   step:()=>tone(220,0,.06,"triangle",.06,180),
   loot:()=>{tone(784,0,.08,"square",.05);tone(1175,.07,.12,"square",.05)},
@@ -1431,7 +1442,17 @@ const sfx={
   craft:()=>{[392,523,659].forEach((f,i)=>tone(f,i*.06,.12,"square",.05))},
   boss:()=>{tone(90,0,.8,"sawtooth",.09,60);tone(135,.1,.7,"sawtooth",.06,90)},
   win:()=>[392,523,659,784,1047].forEach((f,i)=>tone(f,i*.1,.3,"triangle",.1)),
-  lvl:()=>[523,659,784,1047].forEach((f,i)=>tone(f,i*.08,.22,"triangle",.1))
+  lvl:()=>[523,659,784,1047].forEach((f,i)=>tone(f,i*.08,.22,"triangle",.1)),
+  // a regular enemy goes down: a quick bright two-note chime, smaller than the boss fanfare
+  kill:()=>{tone(659,0,.1,"triangle",.09);tone(988,.08,.2,"triangle",.09);tone(1976,.08,.14,"sine",.025)},
+  // HP restored: a soft rising shimmer
+  heal:()=>{tone(392,0,.4,"sine",.05,784);[659,880,1175].forEach((f,i)=>tone(f,.08+i*.08,.26,"sine",.045));noise(.05,.35,.012,7000,.8)},
+  // gold found: a coin purse jingling (t0 delays it behind another sound)
+  purse:(t0=0)=>{for(let i=0;i<7;i++){const t=t0+i*.035+Math.random()*.03;tone(2300+Math.random()*1500,t,.07,"triangle",.035);noise(t,.04,.05,5200+Math.random()*2500,6)}
+    noise(t0,.14,.03,3000,1.2)},
+  // extras: a critical hit rings out; a clean escape whooshes away
+  crit:()=>{tone(1568,0,.18,"triangle",.06,2093);noise(0,.12,.04,6000,3)},
+  whoosh:()=>noise(0,.3,.08,600,1.4,2600)
 };
 
 /* iPhones mute Web Audio when the ring/silent switch (or Action button) is on silent, unless the page plays as media.
@@ -1764,8 +1785,8 @@ function explore(){
   else if(r<(c+=mod==="dark"?.16:.08)){const g=dropMats(mod==="dark"?ri(2,3):ri(1,2));R.event=`You pry loose ${g.join(" and ")} from the walls.`;sfx.loot()}
   else if(r<(c+=.30+(mod==="haunted"?.2:0)+R.floor*.01)){makeFight(pick(D.mon),"mob");R.event=`A ${R.fight.n} blocks your path!`}
   else if(r<(c+=mod==="flooded"?.18:.09)){const d=hurtPct(.12);R.event=mod==="flooded"?`You slip into a flooded pit! You lose ${d} HP.`:`A trap springs! You lose ${d} HP.`;sfx.hurt()}
-  else if(r<(c+=mod==="blessed"?.12:.07)){const h=Math.round(maxHp()*.3);R.hp=Math.min(maxHp(),R.hp+h);R.event=`A clear spring restores ${h} HP.`}
-  else{const g=Math.round(rnd(4,12)*f*R.floor);S.gold+=g;R.event=`You find a dropped purse with ${g}G.`;sfx.coin()}
+  else if(r<(c+=mod==="blessed"?.12:.07)){const h=Math.round(maxHp()*.3);R.hp=Math.min(maxHp(),R.hp+h);R.event=`A clear spring restores ${h} HP.`;sfx.heal()}
+  else{const g=Math.round(rnd(4,12)*f*R.floor);S.gold+=g;R.event=`You find a dropped purse with ${g}G.`;sfx.purse()}
   rlog(R.event);flavorLine();
   if(R.hp<=0)return faint();
   save();render();
@@ -1795,7 +1816,7 @@ function openChest(pre){
   const R=S.run,D=DUN[R.d];
   const k=R.secretFloor&&Math.random()<.5?secretItem():rollItem(Math.random()<.5);
   const g=Math.round(rnd(10,25)*tfOf(D)*R.floor);S.gold+=g;
-  R.ev=null;R.event=`${pre} Inside: ${g}G`+(bagAdd(k)?` and ${an(IT[k].n)}!`:`, and ${an(IT[k].n)} you have no room for.`);sfx.loot();
+  R.ev=null;R.event=`${pre} Inside: ${g}G`+(bagAdd(k)?` and ${an(IT[k].n)}!`:`, and ${an(IT[k].n)} you have no room for.`);sfx.purse();
 }
 function giveSupply(k){
   if(S.belt.length<beltCap()){S.belt.push(k);return "on your belt"}
@@ -1821,7 +1842,7 @@ function evChoice(c){
   }
   else if(E.type==="fountain"&&c==="drink"){
     const r=Math.random();R.ev=null;
-    if(r<.4){R.hp=maxHp();R.event="The water is pure. You're fully healed!";sfx.guard()}
+    if(r<.4){R.hp=maxHp();R.event="The water is pure. You're fully healed!";sfx.heal()}
     else if(r<.7){R.atkB+=.15;R.event="The water burns pleasantly. +15% attack for this delve.";sfx.lvl()}
     else{const d=hurtPct(.2);R.event=`The water is foul! You lose ${d} HP.`;sfx.hurt()}
   }
@@ -1862,7 +1883,7 @@ function monsterTurn(guard){
 function attack(){
   const R=S.run,F=R.fight;
   let d=Math.round(runDmg()*rnd(.8,1.2));const c=Math.random()<crit();if(c)d*=2;
-  F.hp-=d;sfx.hit();
+  F.hp-=d;sfx.hit();if(c)sfx.crit();
   if(F.hp<=0)return winFight(c?"Critical hit! ":"");
   R.event=`${c?"Critical hit! ":""}You deal ${d}. `+monsterTurn(false);
   vossPhaseCheck();
@@ -1879,7 +1900,8 @@ function mobWin(pre){
   const g=Math.round(rnd(2,6)*f*R.floor),x=xpm(5*D.t*R.floor);
   S.gold+=g;R.fight=null;R.event=`${pre}You defeat the ${F.n}! +${g}G.`;
   if(Math.random()<.7){let n=1;if(Math.random()<.5*sk("salvage"))n++;R.event+=` Got ${dropMats(n).join(", ")}.`}
-  if(Math.random()<.4){const k=rollItem();if(bagAdd(k)){R.event+=` It dropped ${an(IT[k].n)}.`;sfx.loot()}}
+  if(Math.random()<.4){const k=rollItem();if(bagAdd(k))R.event+=` It dropped ${an(IT[k].n)}.`}
+  sfx.kill();sfx.purse(.22);
   R.event+=` +${x} XP.`;rlog(R.event);addXp(x);save();render();
 }
 function eliteWin(pre){
@@ -1887,7 +1909,7 @@ function eliteWin(pre){
   const g=Math.round(rnd(8,16)*f*R.floor),x=xpm(15*D.t*R.floor),k=rollItem(true);
   S.gold+=g;R.fight=null;
   R.event=`${pre}The ${F.n} falls! +${g}G, ${dropMats(3).join(", ")}`+(bagAdd(k)?`, and its treasure: ${an(IT[k].n)}!`:`. Its treasure, ${an(IT[k].n)}, won't fit in your pack.`);
-  R.event+=` +${x} XP.`;sfx.win();rlog(R.event);addXp(x);save();render();
+  R.event+=` +${x} XP.`;sfx.win();sfx.purse(.6);rlog(R.event);addXp(x);save();render();
 }
 function miniWin(pre){
   const R=S.run,D=DUN[R.d],f=tfOf(D);
@@ -1895,7 +1917,7 @@ function miniWin(pre){
   S.gold+=g;R.fight=null;R.miniDone=true;SE("defeat",{n:MINI[R.d],kind:"mini",d:R.d});
   const where=giveSupply(sup);
   R.event=`${pre}The ${MINI[R.d]} collapses! +${g}G, ${dropMats(2).join(", ")}`+(bagAdd(k)?`, ${an(IT[k].n)}`:"")+(where?`, and ${an(IT[sup].n)} (${where}).`:".");
-  {const x=xpm(25*D.t);R.event+=` +${x} XP.`;sfx.win();rlog(R.event);addXp(x)}save();render();
+  {const x=xpm(25*D.t);R.event+=` +${x} XP.`;sfx.win();sfx.purse(.6);rlog(R.event);addXp(x)}save();render();
 }
 function bossWin(pre){
   const R=S.run,D=DUN[R.d],f=tfOf(D);
@@ -1906,13 +1928,13 @@ function bossWin(pre){
   R.fight=null;R.bossDone=true;SE("defeat",{n:D.boss,kind:"boss",d:R.d});
   R.event=`${pre}The ${D.boss} falls! +${g}G, ${MATS[D.heart]}${fit?`, and ${an(IT[k].n)}`:""}.`+(first?" First victory: +1 skill point!":"");
   if(Math.random()<.35+.05*sk("keen")+secretBonus()){R.secret=true;R.event+=" Behind the lair, a hidden stairway grinds open...";SE("secretStair")}
-  R.event+=` +${x} XP.`;rlog(R.event);sfx.win();addXp(x);
+  R.event+=` +${x} XP.`;rlog(R.event);sfx.win();sfx.purse(.6);addXp(x);
   if(first)toast(`<b>${D.boss}</b> defeated! +1 skill point.`);
   save();render();
 }
 function flee(){
   const R=S.run,F=R.fight;
-  if(Math.random()<fleeCh()){R.event=`You slip away from the ${F.n}.`;if(F.kind==="boss"||F.kind==="voss")R.lair=true;R.fight=null}
+  if(Math.random()<fleeCh()){R.event=`You slip away from the ${F.n}.`;sfx.whoosh();if(F.kind==="boss"||F.kind==="voss")R.lair=true;R.fight=null}
   else{R.event=`You couldn't escape! `+monsterTurn(false);if(R.hp<=0)return faint()}
   rlog(R.event);save();render();
 }
@@ -1930,7 +1952,7 @@ function useItem(src,i){
   if(!k||!canUse(k))return;
   if(k==="ladder")return src==="belt"&&descend(true);
   arr.splice(i,1);let m;SE("belt",{k});
-  if(HEAL[k]){const h=Math.max(1,Math.round(maxHp()*HEAL[k]));R.hp=Math.min(maxHp(),R.hp+h);m=`You drink the ${IT[k].n} and recover ${h} HP.`;sfx.guard()}
+  if(HEAL[k]){const h=Math.max(1,Math.round(maxHp()*HEAL[k]));R.hp=Math.min(maxHp(),R.hp+h);m=`You drink the ${IT[k].n} and recover ${h} HP.`;sfx.heal()}
   else if(isWhet(k)){const b=WHET[whetRank(k)].b;R.atkB+=b;R.whetUsed=k;m=`You hone your blade with the ${IT[k].n}: +${Math.round(b*100)}% attack for this delve.`;sfx.craft()}
   else if(k==="rope"){m=`You yank the Escape Rope and vanish from the ${F.n}'s reach.`;if(F.kind==="boss"||F.kind==="voss")R.lair=true;R.fight=null;R.event=m;rlog(m);return save(),render()}
   else if(isBomb(k)){
@@ -1952,10 +1974,10 @@ function descend(byLadder=false){
   if(byLadder){S.belt.splice(ladder,1);SE("belt",{k:"ladder"})}
   R.floor++;R.stairs=false;R.steps=0;R.ev=null;R.left=null;R.dropSel=null;R.mod=byLadder?rollMod(R.floor):R.nextMod!==undefined?R.nextMod:rollMod(R.floor);delete R.nextMod;
   let m=byLadder?`You secure the Ladder and climb down to floor ${R.floor}.`:`You descend to floor ${R.floor}.`;
-  if(sk("wind")){const h=Math.round(maxHp()*.15*sk("wind"));R.hp=Math.min(maxHp(),R.hp+h);m+=` Second Wind restores ${h} HP.`}
+  let healed=false;if(sk("wind")){const h=Math.round(maxHp()*.15*sk("wind"));healed=R.hp<maxHp();R.hp=Math.min(maxHp(),R.hp+h);m+=` Second Wind restores ${h} HP.`}
   if(R.mod)m+=` This floor is ${MODS[R.mod].n}.`;
   if(R.floor===DUN[R.d].floors)m+=" This is the deepest floor.";
-  R.event=m;rlog(m);sfx.step();save();render();SE("floor",{d:R.d,floor:R.floor});return true;
+  R.event=m;rlog(m);sfx.step();if(healed)sfx.heal();save();render();SE("floor",{d:R.d,floor:R.floor});return true;
 }
 function secretStairs(){
   const R=S.run;R.left=null;R.dropSel=null;R.floor=DUN[R.d].floors+1;R.secretFloor=true;R.secret=false;R.stairs=false;R.lair=false;R.mod=null;R.steps=0;
