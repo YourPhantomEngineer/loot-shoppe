@@ -171,6 +171,8 @@ Opening entry:
 
 → **Tutorial prompt** (highlighting the supply belt on the Town tab): Wren: "Put it on your belt before you head down."
 
+**Workshop tabs (defined):** the Workshop's recipes sit in two tabs. **Supplies** (open by default) holds things the player uses, grouped as Potions, Bombs, Whetstones and Tools (Escape Rope, Ladder, Lockpick). **Trade goods** holds things that are only sold, grouped as Weapons, Armor, Trinkets, Gems and Boss crafts. Each tab shows how many of its recipes can be crafted right now. Materials stay above the tabs.
+
 **Ladder (defined):** a tier 1 supply crafted from 2 Moss Fiber + 1 Scrap Iron. Equip it on the supply belt, then use it between encounters to descend exactly one normal dungeon floor without finding the stairs. The Ladder is consumed only after a successful descent. It cannot be used during combat or room events, on the deepest or secret floor, or to bypass a story-sealed floor.
 
 **Bombs and Blasting Powder (defined):** there are five kinds of bomb. Each deals a fixed multiple of the player's attack, never less than the old floor-based blast (80% of that floor's ordinary monster's HP), and uses the player's turn. Whetstone and shrine bonuses don't apply. Each kind has its own recipe, and a bomb keeps its strength once made. **Blasting Powder** is an upgrade in the Upgrades tab, available once the Apothecary is repaired. It has 4 ranks starting at 180G, with normal upgrade cost scaling. Each rank unlocks the next, costlier bomb recipe; the Workshop shows the next locked one as a teaser. Bosses, mini-bosses and dungeon peddlers only ever give Fire Bombs.

@@ -141,6 +141,8 @@ input[type=range]{width:100%;accent-color:var(--coin);height:28px}
 .branch h3{font-family:var(--display);font-size:.9rem;margin:0;color:var(--copper);display:flex;justify-content:space-between}
 .branch h3 small{font:600 .75rem var(--body);color:var(--muted)}
 .pips{letter-spacing:2px;color:var(--coin)}
+.wtabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+.wgroup{font:700 .72rem var(--body);text-transform:uppercase;letter-spacing:.1em;color:var(--copper);margin:16px 0 4px}
 .code{display:block;width:100%;box-sizing:border-box;min-height:84px;margin-top:6px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px;font:12px/1.4 ui-monospace,monospace;word-break:break-all;resize:vertical;-webkit-user-select:text;user-select:text}
 .starnum{font-family:var(--display);font-size:1.6rem;color:var(--coin);display:block}
 .tag{font:600 .7rem var(--body);text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--good);color:var(--good);background:none;border-radius:999px;padding:2px 8px;min-height:44px;margin-left:4px;cursor:pointer}
@@ -2407,21 +2409,34 @@ function vDungeons(){
   </div></section>
 </div>`;
 }
+
+/* Workshop recipes sit in two tabs: Supplies (things you use: potions, bombs, whetstones, tools) and Trade goods
+   (things you only sell), each split into groups. wtab remembers the open one for this session. */
+const WGROUPS={supply:[["Potions",k=>!!HEAL[k]],["Bombs",isBomb],["Whetstones",isWhet],["Tools",k=>["rope","ladder","pick"].includes(k)]],
+  goods:[["Weapons",k=>IT[k].c==="weapon"&&!IT[k].craft],["Armor",k=>IT[k].c==="armor"&&!IT[k].craft],["Trinkets",k=>IT[k].c==="trinket"&&!IT[k].craft],["Gems",k=>IT[k].c==="gem"&&!IT[k].craft],["Boss crafts",k=>IT[k].craft]]};
+const wtabOf=k=>WGROUPS.supply.some(([,f])=>f(k))?"supply":"goods";
+let wtab="supply";
 function vWork(){
   const mats=Object.entries(S.mats).filter(([,n])=>n>0);
   const ut=unlockedTier();
   const recs=RECIPES.map((r,i)=>({r,i})).filter(({r})=>IT[r.out].t<=ut+1&&!(isBomb(r.out)&&bombRank(r.out)>powder()+1)&&!(isWhet(r.out)&&whetRank(r.out)>grind()+1)).sort((a,b)=>canCraft(b.r)-canCraft(a.r));
   const part=(name,need,have)=>`<span class="${have>=need?"have":"need"}">${need} ${name}</span> (${have})`;
-  return `
-  <section><h2>Materials <small>crafting doesn't use the day</small></h2>
-    <div class="chips">${mats.length?mats.map(([k,n])=>`<span class="chip mat">${MATS[k]} ×${n}</span>`).join(""):`<span class="hint">Defeat monsters and search walls in dungeons to gather materials.</span>`}</div></section>
-  <section><h2>Recipes</h2><div class="list">
-    ${recs.map(({r,i})=>{const o=IT[r.out];const parts=[...Object.entries(r.items).map(([k,n])=>part(IT[k].n,n,count(S.inv,k))),...Object.entries(r.mats).map(([k,n])=>part(MATS[k],n,S.mats[k]||0))];
+  const row=({r,i})=>{const o=IT[r.out];const parts=[...Object.entries(r.items).map(([k,n])=>part(IT[k].n,n,count(S.inv,k))),...Object.entries(r.mats).map(([k,n])=>part(MATS[k],n,S.mats[k]||0))];
       return `<button class="row" data-act="craft" data-i="${i}"${dis(!canCraft(r))}>
         <span><b>${o.n}</b>${ii(r.out)}<span class="${o.craft?"crown":"cat"}">${o.craft?"boss craft":o.c}</span></span>
         <span class="sub">${recipeLock(r)?`<span class="need">${recipeLock(r)}</span> · `:""}${parts.join(" + ")}</span>
-        <span class="right coin">${val(r.out)}G</span></button>`}).join("")}
-  </div><p class="hint" style="margin-top:8px">More recipes appear as you unlock deeper dungeons.</p></section>`;
+        <span class="right coin">${val(r.out)}G</span></button>`};
+  const ready=t=>recs.filter(x=>wtabOf(x.r.out)===t&&canCraft(x.r)).length;
+  const wt=(k,n)=>`<button role="tab" aria-selected="${wtab===k}" data-act="wtab" data-w="${k}">${n}${ready(k)?`<span class="dot">${ready(k)}</span>`:""}</button>`;
+  const groups=WGROUPS[wtab].map(([n,f])=>{const g=recs.filter(x=>f(x.r.out));return g.length?`<h3 class="wgroup">${n}</h3><div class="list">${g.map(row).join("")}</div>`:""}).join("");
+  return `
+  <section><h2>Materials <small>crafting doesn't use the day</small></h2>
+    <div class="chips">${mats.length?mats.map(([k,n])=>`<span class="chip mat">${MATS[k]} ×${n}</span>`).join(""):`<span class="hint">Defeat monsters and search walls in dungeons to gather materials.</span>`}</div></section>
+  <section id="recipes"><h2>Recipes</h2>
+    <div class="tabs wtabs" role="tablist" aria-label="Recipe type">${wt("supply","Supplies")}${wt("goods","Trade goods")}</div>
+    <p class="hint" style="margin-top:8px">${wtab==="supply"?"Things you use: drink them or carry them on your supply belt into the dungeons.":"Things you sell: stock for your shelves and your staff."}</p>
+    ${groups||`<p class="hint">No recipes here yet.</p>`}
+    <p class="hint" style="margin-top:8px">More recipes appear as you unlock deeper dungeons.</p></section>`;
 }
 
 function vUpg(){
@@ -2635,6 +2650,7 @@ app.addEventListener("click",e=>{
     info:()=>{infoK=b.dataset.k;drawOv()}, nextCh:nextChapter, sleep:sleepNight, council:holdCouncil,
     payDebt, repair:()=>repair(b.dataset.k), forge, theme:()=>{S.theme=b.dataset.k;applyTheme();save();render()},
     hire:()=>hire(b.dataset.k), fireAsk:()=>{confirmFire=b.dataset.k;render()}, fireNo:()=>{confirmFire=null;render()}, fireDo:()=>fire(b.dataset.k),
+    wtab:()=>{wtab=b.dataset.w;render()},
     staffCat:()=>{const k=b.dataset.k,c=b.dataset.c,cur=staffCats(k),n=cur.includes(c)?cur.filter(x=>x!==c):[...cur,c];
       if(!n.length){toast(`${ST(k).n} needs at least one thing to sell.`);return}
       const rec=staffRec(k);if(n.length===STAFF_CATS.length)delete rec.cats;else rec.cats=STAFF_CATS.filter(x=>n.includes(x));save();render()},
