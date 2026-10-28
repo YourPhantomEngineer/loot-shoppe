@@ -12,8 +12,9 @@ A browser game: delve dungeons for loot, haggle with customers in your shop, reb
 2. **Never break existing saves.** Players' progress lives in `localStorage` (key `dungeon-loot-shoppe-v1`) and in save codes (`LS1:` + base64 JSON). Any change to the save shape needs a migration in `migrate()` / `migrateStory()`. A new tutorial prompt must not replay for saves that are already past that moment (see `migrateTut2()` for the pattern).
 3. **The story script decides the story.** Dialogue, scene order, goals and tutorial prompts come from `docs/story-script.md`. If the game and the script disagree, flag it. Don't quietly pick one. If something in the script can't be built as written, say so instead of improvising.
 4. **Keep the game and the script in sync.** A game change that affects story, prompts, goals or names gets a matching edit to `docs/story-script.md` in the same pull request, and the reverse.
-5. **No build step, no dependencies.** The whole game is `index.html`: HTML, CSS and JavaScript in one file. Music and portraits are generated in code. Don't add frameworks, bundlers or image files for game content. The only external request is Google Fonts.
-6. **Bump the cache on every release.** Any change to `index.html` or `icons/` must bump `CACHE` in `sw.js` (for example `dungeon-loot-shoppe-v28` → `v29`), or installed copies keep the old version.
+5. **No build step, no dependencies.** The game's code is `index.html`: HTML, CSS and JavaScript in one file. Music, portraits and most sound effects are generated in code. Don't add frameworks or bundlers. The only external request is Google Fonts.
+6. **Bump the cache on every release.** Any change to `index.html`, `icons/` or `sounds/` must bump `CACHE` in `sw.js` (for example `dungeon-loot-shoppe-v28` → `v29`), or installed copies keep the old version.
+7. **Recorded sounds only where code can't do it, and only with the owner's OK.** A few sound effects are recordings in `sounds/` (MP3, mono, kept small, under 150 KB each). Each file must be one the owner chose or approved and that may be redistributed in a public game (CC0, or generated or bought with rights the owner confirmed). To add one: put it in `sounds/`, list it in `SOUNDS` in `index.html`, add it to `CORE` in `sw.js` so it plays offline, and keep a generated fallback in the same `sfx` entry for when the file can't load. `tests/sound-files.test.js` checks all of this. Image files are still not used for game content.
 
 ## How to collaborate
 
@@ -48,7 +49,7 @@ Claude sessions can do two things other agents can't:
 - **Update the claude.ai preview** at https://claude.ai/artifact/Jo4j1N5C4Hoph9DhGYK3Cf after a release. Build it from `index.html` as follows:
   1. Take everything between `<body>` and the closing service-worker `<script>`.
   2. Put these three lines in front of it: `<title>Dungeon Loot Shoppe</title>`, `<meta name="claude:viewport-fit-sides" content="cover">`, and the Google Fonts `<link>` from `index.html`'s head.
-  3. Publish that to the same artifact URL.
+  3. Publish that to the same artifact URL, with every file in `sounds/` as a supporting file at the same path (`sounds/coin-purse.mp3`), so the preview plays the recordings too.
 
 Claude sessions push to `main` directly (the owner asked for changes to go live), after `git pull --rebase` and a full `npm test`.
 
@@ -59,6 +60,7 @@ Claude sessions push to `main` directly (the owner asked for changes to go live)
 | `index.html` | The whole game |
 | `sw.js` | Service worker for offline play. `CACHE` version must change with every release |
 | `manifest.webmanifest`, `icons/` | Home Screen name and icons |
+| `sounds/` | Recorded sound effects (see ground rule 7) |
 | `docs/story-script.md` | The story script (copy of the master Claude Doc) |
 | `tests/` | Browser tests (Playwright) |
 | `package.json` | Test tooling only. The game doesn't use it |

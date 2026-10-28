@@ -1433,6 +1433,22 @@ function tone(f,t0,d,type,v,f2){
   o.connect(g).connect(ac.destination);o.start(s);o.stop(s+d+.03);
 }
 /* A short burst of filtered noise: coin clinks, whooshes, sparkle. */
+/* Recorded sound effects, for the few sounds code can't fake. Files live in sounds/ and are cached for offline play
+   by sw.js. Each loads once audio starts; until it has (or if it can't), the generated sound plays instead. */
+const SOUNDS={purse:"sounds/coin-purse.mp3"};
+const SBUF={};let sLoading=false;
+function loadSounds(){
+  if(sLoading||!ac||typeof fetch!=="function")return;sLoading=true;
+  for(const [k,url] of Object.entries(SOUNDS))
+    fetch(url).then(r=>r.ok?r.arrayBuffer():Promise.reject(r.status))
+      .then(b=>new Promise((res,rej)=>ac.decodeAudioData(b,res,rej))) // callback form for older iPhones
+      .then(buf=>{SBUF[k]=buf}).catch(()=>{});
+}
+function playFile(k,t0=0,v=1){
+  if(!S.sound||!SBUF[k]||!audioCtx())return false;
+  const src=ac.createBufferSource(),g=ac.createGain();src.buffer=SBUF[k];g.gain.value=v;
+  src.connect(g).connect(ac.destination);src.start(ac.currentTime+t0);return true;
+}
 function noise(t0,d,v,f,q,f2){
   if(!S.sound)return;
   if(!audioCtx())return;
@@ -1459,8 +1475,9 @@ const sfx={
   kill:()=>{tone(659,0,.1,"triangle",.09);tone(988,.08,.2,"triangle",.09);tone(1976,.08,.14,"sine",.025)},
   // HP restored: a soft rising shimmer
   heal:()=>{tone(392,0,.4,"sine",.05,784);[659,880,1175].forEach((f,i)=>tone(f,.08+i*.08,.26,"sine",.045));noise(.05,.35,.012,7000,.8)},
-  // gold found: a coin purse jingling (t0 delays it behind another sound)
-  purse:(t0=0)=>{for(let i=0;i<7;i++){const t=t0+i*.035+Math.random()*.03;tone(2300+Math.random()*1500,t,.07,"triangle",.035);noise(t,.04,.05,5200+Math.random()*2500,6)}
+  // gold found: coins poured into a leather pouch (recording), or a generated jingle if the file isn't loaded;
+  // t0 delays it behind another sound
+  purse:(t0=0)=>{if(playFile("purse",t0,.3))return;for(let i=0;i<7;i++){const t=t0+i*.035+Math.random()*.03;tone(2300+Math.random()*1500,t,.07,"triangle",.035);noise(t,.04,.05,5200+Math.random()*2500,6)}
     noise(t0,.14,.03,3000,1.2)},
   // extras: a critical hit rings out; a clean escape whooshes away
   crit:()=>{tone(1568,0,.18,"triangle",.06,2093);noise(0,.12,.04,6000,3)},
@@ -1491,7 +1508,7 @@ function audioRelease(){ // sound and music both off: let the phone's own audio 
   if(silentEl)silentEl.pause();
 }
 function audioCtx(){
-  try{audioPlayback();if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();if(ac.state==="suspended")ac.resume();return ac}catch(e){return null}
+  try{audioPlayback();if(!ac){ac=new(window.AudioContext||window.webkitAudioContext)();loadSounds()}if(ac.state==="suspended")ac.resume();return ac}catch(e){return null}
 }
 
 /* ================= Music (generated live, no files) ================= */
