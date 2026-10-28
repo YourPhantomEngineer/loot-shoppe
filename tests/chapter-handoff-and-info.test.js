@@ -35,6 +35,9 @@ const r=await p.evaluate(()=>{const out={},ov=()=>document.querySelector('#ov:no
   // --- Attack buff next to HP ---
   startDelve(0);T.through();S.run.atkB=1.25;render();const hpStat=[...app.querySelectorAll('.stat')].find(s=>/HP/.test(s.textContent));
   out.buffByHp=/Attack \+25%/.test(hpStat.textContent)&&!/Other:/.test(hpStat.textContent)&&!/attack \+25%/.test(app.querySelector('.dhint').textContent);
+  // a prompt's button says just "Got it", even with more prompts waiting
+  S.run=null;scn=null;tipOpen=null;S.story.tipQ=[];S.story.hl=null;for(const t of ["t_combat","t_hit","t_loot"]){delete S.story.tips[t];tip(t)}drawOv();render();playNext();
+  out.gotItPlain=S.story.tipQ.length===3&&document.querySelector('#ov [data-act=tipOk]')?.textContent==="Got it";
   return out});
 const bad=Object.entries(r).filter(([k,v])=>v!==true).map(([k])=>k);
 console.log(JSON.stringify(r));if(bad.length||errs.length){console.log("FAIL",bad.join(", "),"errors:",errs);process.exit(1)}

@@ -508,10 +508,10 @@ function drawOv(){
   const ov=document.getElementById("ov");if(!ov)return;
   if(!scn&&!tipOpen&&infoK){ov.hidden=false;document.body.classList.add("ovopen");ov.innerHTML=infoCard(infoK);ov.querySelector("button")?.focus({preventScroll:true});return}
   if(!scn&&tipOpen){
-    const T=TIPS[tipOpen],more=S.story.tipQ.length-1;
+    const T=TIPS[tipOpen];
     ov.hidden=false;document.body.classList.add("ovopen");
     if(T.urgent){ov.innerHTML=`<div class="ovcard tipcard" role="alertdialog" aria-modal="true" aria-label="${T.w}"><span class="ovtitle">${T.w}</span><p style="margin:0">${md(T.t)}</p><div class="btns"><button class="btn gold" data-act="tipOk">Got it</button></div></div>`;ov.querySelector("button")?.focus({preventScroll:true});return}
-    ov.innerHTML=`<div class="ovcard tipcard" role="dialog" aria-modal="true" aria-label="${T.w}"><p class="sline${portrait(T.w)?" wp":""}">${portrait(T.w)}<span><b class="who">${T.w}</b> ${T.n?md(T.t):`\u201c${md(T.t)}\u201d`}</span></p><div class="btns"><button class="btn gold" data-act="tipOk">${more>0?`Got it (${more} more)`:"Got it"}</button></div></div>`;
+    ov.innerHTML=`<div class="ovcard tipcard" role="dialog" aria-modal="true" aria-label="${T.w}"><p class="sline${portrait(T.w)?" wp":""}">${portrait(T.w)}<span><b class="who">${T.w}</b> ${T.n?md(T.t):`\u201c${md(T.t)}\u201d`}</span></p><div class="btns"><button class="btn gold" data-act="tipOk">Got it</button></div></div>`;
     ov.querySelector("button")?.focus({preventScroll:true});return;
   }
   if(!scn){ov.hidden=true;ov.innerHTML="";document.body.classList.remove("ovopen");return}
