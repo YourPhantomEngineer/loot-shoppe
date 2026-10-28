@@ -1620,6 +1620,11 @@ const STAFF=[
 ];
 const ST=k=>STAFF.find(x=>x.k===k);
 const staffRec=k=>(S.staffs[k]=S.staffs[k]||{sold:0,wageB:0,rateB:0});
+/* What each shopkeeper sells: the Market Today categories plus Supplies. S.staffs[k].cats lists their picks;
+   no list means everything (the default, and how older saves load). Picks stay until the player changes them. */
+const STAFF_CATS=[...CATS,"supply"], STAFF_CATN={...CATN,supply:"Supplies"};
+const staffCats=k=>S.staffs[k]?.cats||STAFF_CATS;
+const staffCan=(k,key)=>staffCats(k).includes(IT[key].c);
 /* Staff levels 1-100. Levels 2-5 take 12 sales each, as before. From level 5 on, each level takes 2.5% more sales
    than the last (12 at level 5, about 36 at level 50, about 120 at level 99): roughly 1,000 lifetime sales for level 50
    and 4,600 for level 100. STAFF_AT[L] is the lifetime sales needed to reach level L. */
@@ -1673,6 +1678,7 @@ function staffShift(){
   const crew=S.crew.map(ST).filter(Boolean);if(!crew.length)return null;
   const who=nameList(crew.map(c=>c.n)),wage=staffPayroll(crew.map(c=>c.k));
   if(!forSale().length)return {who,lines:[`Nothing was marked For sale, so ${who} took the day off.`],gold:0,wage:0};
+  if(!crew.some(st=>forSale().some(x=>staffCan(st.k,x))))return {who,lines:[`Nothing For sale is in the categories your staff are set to sell, so ${who} took the day off.`],gold:0,wage:0};
   if(S.gold<wage)return {who,lines:[`You couldn't cover ${fmt(wage)}G in wages, so the shop stayed closed.`],gold:0,wage:0};
   const lines=[];let gold=0,raise=null;
   const evSt=pick(crew);
@@ -1681,10 +1687,10 @@ function staffShift(){
   // Each sale goes to a staff member picked at random, weighted toward later, more skilled hires and higher levels,
   // from those who haven't reached their daily limit.
   const sold={},L0={},served={};for(const st of crew){sold[st.k]=0;served[st.k]=0;L0[st.k]=staffLvl(st.k)}
-  const free=()=>crew.filter(st=>sold[st.k]<staffSells(st.k)&&served[st.k]<staffSells(st.k)+2);
+  const free=()=>crew.filter(st=>sold[st.k]<staffSells(st.k)&&served[st.k]<staffSells(st.k)+2&&forSale().some(x=>staffCan(st.k,x)));
   while(forSale().length&&free().length){
     const st=pickStaff(free()),rate=staffRate(st.k);served[st.k]++;
-    const C=pickCust(),m=forSale().filter(x=>!C.cats||C.cats.includes(IT[x].c));
+    const C=pickCust(),m=forSale().filter(x=>staffCan(st.k,x)&&(!C.cats||C.cats.includes(IT[x].c)));
     if(!m.length)continue;
     const key=pick(m),v=val(key);let price=Math.max(1,Math.round(v*rate*rnd(.95,1.05)));
     const max=Math.round(v*rnd(...C.bud)*signB()*staffSway(st.k));
@@ -2378,6 +2384,7 @@ function staffSection(){
   const cards=S.crew.map(ST).filter(Boolean).map(H=>{const k=H.k,L=staffLvl(k),nx=staffNext(k),rec=staffRec(k);
     return `<div class="staffcard"><div class="custhead"><span class="whorow">${portrait(k)}<span><b>${H.n}</b> <span class="sub">${R_(H.title)}</span></span></span><span class="mood keen">Level ${L}</span></div>
       <span class="sub">${stats(k)}</span>
+      <span class="lbl">Sells</span><div class="chips" role="group" aria-label="What ${H.n} sells">${STAFF_CATS.map(c=>{const on=staffCats(k).includes(c);return `<button class="chip usebtn${on?" on":""}" data-act="staffCat" data-k="${k}" data-c="${c}" aria-pressed="${on}">${STAFF_CATN[c]}</button>`}).join("")}</div>
       ${(()=>{const pt=staffLvlPart(k);return pt?`<div class="bar" role="progressbar" aria-label="Sales toward level ${L+1}" aria-valuemin="0" aria-valuemax="${pt.need}" aria-valuenow="${pt.done}"><i style="width:${Math.round(pt.done/pt.need*100)}%"></i></div><span class="sub">${fmt(pt.done)} / ${fmt(pt.need)} sales to level ${L+1}</span>`:`<span class="sub">Max level</span>`})()}
       <span class="sub">Lifetime: ${fmt(rec.sold)} sold</span>
       ${confirmFire===k?`<div class="btns"><button class="btn danger sm" data-act="fireDo" data-k="${k}">Let ${H.n} go</button><button class="btn alt sm" data-act="fireNo">Keep ${H.n}</button></div>`:`<button class="ghost" data-act="fireAsk" data-k="${k}" style="align-self:flex-start">Dismiss</button>`}
@@ -2622,6 +2629,9 @@ app.addEventListener("click",e=>{
     info:()=>{infoK=b.dataset.k;drawOv()}, nextCh:nextChapter, sleep:sleepNight, council:holdCouncil,
     payDebt, repair:()=>repair(b.dataset.k), forge, theme:()=>{S.theme=b.dataset.k;applyTheme();save();render()},
     hire:()=>hire(b.dataset.k), fireAsk:()=>{confirmFire=b.dataset.k;render()}, fireNo:()=>{confirmFire=null;render()}, fireDo:()=>fire(b.dataset.k),
+    staffCat:()=>{const k=b.dataset.k,c=b.dataset.c,cur=staffCats(k),n=cur.includes(c)?cur.filter(x=>x!==c):[...cur,c];
+      if(!n.length){toast(`${ST(k).n} needs at least one thing to sell.`);return}
+      const rec=staffRec(k);if(n.length===STAFF_CATS.length)delete rec.cats;else rec.cats=STAFF_CATS.filter(x=>n.includes(x));save();render()},
     keep:()=>{const k=b.dataset.k,v=b.dataset.v==="1";if(isKept(k)===v)return;S.keep[k]=v;save();render()},
     reportOk:()=>{S.report=null;save();render()},
     raiseYes:()=>{const k=S.report.raise,rec=staffRec(k);rec.wageB+=.2;rec.rateB+=.05;toast(`${ST(k).n} beams. <b>+5% prices</b>, wage now ${fmt(staffWage(k))}G.`);sfx.coin();S.report=null;save();render()},
