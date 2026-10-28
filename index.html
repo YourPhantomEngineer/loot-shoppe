@@ -1432,8 +1432,31 @@ const sfx={
   lvl:()=>[523,659,784,1047].forEach((f,i)=>tone(f,i*.08,.22,"triangle",.1))
 };
 
+/* iPhones mute Web Audio when the ring/silent switch is on silent, unless the page plays as media.
+   Newer Safari takes navigator.audioSession.type="playback"; older iOS gets the same effect from a looping
+   silent <audio> element started on a tap. Either way the music plays like a video would, despite the switch. */
+let silentEl=null;
+function audioPlayback(){
+  try{if(navigator.audioSession){if(navigator.audioSession.type!=="playback")navigator.audioSession.type="playback";return}}catch(e){}
+  if(!/iP(hone|ad|od)/.test(navigator.userAgent)&&!(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))return;
+  try{
+    if(!silentEl){
+      const n=800,b=new Uint8Array(44+n),v=new DataView(b.buffer),w=(o,t)=>[...t].forEach((c,i)=>b[o+i]=c.charCodeAt(0));
+      w(0,"RIFF");v.setUint32(4,36+n,true);w(8,"WAVEfmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+      v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,"data");v.setUint32(40,n,true);b.fill(128,44);
+      silentEl=document.createElement("audio");silentEl.loop=true;silentEl.setAttribute("playsinline","");silentEl.setAttribute("x-webkit-airplay","deny");
+      silentEl.preload="auto";silentEl.src=URL.createObjectURL(new Blob([b],{type:"audio/wav"}));
+    }
+    if(silentEl.paused&&!document.hidden){const pr=silentEl.play();if(pr&&pr.catch)pr.catch(()=>{})}
+  }catch(e){}
+}
+function audioRelease(){ // sound and music both off: let the phone's own audio rules apply again
+  if(S.sound||S.music)return;
+  try{if(navigator.audioSession&&navigator.audioSession.type==="playback")navigator.audioSession.type="auto"}catch(e){}
+  if(silentEl)silentEl.pause();
+}
 function audioCtx(){
-  try{if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();if(ac.state==="suspended")ac.resume();return ac}catch(e){return null}
+  try{audioPlayback();if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();if(ac.state==="suspended")ac.resume();return ac}catch(e){return null}
 }
 
 /* ================= Music (generated live, no files) ================= */
@@ -2556,8 +2579,8 @@ app.addEventListener("click",e=>{
   const a=b.dataset.act;
   if(S.sound||S.music||a==="music")audioCtx();
   ({
-    sound:()=>{S.sound=!S.sound;save();render();sfx.coin()},
-    music:()=>{S.music=!S.music;save();render()},
+    sound:()=>{S.sound=!S.sound;save();render();sfx.coin();audioRelease()},
+    music:()=>{S.music=!S.music;save();render();audioRelease()},
     tab:()=>{tab=b.dataset.t;confirmReset=false;SE("tab",{t:tab});render();window.scrollTo(0,0)},
     shop:openShop,
     delve:()=>startDelve(+b.dataset.i),
@@ -2620,7 +2643,7 @@ document.getElementById("ov").addEventListener("click",e=>{
 document.addEventListener("pointerdown",()=>{if(S.music&&!ac){audioCtx();musicUpdate()}},{once:true});
 document.addEventListener("visibilitychange",()=>{
   if(!ac)return;
-  if(document.hidden)ac.suspend();else{ac.resume();M.next=ac.currentTime+.08}
+  if(document.hidden){ac.suspend();if(silentEl)silentEl.pause()}else{audioPlayback();ac.resume();M.next=ac.currentTime+.08}
 });
 render();
 playNext();
