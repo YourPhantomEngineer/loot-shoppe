@@ -40,6 +40,7 @@ More than one agent (several Claude sessions, ChatGPT/Codex) may be changing the
 - **Bump the cache on top of the latest number.** If someone else bumped `CACHE` in `sw.js` while you worked, take the next number after theirs when you resolve the conflict.
 - **Don't undo other agents' work.** If something another agent did looks wrong, say so to the owner instead of quietly reverting it.
 - **Commit messages say what changed for the player**, so the other agents can follow the log.
+- **No AI session links in commits or pull requests.** The repo is public. Don't put links to AI chats or sessions (claude.ai, chatgpt.com, Codex tasks or similar) or session IDs in commit messages, pull request titles or descriptions, or code comments. This includes `Claude-Session:` trailers and "Generated with" footers that carry a session link, even if your tools add them by default. A plain `Co-Authored-By:` line without a link is fine. Never include personal details about the owner either.
 
 ### Claude sessions
 
