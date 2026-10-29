@@ -2312,6 +2312,13 @@ function itemWhere(k){
 }
 const ii=k=>`<span class="ii" data-act="info" data-k="${k}" role="button" tabindex="0" aria-label="About ${IT[k].n}">i</span>`;
 const dis=c=>c?' aria-disabled="true"':"";
+/* Check for updates: can the live game page be fetched right now (not from the offline cache)? */
+async function canReachGame(){
+  if(navigator.onLine===false)return false;
+  try{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),5000);
+    const res=await fetch("index.html?check="+Date.now(),{cache:"no-store",signal:ctl.signal});clearTimeout(t);return res.ok}
+  catch(e){return false}
+}
 let infoK=null;
 function infoCard(k){
   const it=IT[k],use=itemUse(k),eq=HEAL[k]||it.c==="supply";
@@ -2693,6 +2700,8 @@ app.addEventListener("click",e=>{
     offer, accept:()=>sell(S.shop.cur.counter), acceptOffer:()=>sell(S.shop.cur.offer), haggle:startHaggle, refuse:letWalk, pitchTalk, pitchSweet, close:endDay,
     updateGame:async()=>{
       save();toast("Checking for updates…");
+      // Only clear the offline copy once the game can actually be reached; offline, keep everything and say so.
+      if(!(await canReachGame())){toast("You're offline. Try again when you're connected.");return}
       try{if(navigator.serviceWorker){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.update().catch(()=>{})))}}catch(e){}
       try{if(window.caches){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}}catch(e){}
       location.reload();
